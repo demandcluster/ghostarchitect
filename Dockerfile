@@ -9,7 +9,7 @@ RUN npm ci --ignore-scripts
 # ─────────────────────────────────────────
 # Stage 2: builder — generate Prisma client + build Next.js
 # ─────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:22-bullseye AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
@@ -24,7 +24,7 @@ RUN npm run build
 # ─────────────────────────────────────────
 # Stage 3: runner — minimal production image
 # ─────────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:22-bullseye-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
