@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import { OSShell } from "@/shared/components/OSShell";
 import { DMSidebar } from "@/shared/components/DMSidebar";
 import { useBreachTransition } from "@/shared/components/TransitionOverlay";
+import { useStepTransition } from "@/shared/hooks/useStepTransition";
 import { useGameStore } from "@/stores/gameStore";
 import { useScoreStore } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
@@ -68,6 +69,7 @@ export default function Home() {
   const [flaggedLogs, setFlaggedLogs] = useState<LogEntry[]>([]);
   const [npcDmReveal, setNpcDmReveal] = useState(0);
   const [npcDmIndex, setNpcDmIndex] = useState(0);
+  const { isTransitioning, changeStep } = useStepTransition(setStep);
 
   // Dev shortcut: set breach visual mode when ?step= targets a post-breach phase
   useEffect(() => {
@@ -141,7 +143,7 @@ export default function Home() {
   );
 
   const handleEmailComplete = useCallback(
-    (results: Record<string, string>) => {
+    async (results: Record<string, string>) => {
       const phishingEmails = BREACH_EMAILS.filter((e) => e.isPhishing);
       const correctPhishing = phishingEmails.filter(
         (e) => results[e.id] === "phishing"
@@ -174,26 +176,26 @@ export default function Home() {
         description: `Email triage completed: ${total}/${max} correct`,
       });
 
-      setStep("breach-password");
+      await changeStep("breach-password");
     },
-    [addAction, addFlag, addTimelineEntry]
+    [addAction, addFlag, addTimelineEntry, changeStep]
   );
 
   // Start screen (full screen, no OS shell)
   if (step === "start") {
-    return <StartScreen onStart={() => setStep("login")} />;
+    return <StartScreen onStart={() => changeStep("login")} />;
   }
 
   // Login & MFA screens (full screen, no OS shell)
   if (step === "login") {
-    return <LoginScreen onLogin={() => setStep("mfa")} />;
+    return <LoginScreen onLogin={() => changeStep("mfa")} />;
   }
 
   if (step === "mfa") {
     return (
       <MFAPuzzle
         onComplete={() => {
-          setStep("onboarding-portal");
+          changeStep("onboarding-portal");
           setTimeout(() => setDmReveal(1), 2000);   // James informational
           setTimeout(() => setDmReveal(2), 4000);   // David Park choice
           setTimeout(() => setDmReveal(3), 7000);   // Sarah first message
@@ -293,7 +295,7 @@ export default function Home() {
               <button
                 onClick={async () => {
                   await triggerBreach();
-                  setStep("breach-email");
+                  await changeStep("breach-email");
                 }}
                 className="w-full px-4 py-2 rounded text-sm font-semibold text-white transition-colors"
                 style={{ background: "var(--accent)" }}
@@ -327,7 +329,7 @@ export default function Home() {
     windows.push({
       id: "password",
       title: "Password Reset Required",
-      content: <PasswordPuzzle onComplete={() => setStep("breach-wifi")} />,
+      content: <PasswordPuzzle onComplete={() => changeStep("breach-wifi")} />,
     });
   }
 
@@ -337,14 +339,14 @@ export default function Home() {
       title: "Network Connection",
       content: (
         <EvilTwinWiFi
-          onComplete={() => {
+          onComplete={async () => {
             addTimelineEntry({
               id: "breach-complete",
               phase: "breach",
               description: "Breach phase completed",
             });
             setPhase("investigation");
-            setStep("investigation-containment");
+            await changeStep("investigation-containment");
           }}
         />
       ),
@@ -358,8 +360,8 @@ export default function Home() {
       title: "Containment Decision",
       content: (
         <ContainmentDecision
-          onComplete={() => {
-            setStep("investigation-logs");
+          onComplete={async () => {
+            await changeStep("investigation-logs");
             setNpcDmReveal(1);
           }}
         />
@@ -420,7 +422,7 @@ export default function Home() {
             </div>
           )}
           <button
-            onClick={() => {
+            onClick={async () => {
               const malicious = LOG_ENTRIES.filter((e) => e.isMalicious);
               const correctFlags = flaggedLogs.filter(
                 (f) => f.isMalicious
@@ -448,7 +450,7 @@ export default function Home() {
                 description: `Flagged ${flaggedLogs.length} log entries (${correctFlags} malicious)`,
               });
 
-              setStep("investigation-lolbins");
+              await changeStep("investigation-lolbins");
             }}
             className="w-full py-2 bg-accent text-white rounded text-xs font-medium hover:bg-accent-hover"
           >
@@ -466,7 +468,7 @@ export default function Home() {
       content: (
         <TaskManagerView
           processes={LOLBINS}
-          onComplete={() => setStep("investigation-ioc")}
+          onComplete={() => changeStep("investigation-ioc")}
         />
       ),
     });
@@ -477,7 +479,7 @@ export default function Home() {
       id: "ioc",
       title: "IOC Documentation",
       content: (
-        <IOCExtraction onComplete={() => setStep("investigation-rotation")} />
+        <IOCExtraction onComplete={() => changeStep("investigation-rotation")} />
       ),
     });
   }
@@ -488,14 +490,14 @@ export default function Home() {
       title: "Post-Breach Response",
       content: (
         <CredentialRotation
-          onComplete={() => {
+          onComplete={async () => {
             addTimelineEntry({
               id: "investigation-complete",
               phase: "investigation",
               description: "Investigation phase completed",
             });
             setPhase("debrief");
-            setStep("debrief");
+            await changeStep("debrief");
           }}
         />
       ),
