@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { RadarChart } from "./RadarChart";
 import { TimelineReplay } from "./TimelineReplay";
@@ -9,6 +9,7 @@ import { MitreMapping } from "./MitreMapping";
 import { useScoreStore, ScoreCategory, ScoreAction } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
 import { deriveFlags } from "@/engine/rules";
+import { TrophyBadge } from "@/shared/components/TrophyBadge";
 
 const CATEGORY_LABELS: Record<ScoreCategory, string> = {
   phishingIQ: "Phishing IQ",
@@ -28,6 +29,8 @@ const ENDING_BADGE: Record<string, { label: string; classes: string }> = {
 
 export function DebriefPage() {
   const [activeTab, setActiveTab] = useState<Tab>("results");
+  const [showTrophy, setShowTrophy] = useState(false);
+  const trophyShownRef = useRef(false);
   const decisions = useNarrativeStore((s) => s.decisions);
   const flags = useNarrativeStore((s) => s.flags);
   const trustScore = useScoreStore((s) => s.trustScore);
@@ -35,6 +38,18 @@ export function DebriefPage() {
   const categoryScores = useScoreStore((s) => s.categoryScores);
 
   const derived = deriveFlags(decisions, flags);
+
+  // Show trophy after debrief has rendered, only once
+  useEffect(() => {
+    if (trophyShownRef.current) return;
+
+    const timer = setTimeout(() => {
+      setShowTrophy(true);
+      trophyShownRef.current = true;
+    }, 1000); // 1s delay for impact
+
+    return () => clearTimeout(timer);
+  }, []);
 
   const actionsByCategory = actions.reduce<Record<string, ScoreAction[]>>(
     (acc, action) => {
@@ -162,6 +177,11 @@ export function DebriefPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <TrophyBadge
+        isOpen={showTrophy}
+        onClose={() => setShowTrophy(false)}
+      />
     </div>
   );
 }

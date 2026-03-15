@@ -1,5 +1,19 @@
 import { useState, useCallback } from "react";
-import type { GameStep } from "@/app/page";
+
+type GameStep =
+  | "start"
+  | "login"
+  | "mfa"
+  | "onboarding-portal"
+  | "breach-email"
+  | "breach-password"
+  | "breach-wifi"
+  | "investigation-containment"
+  | "investigation-logs"
+  | "investigation-lolbins"
+  | "investigation-ioc"
+  | "investigation-rotation"
+  | "debrief";
 
 export function useStepTransition(setStep: (step: GameStep) => void) {
   const [isTransitioning, setIsTransitioning] = useState(false);
