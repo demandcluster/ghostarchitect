@@ -13,6 +13,10 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
+
+# Explicitly exclude .next from COPY to avoid lightningcss errors
+RUN find . -name ".next" -exec rm -rf {} \;
+
 COPY . .
 
 # Clean .next build cache after COPY to prevent lightningcss errors
@@ -20,6 +24,11 @@ RUN rm -rf .next
 
 # Prisma schema lives at src/prisma/schema.prisma (non-default path)
 ENV PRISMA_SCHEMA_PATH=src/prisma/schema.prisma
+
+# Disable native bindings for postcss/lightningcss (Alpine Linux compatibility)
+ENV npm_config_orig_build_platform_node=true
+ENV npm_config_build_from_source=false
+
 RUN npx prisma generate --schema=src/prisma/schema.prisma
 
 # Clean build cache to prevent lightningcss errors
