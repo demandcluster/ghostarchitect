@@ -1,7 +1,7 @@
 # ─────────────────────────────────────────
 # Stage 1: deps — install production deps
 # ─────────────────────────────────────────
-FROM node:20-alpine AS deps
+FROM node:18-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
@@ -24,10 +24,6 @@ RUN rm -rf .next
 
 # Prisma schema lives at src/prisma/schema.prisma (non-default path)
 ENV PRISMA_SCHEMA_PATH=src/prisma/schema.prisma
-
-# Disable native bindings for postcss/lightningcss (Alpine Linux compatibility)
-ENV npm_config_orig_build_platform_node=true
-ENV npm_config_build_from_source=false
 
 RUN npx prisma generate --schema=src/prisma/schema.prisma
 
