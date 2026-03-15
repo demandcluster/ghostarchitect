@@ -398,12 +398,9 @@ export function TrophyBadge({ isOpen, onClose }: TrophyBadgeProps) {
   const categoryScores = useScoreStore((s) => s.categoryScores);
   const actions = useScoreStore((s) => s.actions);
 
-  // Compute total from category scores and time bonus from actions
+  // Compute total from category scores only (time bonus system not currently implemented)
   const totalScore = computeTotal(categoryScores);
-  const timeBonus = actions.reduce((sum, action) => sum + (action.timeBonus || 0), 0);
-  const finalScore = totalScore + timeBonus;
-
-  const rank = calculateRank(totalScore); // Use category score only, not time bonus
+  const rank = calculateRank(totalScore);
 
   const handleBadgeReveal = () => {
     // Fire confetti when trophy emoji completes bounce animation
@@ -459,18 +456,8 @@ export function TrophyBadge({ isOpen, onClose }: TrophyBadgeProps) {
                 transition={{ delay: 0.3 }}
                 className="font-bold text-[var(--accent)]"
               >
-                {finalScore}/500
+                {totalScore}/500
               </motion.span>
-              {timeBonus > 0 && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 1.5 }}
-                  className="text-sm ml-2"
-                >
-                  (+{timeBonus} time bonus)
-                </motion.span>
-              )}
             </div>
 
             {/* Close button */}
@@ -631,7 +618,7 @@ vi.mock("@/stores/scoreStore", () => ({
       forensicSkill: 100
     },
     actions: [
-      { id: "test", timeBonus: 15, score: 0, category: "" }
+      { id: "test", category: "phishingIQ", points: 0, maxPoints: 0, label: "", timestamp: Date.now() }
     ]
   })
 }));
@@ -648,15 +635,6 @@ describe("TrophyBadge", () => {
     await waitFor(() => {
       const rank = screen.queryByText(/PLATINUM/i);
       expect(rank).toBeInTheDocument();
-    });
-  });
-
-  it("shows time bonus when > 0", async () => {
-    render(<TrophyBadge isOpen={true} onClose={() => {}} />);
-
-    await waitFor(() => {
-      const bonusText = screen.queryByText(/\+15 time bonus/i);
-      expect(bonusText).toBeInTheDocument();
     });
   });
 });
@@ -714,7 +692,6 @@ Test the following:
 - [ ] Completing a game shows TrophyBadge with bounce animation
 - [ ] Confetti fires on trophy emoji reveal (unless prefers-reduced-motion)
 - [ ] Score animates from 0 to final value
-- [ ] Time bonus displays separately when > 0
 - [ ] Trophy badge shows correct rank for final score
 - [ ] Reduced motion preference disables confetti and simplifies animations
 
