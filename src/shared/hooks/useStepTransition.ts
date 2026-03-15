@@ -1,9 +1,7 @@
 import { useState, useCallback } from "react";
-import { useGameStore } from "@/stores/gameStore";
 import type { GameStep } from "@/app/page";
 
-export function useStepTransition() {
-  const setPhase = useGameStore((s) => s.setPhase);
+export function useStepTransition(setStep: (step: GameStep) => void) {
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const changeStep = useCallback(async (newStep: GameStep) => {
@@ -12,10 +10,10 @@ export function useStepTransition() {
 
     setIsTransitioning(true);
     await new Promise(resolve => setTimeout(resolve, 300)); // fade out
-    setPhase(newStep);
+    setStep(newStep);
     await new Promise(resolve => setTimeout(resolve, 300)); // fade in
     setIsTransitioning(false);
-  }, [isTransitioning, setPhase]);
+  }, [isTransitioning, setStep]);
 
   return { isTransitioning, changeStep };
 }
