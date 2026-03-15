@@ -37,11 +37,16 @@ Three main areas of improvement:
 - Smooth transitions for all state changes (hover, active, inactive)
 
 #### Accessibility
-- Add focus ring using `var(--accent-ring)` for keyboard navigation
+- Add focus ring using `var(--accent-ring)` (add to globals.css before implementation)
 - Ensure all buttons are tab-navigable
 - Maintain visible focus state throughout interaction
 
 ### Technical Implementation
+
+Add to `globals.css` before implementation:
+```css
+--accent-ring: rgba(59,110,248,0.35);
+```
 
 Update `Taskbar.tsx`:
 ```tsx
@@ -93,16 +98,19 @@ Add smooth fade/slide transitions between all game steps:
 
 ```tsx
 // New hook: useStepTransition
+import { useGameStore } from "@/stores/gameStore";
+
 function useStepTransition() {
+  const setPhase = useGameStore((s) => s.setPhase);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const changeStep = useCallback(async (newStep: GameStep) => {
     setIsTransitioning(true);
     await new Promise(resolve => setTimeout(resolve, 300)); // fade out
-    setStep(newStep);
+    setPhase(newStep);
     await new Promise(resolve => setTimeout(resolve, 300)); // fade in
     setIsTransitioning(false);
-  }, [setStep]);
+  }, [setPhase]);
 
   return { isTransitioning, changeStep };
 }
@@ -139,7 +147,7 @@ Create new `useStepTransition.ts` hook:
 - **Gold**: 400-449 points
 - **Platinum**: 450-500 points
 
-Note: Time bonus (+25 max per decision) is displayed separately from category score.
+Note: Time bonus (up to +25 total based on response speed under 120s) is displayed separately from category score.
 
 #### Trophy Badge UI
 ```
@@ -152,11 +160,11 @@ Note: Time bonus (+25 max per decision) is displayed separately from category sc
 ```
 
 - Large trophy emoji (🥉/🥈/🥇/🏆) on left
-- Rank name in appropriate color:
-  - Bronze: #cd7f32
-  - Silver: #c0c0c0
-  - Gold: #ffd700
-  - Platinum: #95a5a6
+- Rank name using Tailwind colors for theme consistency:
+  - Bronze: `text-amber-700` (#92400e)
+  - Silver: `text-slate-400` (#94a3b8)
+  - Gold: `text-yellow-400` (#facc15)
+  - Platinum: `text-slate-300` (#cbd5e1)
 - Final score with time bonus shown separately
 
 #### Animation Sequence
@@ -182,16 +190,20 @@ interface TrophyBadgeProps {
 }
 
 export function TrophyBadge({ totalScore, timeBonus }: TrophyBadgeProps) {
+  const prefersReducedMotion = useReducedMotion();
   const rank = calculateRank(totalScore);
 
-  const handleReveal = () => {
-    // Fire confetti
-    confetti({
-      particleCount: 150,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: rank.colors
-    });
+  const handleBadgeReveal = () => {
+    // Fire confetti when trophy emoji completes bounce animation
+    // Skip for users who prefer reduced motion
+    if (!prefersReducedMotion) {
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: rank.colors
+      });
+    }
   };
 
   return (
@@ -201,9 +213,21 @@ export function TrophyBadge({ totalScore, timeBonus }: TrophyBadgeProps) {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: "100%", opacity: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 20 }}
-        onAnimationComplete={handleReveal}
       >
-        {/* Badge content with animated score */}
+        {/* Trophy emoji with confetti on reveal */}
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 15 }}
+          onAnimationComplete={handleBadgeReveal}
+        >
+          {rank.emoji}
+        </motion.div>
+
+        {/* Rank and score with animated count-up */}
+        <div className={`font-bold text-2xl ${rank.className}`}>
+          {rank.name}
+        </div>
       </motion.div>
     </AnimatePresence>
   );
@@ -212,19 +236,19 @@ export function TrophyBadge({ totalScore, timeBonus }: TrophyBadgeProps) {
 function calculateRank(score: number): {
   name: string;
   emoji: string;
-  color: string;
+  className: string;
   colors: string[];
 } {
   if (score >= 450) {
-    return { name: "PLATINUM", emoji: "🏆", color: "#95a5a6", colors: ["#95a5a6", "#c0c0c0", "#ffffff"] };
+    return { name: "PLATINUM", emoji: "🏆", className: "text-slate-300", colors: ["#cbd5e1", "#e2e8f0", "#ffffff"] };
   }
   if (score >= 400) {
-    return { name: "GOLD", emoji: "🥇", color: "#ffd700", colors: ["#ffd700", "#ffed4e", "#ffffff"] };
+    return { name: "GOLD", emoji: "🥇", className: "text-yellow-400", colors: ["#facc15", "#fde047", "#ffffff"] };
   }
   if (score >= 250) {
-    return { name: "SILVER", emoji: "🥈", color: "#c0c0c0", colors: ["#c0c0c0", "#e0e0e0", "#ffffff"] };
+    return { name: "SILVER", emoji: "🥈", className: "text-slate-400", colors: ["#94a3b8", "#cbd5e1", "#ffffff"] };
   }
-  return { name: "BRONZE", emoji: "🥉", color: "#cd7f32", colors: ["#cd7f32", "#e8a87c", "#ffffff"] };
+  return { name: "BRONZE", emoji: "🥉", className: "text-amber-700", colors: ["#b45309", "#d97706", "#ffffff"] };
 }
 ```
 
@@ -232,6 +256,11 @@ Dependencies:
 - `canvas-confetti` (~3kb) for particle effects
 - Framer Motion for reveal animations
 - Access to `scoreStore` for total score and time bonus
+
+Accessibility considerations:
+- Skip confetti and reduce animations when `prefers-reduced-motion` is true
+- Use `useReducedMotion()` hook from Framer Motion to detect preference
+- Provide fallback for no-animation mode throughout trophy reveal
 
 Integration point:
 - Add TrophyBadge modal to DebriefPage component
