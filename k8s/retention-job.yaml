@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ghost-architect-retention
+  namespace: ghost-architect
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: cleanup
+              image: curlimages/curl:latest
+              env:
+                - name: INTERNAL_SECRET
+                  valueFrom:
+                    secretKeyRef:
+                      name: ghost-architect-secrets
+                      key: INTERNAL_SECRET
+              command:
+                - sh
+                - -c
+                - |
+                  curl -sf -X POST http://ghost-architect-service.ghost-architect.svc.cluster.local/api/internal/cleanup \
+                    -H "x-internal-secret: $INTERNAL_SECRET" \
+                    -H "Content-Type: application/json"

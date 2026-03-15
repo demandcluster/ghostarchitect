@@ -1,0 +1,59 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Admin {
+  id           String   @id @default(uuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Trainer {
+  id              String    @id @default(uuid())
+  username        String    @unique
+  passwordHash    String
+  role            String    @default("trainer")
+  createdAt       DateTime  @default(now())
+  acceptedTermsAt DateTime?
+  teams           Team[]
+}
+
+model Team {
+  id          String    @id @default(uuid())
+  trainerId   String
+  trainer     Trainer   @relation(fields: [trainerId], references: [id])
+  name        String
+  inviteCode  String    @unique
+  logoUrl     String?
+  fakeDomain  String?
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  retainUntil DateTime?
+  sessions    Session[]
+
+  @@index([trainerId])
+  @@index([inviteCode])
+}
+
+model Session {
+  id            String    @id @default(uuid())
+  teamId        String
+  team          Team      @relation(fields: [teamId], references: [id])
+  anonymousId   String
+  playerHandle  String?
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  phaseScores   Json      @default("{}")
+  totalScore    Int?
+  endingReached String?
+  deviceInfo    String?   // populated by client on session create — coarse platform label only (e.g. "desktop/chrome") — never a full UA string
+
+  @@index([teamId])
+  @@index([anonymousId])
+}

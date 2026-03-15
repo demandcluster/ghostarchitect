@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ghost-architect
+  labels:
+    app: ghost-architect
+spec:
+  type: ClusterIP
+  selector:
+    app: ghost-architect
+  ports:
+    - port: 80
+      targetPort: 3000
+      protocol: TCP
