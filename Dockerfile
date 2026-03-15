@@ -15,6 +15,9 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
+# Clean .next build cache after COPY to prevent lightningcss errors
+RUN rm -rf .next
+
 # Prisma schema lives at src/prisma/schema.prisma (non-default path)
 ENV PRISMA_SCHEMA_PATH=src/prisma/schema.prisma
 RUN npx prisma generate --schema=src/prisma/schema.prisma
