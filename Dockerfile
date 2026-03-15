@@ -18,6 +18,10 @@ COPY . .
 # Prisma schema lives at src/prisma/schema.prisma (non-default path)
 ENV PRISMA_SCHEMA_PATH=src/prisma/schema.prisma
 RUN npx prisma generate --schema=src/prisma/schema.prisma
+
+# Clean build cache to prevent lightningcss errors
+RUN rm -rf .next
+
 RUN npm run build
 
 # ─────────────────────────────────────────
