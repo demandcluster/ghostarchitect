@@ -68,7 +68,7 @@ Run: `npm install canvas-confetti`
 
 Expected: `canvas-confetti` added to package.json dependencies
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 2: Commit**
 
 ```bash
 git add package.json package-lock.json
@@ -100,6 +100,9 @@ Replace the button element (lines 132-154) with:
 <motion.button
   key={app.id}
   onClick={() => onAppClick(app.id)}
+  animate={{
+    scale: activeApp === app.id ? 1.1 : 1
+  }}
   whileHover={{ scale: 1.1 }}
   whileTap={{ scale: 0.95 }}
   transition={{ type: "spring", stiffness: 300, damping: 25 }}
@@ -163,16 +166,21 @@ export function useStepTransition() {
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const changeStep = useCallback(async (newStep: GameStep) => {
+    // Prevent concurrent transitions
+    if (isTransitioning) return;
+
     setIsTransitioning(true);
     await new Promise(resolve => setTimeout(resolve, 300)); // fade out
     setPhase(newStep);
     await new Promise(resolve => setTimeout(resolve, 300)); // fade in
     setIsTransitioning(false);
-  }, [setPhase]);
+  }, [isTransitioning, setPhase]);
 
   return { isTransitioning, changeStep };
 }
 ```
+
+**Note:** Use `changeStep` to replace `setStep` calls in game flow. Keep `setPhase` calls that only change visual mode (e.g., `setPhase("breach")` when transitioning to breach visual mode). Make calling functions `async` when using `changeStep`.
 
 - [ ] **Step 3: Commit**
 
@@ -259,7 +267,7 @@ style={{
 
 - [ ] **Step 2: Add screen shake during glitch bands**
 
-Add a `isShaking` state and CSS animation for shake. At the top of the component:
+Add a `isShaking` state and shake interval. At the top of the component:
 
 ```tsx
 const [isShaking, setIsShaking] = useState(false);
@@ -272,7 +280,8 @@ useEffect(() => {
   if (isGlitching) {
     setIsShaking(true);
     const shakeInterval = setInterval(() => {
-      // Random shake offsets
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 100);
     }, 50);
 
     return () => {
@@ -296,6 +305,8 @@ Apply shake transform to glitch bands:
   {/* glitch band content */}
 </div>
 ```
+
+Add CSS animation for shake (optional - using random offsets above is sufficient):
 
 - [ ] **Step 3: Speed up terminal typing animation**
 
@@ -372,10 +383,10 @@ git commit -m "feat: enhance breach transition with RGB shift, screen shake, and
 ```tsx
 "use client";
 
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion, useMotionValue } from "framer-motion";
 import confetti from "canvas-confetti";
 import { useScoreStore } from "@/stores/scoreStore";
-import { useGameStore } from "@/stores/gameStore";
+import { computeTotal } from "@/engine/scoring";
 
 interface TrophyBadgeProps {
   isOpen: boolean;
@@ -384,10 +395,15 @@ interface TrophyBadgeProps {
 
 export function TrophyBadge({ isOpen, onClose }: TrophyBadgeProps) {
   const prefersReducedMotion = useReducedMotion();
-  const { totalScore, timeBonus } = useScoreStore();
+  const categoryScores = useScoreStore((s) => s.categoryScores);
+  const actions = useScoreStore((s) => s.actions);
+
+  // Compute total from category scores and time bonus from actions
+  const totalScore = computeTotal(categoryScores);
+  const timeBonus = actions.reduce((sum, action) => sum + (action.timeBonus || 0), 0);
   const finalScore = totalScore + timeBonus;
 
-  const rank = calculateRank(finalScore);
+  const rank = calculateRank(totalScore); // Use category score only, not time bonus
 
   const handleBadgeReveal = () => {
     // Fire confetti when trophy emoji completes bounce animation
@@ -437,13 +453,23 @@ export function TrophyBadge({ isOpen, onClose }: TrophyBadgeProps) {
 
             <div className="text-[var(--text-secondary)] text-lg">
               Final Score:{" "}
-              <span className="font-bold text-[var(--accent)]">
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="font-bold text-[var(--accent)]"
+              >
                 {finalScore}/500
-              </span>
+              </motion.span>
               {timeBonus > 0 && (
-                <span className="text-sm ml-2">
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1.5 }}
+                  className="text-sm ml-2"
+                >
                   (+{timeBonus} time bonus)
-                </span>
+                </motion.span>
               )}
             </div>
 
@@ -469,6 +495,7 @@ function calculateRank(score: number): {
   className: string;
   colors: string[];
 } {
+  // Score is category score only (max 500), not including time bonus
   if (score >= 450) {
     return { name: "PLATINUM", emoji: "🏆", className: "text-slate-300", colors: ["#cbd5e1", "#e2e8f0", "#ffffff"] };
   }
@@ -523,10 +550,15 @@ const [showTrophy, setShowTrophy] = useState(false);
 Find where debrief content completes (typically after ending calculation or radar chart render). Add:
 
 ```tsx
+const trophyShownRef = useRef(false);
+
 useEffect(() => {
-  // Show trophy after debrief has rendered
+  // Show trophy after debrief has rendered, only once
+  if (trophyShownRef.current) return;
+
   const timer = setTimeout(() => {
     setShowTrophy(true);
+    trophyShownRef.current = true;
   }, 1000); // 1s delay for impact
 
   return () => clearTimeout(timer);
@@ -568,6 +600,7 @@ git commit -m "feat: integrate TrophyBadge into DebriefPage"
 
 ```tsx
 import { describe, it, expect } from "vitest";
+import { vi } from "vitest";
 
 describe("calculateRank", () => {
   it("returns BRONZE for scores 0-249", () => {
@@ -585,14 +618,27 @@ describe("calculateRank", () => {
 ```tsx
 import { render, screen, waitFor } from "@testing-library/react";
 import { TrophyBadge } from "@/shared/components/TrophyBadge";
+import { vi } from "vitest";
 import { useScoreStore } from "@/stores/scoreStore";
 
 // Mock the store
 vi.mock("@/stores/scoreStore", () => ({
   useScoreStore: () => ({
-    totalScore: 487,
-    timeBonus: 15
+    categoryScores: {
+      phishingIQ: 100,
+      passwordHygiene: 100,
+      networkSecurity: 100,
+      forensicSkill: 100
+    },
+    actions: [
+      { id: "test", timeBonus: 15, score: 0, category: "" }
+    ]
   })
+}));
+
+// Mock computeTotal
+vi.mock("@/engine/scoring", () => ({
+  computeTotal: () => 400
 }));
 
 describe("TrophyBadge", () => {
