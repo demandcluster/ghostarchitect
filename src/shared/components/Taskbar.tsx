@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useGameStore } from "@/stores/gameStore";
 import React from "react";
+import { motion } from "framer-motion";
 
 const IconEmail = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -130,18 +131,24 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
       {/* App icons */}
       <div className="flex gap-1 flex-1">
         {apps.map((app) => (
-          <button
+          <motion.button
             key={app.id}
             onClick={() => onAppClick(app.id)}
+            animate={{
+              scale: activeApp === app.id ? 1.1 : 1
+            }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
             className={`
               px-2.5 py-1.5 rounded-lg text-xs transition-colors
               ${isBreach ? "font-mono" : ""}
               ${
                 activeApp === app.id
                   ? isBreach
-                    ? "bg-[var(--accent-subtle)] ring-1 ring-[var(--border)] text-[var(--taskbar-text-active)]"
-                    : "bg-white/15 ring-1 ring-white/20 text-[var(--taskbar-text-active)]"
-                  : "text-[var(--taskbar-text)] hover:bg-white/10"
+                    ? "bg-[var(--accent-subtle)] ring-1 ring-[var(--border)] text-[var(--taskbar-text-active)] focus:ring-2 focus:ring-[var(--accent-ring)]"
+                    : "bg-white/15 ring-1 ring-white/20 text-[var(--taskbar-text-active)] focus:ring-2 focus:ring-[var(--accent-ring)]"
+                  : "text-[var(--taskbar-text)] hover:bg-white/10 focus:ring-2 focus:ring-[var(--accent-ring)]"
               }
             `}
             title={app.label}
@@ -150,7 +157,7 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
               {app.icon}
             </span>
             <span className="hidden sm:inline">{app.label}</span>
-          </button>
+          </motion.button>
         ))}
       </div>
 
