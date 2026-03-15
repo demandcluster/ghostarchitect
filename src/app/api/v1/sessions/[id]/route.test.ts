@@ -48,13 +48,15 @@ describe("GET /api/v1/sessions/[id]", () => {
   it("returns session data", async () => {
     mockSessionFindUnique.mockResolvedValue(baseSession as never);
 
-    const req = new NextRequest("http://localhost/api/v1/sessions/sess-1");
+    const req = new NextRequest("http://localhost/api/v1/sessions/sess-1", {
+      headers: { "x-anonymous-id": "anon-owner" },
+    });
     const res = await GET(req, makeParams("sess-1"));
     const json = await res.json();
 
     expect(res.status).toBe(200);
     expect(json.id).toBe("sess-1");
-    expect(json.anonymousId).toBe("anon-owner");
+    expect(json.anonymousId).toBeUndefined(); // stripped from response (GAP-12)
     expect(json.phaseScores.onboarding).toBe(20);
   });
 
@@ -70,7 +72,9 @@ describe("GET /api/v1/sessions/[id]", () => {
   it("returns startedAt as ISO string", async () => {
     mockSessionFindUnique.mockResolvedValue(baseSession as never);
 
-    const req = new NextRequest("http://localhost/api/v1/sessions/sess-1");
+    const req = new NextRequest("http://localhost/api/v1/sessions/sess-1", {
+      headers: { "x-anonymous-id": "anon-owner" },
+    });
     const res = await GET(req, makeParams("sess-1"));
     const json = await res.json();
 

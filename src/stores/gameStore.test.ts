@@ -15,8 +15,8 @@ describe("gameStore", () => {
       expect(useGameStore.getState().visualMode).toBe("corporate");
     });
 
-    it("has a session ID", () => {
-      expect(useGameStore.getState().sessionId).toBeTruthy();
+    it("has no session ID until explicitly initialized", () => {
+      expect(useGameStore.getState().sessionId).toBeNull();
     });
 
     it("is not transitioning", () => {
@@ -87,10 +87,10 @@ describe("gameStore", () => {
       expect(useGameStore.getState().visualMode).toBe("corporate");
     });
 
-    it("generates a new session ID on reset", () => {
-      const oldId = useGameStore.getState().sessionId;
+    it("clears session ID on reset", () => {
+      useGameStore.getState().setSessionId("some-session");
       useGameStore.getState().reset();
-      expect(useGameStore.getState().sessionId).not.toBe(oldId);
+      expect(useGameStore.getState().sessionId).toBeNull();
     });
 
     it("resets isTransitioning to false", () => {

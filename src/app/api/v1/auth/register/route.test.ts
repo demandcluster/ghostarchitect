@@ -63,6 +63,7 @@ describe("POST /api/v1/auth/register", () => {
     const req = makeRequest({
       username: "trainer1",
       password: "secureP@ss1",
+      acceptedTerms: true,
     });
     const res = await POST(req);
     const json = await res.json();
@@ -82,6 +83,7 @@ describe("POST /api/v1/auth/register", () => {
     const req = makeRequest({
       username: "trainer1",
       password: "secureP@ss1",
+      acceptedTerms: true,
     });
     await POST(req);
 
@@ -95,6 +97,7 @@ describe("POST /api/v1/auth/register", () => {
     const req = makeRequest({
       username: "trainer1",
       password: "secureP@ss1",
+      acceptedTerms: true,
     });
     await POST(req);
 
@@ -111,12 +114,21 @@ describe("POST /api/v1/auth/register", () => {
     const req = makeRequest({
       username: "trainer1",
       password: "secureP@ss1",
+      acceptedTerms: true,
     });
     const res = await POST(req);
     const json = await res.json();
 
     expect(res.status).toBe(409);
     expect(json.error).toMatch(/already taken/i);
+  });
+
+  it("returns 400 when acceptedTerms is missing", async () => {
+    const req = makeRequest({ username: "trainer1", password: "secureP@ss1" });
+    const res = await POST(req);
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toMatch(/terms/i);
   });
 
   it("returns 400 when username is missing", async () => {
@@ -139,6 +151,7 @@ describe("POST /api/v1/auth/register", () => {
     const req = makeRequest({
       username: "trainer1",
       password: "short",
+      acceptedTerms: true,
     });
     const res = await POST(req);
 
@@ -154,6 +167,7 @@ describe("POST /api/v1/auth/register", () => {
     const req = makeRequest({
       username: "trainer1",
       password: "secureP@ss1",
+      acceptedTerms: true,
     });
     await POST(req);
 
@@ -167,6 +181,7 @@ describe("POST /api/v1/auth/register", () => {
     const req = makeRequest({
       username: "trainer1",
       password: "secureP@ss1",
+      acceptedTerms: true,
     });
     await POST(req);
 

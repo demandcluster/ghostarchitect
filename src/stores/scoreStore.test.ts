@@ -56,33 +56,33 @@ describe("scoreStore", () => {
       expect(useScoreStore.getState().actions).toHaveLength(2);
     });
 
-    it("caps category score at 25", () => {
+    it("caps category score at 125", () => {
       useScoreStore.getState().addAction({
         id: "big-score",
         category: "phishingIQ",
-        points: 30,
-        maxPoints: 25,
+        points: 130,
+        maxPoints: 125,
         label: "Overshoot",
       });
-      expect(useScoreStore.getState().categoryScores.phishingIQ).toBe(25);
+      expect(useScoreStore.getState().categoryScores.phishingIQ).toBe(125);
     });
 
-    it("caps cumulative score at 25", () => {
+    it("caps cumulative score at 125", () => {
       useScoreStore.getState().addAction({
         id: "a1",
         category: "networkSecurity",
-        points: 20,
-        maxPoints: 20,
+        points: 100,
+        maxPoints: 100,
         label: "A",
       });
       useScoreStore.getState().addAction({
         id: "a2",
         category: "networkSecurity",
-        points: 20,
-        maxPoints: 20,
+        points: 100,
+        maxPoints: 100,
         label: "B",
       });
-      expect(useScoreStore.getState().categoryScores.networkSecurity).toBe(25);
+      expect(useScoreStore.getState().categoryScores.networkSecurity).toBe(125);
     });
 
     it("adds timestamp to action", () => {

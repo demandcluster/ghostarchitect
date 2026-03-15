@@ -4,17 +4,17 @@ import type { ScoreCategory } from "@/stores/scoreStore";
 
 describe("scoring", () => {
   describe("CATEGORY_MAX", () => {
-    it("has 25 max for each of the 4 categories", () => {
+    it("has 125 max for each of the 4 categories", () => {
       const categories: ScoreCategory[] = ["phishingIQ", "passwordHygiene", "networkSecurity", "forensicSkill"];
       for (const cat of categories) {
-        expect(CATEGORY_MAX[cat]).toBe(25);
+        expect(CATEGORY_MAX[cat]).toBe(125);
       }
     });
   });
 
   describe("TOTAL_MAX", () => {
-    it("equals 100", () => {
-      expect(TOTAL_MAX).toBe(100);
+    it("equals 500", () => {
+      expect(TOTAL_MAX).toBe(500);
     });
   });
 
@@ -31,37 +31,36 @@ describe("scoring", () => {
       ).toBe(0);
     });
 
-    it("returns 100 for all-max scores", () => {
+    it("returns 500 for all-max scores", () => {
       expect(
-        computeTotal({ phishingIQ: 25, passwordHygiene: 25, networkSecurity: 25, forensicSkill: 25 })
-      ).toBe(100);
+        computeTotal({ phishingIQ: 125, passwordHygiene: 125, networkSecurity: 125, forensicSkill: 125 })
+      ).toBe(500);
     });
   });
 
   describe("computeResponseTimeBonus", () => {
-    it("returns 5 for instant response (0ms)", () => {
-      expect(computeResponseTimeBonus(0)).toBe(5);
+    it("returns 25 for instant response (0ms)", () => {
+      expect(computeResponseTimeBonus(0)).toBe(25);
     });
 
     it("returns 0 at or above threshold", () => {
-      expect(computeResponseTimeBonus(30_000)).toBe(0);
-      expect(computeResponseTimeBonus(50_000)).toBe(0);
+      expect(computeResponseTimeBonus(120_000)).toBe(0);
+      expect(computeResponseTimeBonus(150_000)).toBe(0);
     });
 
     it("returns proportional bonus for mid-range time", () => {
-      // 15s out of 30s threshold = 50% ratio = 2.5 rounded = 3
-      expect(computeResponseTimeBonus(15_000)).toBe(3);
+      // 60s out of 120s threshold = 50% ratio = 12.5 rounded = 13
+      expect(computeResponseTimeBonus(60_000)).toBe(13);
     });
 
     it("accepts custom threshold", () => {
-      // 5s out of 10s = 50% ratio = 2.5 rounded = 3
-      expect(computeResponseTimeBonus(5_000, 10_000)).toBe(3);
+      // 5s out of 10s = 50% ratio = 12.5 rounded = 13
+      expect(computeResponseTimeBonus(5_000, 10_000)).toBe(13);
     });
 
     it("returns 0 for negative elapsed (edge case)", () => {
-      // ratio > 1, rounds to > 5, but let's verify behavior
       const result = computeResponseTimeBonus(-1000);
-      expect(result).toBeGreaterThanOrEqual(5);
+      expect(result).toBeGreaterThanOrEqual(25);
     });
   });
 });
