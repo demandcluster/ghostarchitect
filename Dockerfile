@@ -1,7 +1,7 @@
-# ─────────────────────────────────────────
+# ─────────────────────────────────
 # Stage 1: deps — install production deps
 # ─────────────────────────────────────────
-FROM node:22-alpine AS deps
+FROM node:22-bullseye AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
@@ -13,23 +13,12 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
-
-# Explicitly exclude .next from COPY to avoid lightningcss errors
-RUN find . -name ".next" -exec rm -rf {} \;
-
 COPY . .
-
-# Clean .next build cache after COPY to prevent lightningcss errors
-RUN rm -rf .next
 
 # Prisma schema lives at src/prisma/schema.prisma (non-default path)
 ENV PRISMA_SCHEMA_PATH=src/prisma/schema.prisma
 
 RUN npx prisma generate --schema=src/prisma/schema.prisma
-
-# Clean build cache to prevent lightningcss errors
-RUN rm -rf .next
-
 RUN npm run build
 
 # ─────────────────────────────────────────
