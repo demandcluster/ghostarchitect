@@ -3,6 +3,7 @@
 import { useRef, useCallback } from "react";
 import { useGameStore } from "@/stores/gameStore";
 import gsap from "gsap";
+import { motion, AnimatePresence } from "framer-motion";
 
 function getPostLines(fakeDomain: string): string[] {
   return [
@@ -20,9 +21,11 @@ function getPostLines(fakeDomain: string): string[] {
 function typewriterLine(el: HTMLElement, text: string, charDelay: number): Promise<void> {
   return new Promise((resolve) => {
     let i = 0;
-    el.textContent = "";
+    // Create text node to type into, preserving cursor element
+    const textNode = document.createTextNode("");
+    el.insertBefore(textNode, el.firstChild);
     const interval = setInterval(() => {
-      el.textContent = text.slice(0, i + 1);
+      textNode.textContent = text.slice(0, i + 1);
       i++;
       if (i >= text.length) {
         clearInterval(interval);
@@ -45,6 +48,24 @@ export function TransitionOverlay() {
           style={{ pointerEvents: "all" }}
         />
       )}
+
+      {/* Scanline overlay for breach mode */}
+      <AnimatePresence>
+        {useGameStore((s) => s.visualMode) === "breach" && (
+          <motion.div
+            initial={{ opacity: 0.3 }}
+            animate={{ opacity: 0 }}
+            transition={{ duration: 2 }}
+            exit={{ opacity: 0.3 }}
+            style={{
+              pointerEvents: "none",
+              position: "fixed",
+              inset: 0,
+              background: `repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)`
+            }}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }
@@ -93,6 +114,7 @@ export function useBreachTransition() {
       });
 
       // Phase 1: Glitch bands (800ms) — alternating bg colors, mix-blend-mode difference
+      // with RGB shift and screen shake
       const bandCount = 8;
       const bandBgs = [
         "var(--window-header-from)",
@@ -104,6 +126,19 @@ export function useBreachTransition() {
         "var(--window-header-from)",
         "var(--bg-window)",
       ];
+
+      let shakeInterval: NodeJS.Timeout;
+
+      // Start screen shake at glitch phase start
+      tl.call(() => {
+        shakeInterval = setInterval(() => {
+          const overlayEl = document.querySelector(".transition-overlay") as HTMLElement;
+          if (overlayEl) {
+            overlayEl.style.transform = `translate(${Math.random() * 6 - 3}px, ${Math.random() * 6 - 3}px)`;
+          }
+        }, 50);
+      });
+
       for (let i = 0; i < bandCount; i++) {
         const band = document.createElement("div");
         band.style.cssText = `
@@ -113,6 +148,19 @@ export function useBreachTransition() {
           background:${bandBgs[i]};
           mix-blend-mode:${i % 2 === 0 ? "difference" : "normal"};
         `;
+
+        // Add RGB shift text shadow to bands
+        const updateRGBShift = () => {
+          band.style.textShadow = `
+            ${Math.random() * 4 - 2}px ${Math.random() * 4 - 2}px 0 rgba(255,0,0,0.5),
+            ${Math.random() * 4 - 2}px ${Math.random() * 4 - 2}px 0 rgba(0,255,0,0.5),
+            ${Math.random() * 4 - 2}px ${Math.random() * 4 - 2}px 0 rgba(0,0,255,0.5)
+          `;
+        };
+
+        // Continuously update RGB shift during glitch
+        const rgbInterval = setInterval(updateRGBShift, 50);
+
         overlay.appendChild(band);
 
         tl.to(
@@ -122,16 +170,24 @@ export function useBreachTransition() {
             opacity: 0.7 + Math.random() * 0.3,
             duration: 0.8,
             ease: "steps(4)",
+            onComplete: () => {
+              clearInterval(rgbInterval);
+            },
           },
           0
         );
       }
 
-      // Phase 2: Blackout (400ms)
+      // Phase 2: Blackout (400ms) - stop screen shake
       tl.to(overlay, {
         backgroundColor: "#000",
         duration: 0.1,
         onStart: () => {
+          clearInterval(shakeInterval);
+          const overlayEl = document.querySelector(".transition-overlay") as HTMLElement;
+          if (overlayEl) {
+            overlayEl.style.transform = "none";
+          }
           removeAllChildren(overlay);
         },
       });
@@ -148,7 +204,7 @@ export function useBreachTransition() {
         duration: 0.1,
       });
 
-      // Phase 3: Fake POST screen (1200ms) with typewriter effect
+      // Phase 3: Fake POST screen (1200ms) with faster typewriter effect and blinking cursor
       tl.call(() => {
         cursor.remove();
         overlay.style.background = "#0a0e14";
@@ -159,6 +215,8 @@ export function useBreachTransition() {
       });
 
       const postLines = getPostLines(fakeDomain);
+      let cursorEl: HTMLSpanElement | null = null;
+
       postLines.forEach((line, i) => {
         tl.call(() => {
           const el = document.createElement("div");
@@ -172,10 +230,25 @@ export function useBreachTransition() {
                 : "var(--accent, #00e533)";
           el.style.color = color;
           overlay.appendChild(el);
-          typewriterLine(el, line, 18);
+
+          // Create blinking cursor for this line
+          cursorEl = document.createElement("span");
+          cursorEl.textContent = "█";
+          cursorEl.style.animation = "blink-cursor 0.7s infinite";
+          cursorEl.style.color = color;
+          el.appendChild(cursorEl);
+
+          // Faster typing: 10ms per character (was 18ms)
+          typewriterLine(el, line, 10).then(() => {
+            // Remove cursor after typing completes
+            if (cursorEl && cursorEl.parentNode === el) {
+              cursorEl.remove();
+            }
+          });
         });
+
         if (i < postLines.length - 1) {
-          tl.to({}, { duration: Math.max(0.2, line.length * 0.018 + 0.05) });
+          tl.to({}, { duration: Math.max(0.2, line.length * 0.01 + 0.05) });
         }
       });
 
@@ -200,7 +273,7 @@ export function useBreachTransition() {
         ease: "power3.inOut",
       });
     });
-  }, [setIsTransitioning, setVisualMode, setPhase]);
+  }, [setIsTransitioning, setVisualMode, setPhase, fakeDomain]);
 
   return { trigger };
 }
