@@ -24,18 +24,18 @@ export function WikiPanel({ initialTab }: { initialTab?: WikiTab } = {}) {
   const [activeTab, setActiveTab] = useState<WikiTab>(initialTab ?? "social-engineering");
 
   return (
-    <div className="flex flex-col h-full bg-bg-secondary text-text-primary">
+    <div className="flex flex-col h-full" style={{ background: "#ffffff", color: "#0f172a" }}>
       {/* Tab navigation */}
-      <div className="flex border-b border-border overflow-x-auto shrink-0">
+      <div className="flex border-b border overflow-x-auto shrink-0" style={{ borderColor: "var(--border)" }}>
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-xs font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
-              activeTab === tab.id
-                ? "border-accent text-accent"
-                : "border-transparent text-text-secondary hover:text-text-primary"
-            }`}
+            className="px-4 py-2 text-xs font-medium whitespace-nowrap transition-colors border-b-2 -mb-px"
+            style={{
+              backgroundColor: activeTab === tab.id ? "var(--accent)" : "transparent",
+              color: activeTab === tab.id ? "#ffffff" : "#334155"
+            }}
           >
             {tab.label}
           </button>
@@ -55,7 +55,7 @@ export function WikiPanel({ initialTab }: { initialTab?: WikiTab } = {}) {
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-sm font-semibold text-text-primary mb-2 mt-4 first:mt-0">
+    <h3 className="text-sm font-semibold mb-2 mt-4 first:mt-0" style={{ color: "#0f172a" }}>
       {children}
     </h3>
   );
@@ -63,7 +63,7 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 
 function BulletList({ items }: { items: string[] }) {
   return (
-    <ul className="space-y-1.5 text-xs text-text-secondary list-disc list-inside leading-relaxed">
+    <ul className="space-y-1.5 text-xs list-disc list-inside leading-relaxed" style={{ color: "#334155" }}>
       {items.map((item, i) => (
         <li key={i}>{item}</li>
       ))}
@@ -91,7 +91,7 @@ function Callout({
 
 function SocialEngineeringContent() {
   return (
-    <div>
+    <div style={{ color: "#0f172a" }}>
       <SectionHeader>Core Rules</SectionHeader>
       <BulletList
         items={[
@@ -133,7 +133,7 @@ function SocialEngineeringContent() {
 
 function NetworkSecurityContent() {
   return (
-    <div>
+    <div style={{ color: "#0f172a" }}>
       <SectionHeader>Wi-Fi Authentication</SectionHeader>
       <BulletList
         items={[
@@ -175,7 +175,7 @@ function NetworkSecurityContent() {
 
 function LogAnalysisContent() {
   return (
-    <div>
+    <div style={{ color: "#0f172a" }}>
       <SectionHeader>Indicators of Compromise in Logs</SectionHeader>
       <BulletList
         items={[
@@ -220,7 +220,7 @@ function LogAnalysisContent() {
 
 function IncidentResponseContent() {
   return (
-    <div>
+    <div style={{ color: "#0f172a" }}>
       <SectionHeader>NIST SP 800-61r2 Lifecycle</SectionHeader>
       <BulletList
         items={[
