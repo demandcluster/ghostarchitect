@@ -1,9 +1,0 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: ghost-architect-config
-data:
-  NODE_ENV: "production"
-  NEXT_PUBLIC_BACKEND_ENABLED: "true"
-  NEXT_TELEMETRY_DISABLED: "1"
-  PRISMA_SCHEMA_PATH: "src/prisma/schema.prisma"

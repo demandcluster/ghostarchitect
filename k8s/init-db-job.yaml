@@ -1,0 +1,29 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ghost-architect-db-init
+  labels:
+    app: ghost-architect
+spec:
+  template:
+    metadata:
+      labels:
+        app: ghost-architect
+    spec:
+      containers:
+        - name: prisma-init
+          image: registry.internal/ghost-architect:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              echo "Starting Prisma database migration..."
+              npx prisma db push
+              echo "Database migration completed successfully!"
+          envFrom:
+            - configMapRef:
+                name: ghost-architect-config
+            - secretRef:
+                name: ghost-architect-secret
+      restartPolicy: OnFailure
+  backoffLimit: 4
+  ttlSecondsAfterFinished: 100
