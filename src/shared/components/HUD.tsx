@@ -97,7 +97,7 @@ export function HUD() {
               className="transition-all duration-500"
             />
           </svg>
-          <span className="absolute inset-0 flex items-center justify-center text-[13px] font-bold text-[var(--text-primary)]">
+          <span className="absolute inset-0 flex items-center justify-center text-[13px] font-bold" style={{ color: "var(--text-primary)" }}>
             {trustScore}
           </span>
           {isBreach && (
@@ -105,7 +105,7 @@ export function HUD() {
           )}
         </div>
         {/* Phase label */}
-        <span className="text-[10px] uppercase tracking-wide text-[var(--text-muted)] mt-0.5 leading-none">
+        <span className="text-[10px] uppercase tracking-wide mt-0.5 leading-none" style={{ color: "var(--text-muted)" }}>
           {PHASE_LABELS[phase] ?? phase}
         </span>
       </div>
@@ -116,13 +116,13 @@ export function HUD() {
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
       >
-        <div className="text-[9px] text-[var(--text-muted)] mb-1">
+        <div className="text-[9px] mb-1" style={{ color: "var(--text-muted)" }}>
           Score: {totalScore}/100
         </div>
         {/* Four category bars */}
         <div className="space-y-1">
           {(Object.keys(CATEGORY_BAR_COLORS) as Array<keyof typeof categoryScores>).map((cat) => (
-            <div key={cat} className="h-[3px] bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
+            <div key={cat} className="h-[3px] rounded-full overflow-hidden" style={{ background: "var(--bg-window-sunken)" }}>
               <div
                 className={`h-full rounded-full transition-all duration-500 ${CATEGORY_BAR_COLORS[cat]}`}
                 style={{ width: `${(categoryScores[cat] / 25) * 100}%` }}
@@ -133,7 +133,7 @@ export function HUD() {
 
         {/* Category breakdown tooltip */}
         {showTooltip && (
-          <div className="absolute top-full left-0 mt-1 bg-[var(--bg-secondary)] border border-[var(--border)] rounded p-2 text-[9px] text-[var(--text-secondary)] whitespace-nowrap z-50 shadow-lg">
+          <div className="absolute top-full left-0 mt-1 rounded p-2 text-[9px] whitespace-nowrap z-50 shadow-lg" style={{ background: "#e2e8f0", border: "1px solid var(--border)", color: "#1e293b" }}>
             <div className="flex justify-between gap-3">
               <span>Phishing IQ</span>
               <span className="font-mono">{categoryScores.phishingIQ}/25</span>
