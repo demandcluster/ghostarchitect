@@ -58,21 +58,21 @@ function DMBubble({
     <div>
       {/* Avatar + name */}
       <div className="flex items-center gap-2 mb-1">
-        <div className="w-6 h-6 rounded-full bg-accent/20 text-accent text-[10px] font-bold flex items-center justify-center">
+        <div className="w-6 h-6 rounded-full text-accent text-[10px] font-bold flex items-center justify-center" style={{ background: "rgba(59,110,248,0.2)" }}>
           {message.avatar}
         </div>
         <div>
-          <span className="text-xs font-medium text-text-primary">
+          <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
             {message.sender}
           </span>
-          <span className="text-[10px] text-text-muted ml-1">
+          <span className="text-[10px] ml-1" style={{ color: "var(--text-muted)" }}>
             {message.senderRole}
           </span>
         </div>
       </div>
 
       {/* Message text */}
-      <div className="ml-8 p-2 bg-bg-tertiary rounded-lg text-xs text-text-primary leading-relaxed">
+      <div className="ml-8 p-2 rounded-lg text-xs leading-relaxed" style={{ background: "var(--bg-window-sunken)", color: "var(--text-primary)" }}>
         {message.text}
       </div>
 
@@ -84,18 +84,18 @@ function DMBubble({
               key={choice.id}
               onClick={() => handleChoice(choice)}
               disabled={chosen !== null}
-              className={`
-                w-full text-left px-3 py-2 rounded text-xs transition-colors border
-                ${
-                  chosen === choice.id
-                    ? choice.isCorrect
-                      ? "border-[rgba(22,163,74,0.4)] bg-[rgba(22,163,74,0.08)]"
-                      : "border-[rgba(220,38,38,0.4)] bg-[rgba(220,38,38,0.08)]"
-                    : chosen
-                      ? "border-border opacity-50"
-                      : "border-border hover:border-accent"
-                }
-              `}
+              className="w-full text-left px-3 py-2 rounded text-xs transition-colors border"
+              style={{
+                ...(chosen === choice.id
+                  ? choice.isCorrect
+                    ? { borderColor: "rgba(22,163,74,0.4)", background: "rgba(22,163,74,0.08)" }
+                    : { borderColor: "rgba(220,38,38,0.4)", background: "rgba(220,38,38,0.08)" }
+                  : chosen
+                    ? { borderColor: "var(--border)", opacity: 0.5 }
+                    : { borderColor: "var(--border)" }
+              ),
+              ...(chosen === null ? { ":hover": { borderColor: "var(--accent)" } } : {})
+              }}
             >
               {choice.label}
             </button>
@@ -106,14 +106,14 @@ function DMBubble({
             const picked = message.choices!.find((c) => c.id === chosen)!;
             const delta = picked.trustDelta ?? 0;
             return (
-              <div className={`mt-1 px-3 py-1.5 rounded text-[11px] flex items-center gap-2 ${
-                picked.isCorrect
-                  ? "bg-[rgba(22,163,74,0.08)] text-[#22c55e]"
-                  : "bg-[rgba(220,38,38,0.08)] text-[#ef4444]"
-              }`}>
+              <div className="mt-1 px-3 py-1.5 rounded text-[11px] flex items-center gap-2" style={{
+                ...(picked.isCorrect
+                  ? { background: "rgba(22,163,74,0.08)", color: "#22c55e" }
+                  : { background: "rgba(220,38,38,0.08)", color: "#ef4444" }
+              })}>
                 <span>{picked.isCorrect ? "✓ Good call." : "✗ Wrong call."}</span>
                 {delta !== 0 && (
-                  <span className={delta > 0 ? "text-[#22c55e]" : "text-[#ef4444]"}>
+                  <span style={{ color: delta > 0 ? "#22c55e" : "#ef4444" }}>
                     {delta > 0 ? `+${delta}` : delta} trust
                   </span>
                 )}
