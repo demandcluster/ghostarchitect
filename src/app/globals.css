@@ -3,9 +3,9 @@
 /* Corporate theme (default) */
 :root,
 [data-theme="corporate"] {
-  --bg-primary:       #0f1623;
-  --bg-secondary:     #1a2235;
-  --bg-tertiary:      #232f45;
+  --bg-primary:       #0f172a;
+  --bg-secondary:     #1e293b;
+  --bg-tertiary:      #334155;
   --bg-glass:         rgba(255,255,255,0.06);
   --bg-window:        #ffffff;
   --bg-window-raised: #f8fafc;
@@ -18,25 +18,25 @@
   --accent-hover:     #2555e8;
   --accent-subtle:    rgba(59,110,248,0.10);
   --accent-ring:      rgba(59,110,248,0.35);
-  --border:           rgba(15,23,42,0.10);
-  --border-strong:    rgba(15,23,42,0.18);
-  --window-header-from: #1e3154;
-  --window-header-to:   #2a4a8a;
+  --border:           rgba(15,23,42,0.12);
+  --border-strong:    rgba(15,23,42,0.20);
+  --window-header-from: #1e40af;
+  --window-header-to:   #2563eb;
   --window-header-text: #ffffff;
-  --taskbar-bg:       rgba(8,12,20,0.97);
-  --taskbar-border:   rgba(59,110,248,0.12);
+  --taskbar-bg:       rgba(15,23,42,0.95);
+  --taskbar-border:   rgba(59,110,248,0.15);
   --taskbar-text:     #94a3b8;
-  --taskbar-text-active: #e2e8f0;
-  --danger:           #e53e3e;
-  --danger-subtle:    rgba(229,62,62,0.10);
+  --taskbar-text-active: #0f172a;
+  --danger:           #dc2626;
+  --danger-subtle:    rgba(220,38,38,0.10);
   --success:          #16a34a;
   --success-subtle:   rgba(22,163,74,0.10);
-  --warning:          #d97706;
-  --warning-subtle:   rgba(217,119,6,0.10);
+  --warning:          #ea580c;
+  --warning-subtle:   rgba(234,88,12,0.10);
   --info:             #0ea5e9;
   --info-subtle:      rgba(14,165,233,0.10);
-  --shadow-window:    0 20px 60px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.12);
-  --shadow-card:      0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-window:    0 25px 50px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.05);
+  --shadow-card:      0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
 }
 
 /* Breach theme */
@@ -48,10 +48,10 @@
   --bg-window:        #0a0e14;
   --bg-window-raised: #111820;
   --bg-window-sunken: #050709;
-  --text-primary:     #d0dae8;
-  --text-secondary:   #8fa3b8;
-  --text-muted:       #4a5568;
-  --text-placeholder: #2d3748;
+  --text-primary:     #e2e8f0;
+  --text-secondary:   #94a3b8;
+  --text-muted:       #64748b;
+  --text-placeholder: #475569;
   --accent:           #00e533;
   --accent-hover:     #00cc2e;
   --accent-subtle:    rgba(0,229,51,0.08);
@@ -60,29 +60,29 @@
   --accent-amber:     #ffb800;
   --accent-blue:      #4d9fff;
   --accent-cyan:      #00d4ff;
-  --border:           rgba(0,229,51,0.12);
-  --border-strong:    rgba(0,229,51,0.25);
-  --border-red:       rgba(255,45,85,0.25);
+  --border:           rgba(0,229,51,0.15);
+  --border-strong:    rgba(0,229,51,0.30);
+  --border-red:       rgba(255,45,85,0.30);
   --window-header-from: #0a0e14;
   --window-header-to:   #0a0e14;
   --window-header-text: #00e533;
-  --window-header-border: rgba(0,229,51,0.20);
+  --window-header-border: rgba(0,229,51,0.25);
   --taskbar-bg:       #030508;
-  --taskbar-border:   rgba(0,229,51,0.10);
-  --taskbar-text:     #4a6a4a;
+  --taskbar-border:   rgba(0,229,51,0.15);
+  --taskbar-text:     #5c7a5c;
   --taskbar-text-active: #00e533;
   --danger:           #ff2d55;
-  --danger-subtle:    rgba(255,45,85,0.10);
+  --danger-subtle:    rgba(255,45,85,0.12);
   --success:          #00e533;
-  --success-subtle:   rgba(0,229,51,0.10);
+  --success-subtle:   rgba(0,229,51,0.12);
   --warning:          #ffb800;
-  --warning-subtle:   rgba(255,184,0,0.10);
+  --warning-subtle:   rgba(255,184,0,0.12);
   --info:             #4d9fff;
-  --info-subtle:      rgba(77,159,255,0.10);
-  --shadow-window:    0 0 0 1px rgba(0,229,51,0.12), 0 0 40px rgba(0,229,51,0.06);
-  --glow-green:       0 0 20px rgba(0,229,51,0.35), 0 0 1px rgba(0,229,51,0.8);
-  --glow-red:         0 0 20px rgba(255,45,85,0.40), 0 0 1px rgba(255,45,85,0.8);
-  --glow-amber:       0 0 16px rgba(255,184,0,0.45), 0 0 1px rgba(255,184,0,0.9);
+  --info-subtle:      rgba(77,159,255,0.12);
+  --shadow-window:    0 0 0 1px rgba(0,229,51,0.15), 0 0 50px rgba(0,229,51,0.08);
+  --glow-green:       0 0 25px rgba(0,229,51,0.40), 0 0 2px rgba(0,229,51,1);
+  --glow-red:         0 0 25px rgba(255,45,85,0.45), 0 0 2px rgba(255,45,85,1);
+  --glow-amber:       0 0 20px rgba(255,184,0,0.50), 0 0 2px rgba(255,184,0,1);
 }
 
 @theme inline {
