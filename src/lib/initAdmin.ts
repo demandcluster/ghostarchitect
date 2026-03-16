@@ -63,7 +63,7 @@ interface AdminUserResult {
       // Run Prisma migrations to create Admin, Trainer, Team, Session tables
       const { execSync } = await import('child_process');
       try {
-        execSync('npx prisma db push --skip-generate', {
+        execSync('npx prisma db push', {
           stdio: shouldLog ? 'inherit' : 'pipe',
           cwd: process.cwd(),
           env: { ...process.env, PRISMA_SCHEMA_PATH: process.env.PRISMA_SCHEMA_PATH },
