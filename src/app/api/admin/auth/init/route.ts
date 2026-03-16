@@ -1,36 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { hash } from 'bcryptjs';
-import { requirePrisma, NoDatabaseError } from '@/lib/prisma';
+import { initAdminOnStartup } from '@/lib/initAdmin';
 
 export async function POST(_request: NextRequest) {
   try {
-    const prisma = requirePrisma();
+    const result = await initAdminOnStartup();
 
-    const existing = await prisma.admin.findFirst();
-    if (existing) {
-      return NextResponse.json({ exists: true }, { status: 200 });
-    }
-
-    const username = process.env.ADMIN_USERNAME;
-    const password = process.env.ADMIN_PASSWORD;
-
-    if (!username || !password) {
+    if (result.success) {
       return NextResponse.json(
-        { error: 'ADMIN_USERNAME and ADMIN_PASSWORD env vars required for initialization' },
-        { status: 400 },
+        { ok: true, username: result.username || result.admin },
+        { status: 201 }
+      );
+    } else {
+      return NextResponse.json(
+        { error: result.error || 'Initialization failed' },
+        { status: 500 }
       );
     }
-
-    const passwordHash = await hash(password, 12);
-    const admin = await prisma.admin.create({
-      data: { username, passwordHash },
-    });
-
-    return NextResponse.json({ ok: true, username: admin.username }, { status: 201 });
   } catch (error) {
-    if (error instanceof NoDatabaseError) {
-      return NextResponse.json({ error: 'Database not available' }, { status: 503 });
-    }
     console.error('Admin init error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
