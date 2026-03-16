@@ -47,7 +47,7 @@
     "vitest": "^4.0.18"
   },
   "prisma": {
-    "schema": "/app/src/prisma/schema.prisma"
+    "schema": "./src/prisma/schema.prisma"
   },
   "overrides": {
     "hono": "^4.12.6",
