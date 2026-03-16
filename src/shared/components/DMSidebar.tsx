@@ -19,7 +19,7 @@ export function DMSidebar({ messages, onChoice, revealUpTo }: DMSidebarProps) {
   }, [revealUpTo]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" style={{ background: "#f8fafc" }}>
       <div className="flex-1 overflow-auto p-3 space-y-3">
         <AnimatePresence>
           {visibleMessages.map((msg) => (
