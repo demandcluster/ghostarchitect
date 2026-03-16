@@ -67,20 +67,21 @@ export function MFAPuzzle({ onComplete }: MFAPuzzleProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bg-secondary">
+    <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-secondary)" }}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md bg-bg-primary rounded-lg shadow-lg p-8 border border-border"
+        className="w-full max-w-md rounded-lg shadow-lg p-8"
+        style={{ background: "var(--bg-window)", border: "1px solid var(--border)" }}
       >
         <div className="text-center mb-6">
-          <div className="w-14 h-14 mx-auto bg-accent/10 rounded-full flex items-center justify-center mb-3">
+          <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3" style={{ background: "rgba(59,110,248,0.1)" }}>
             <ShieldIcon />
           </div>
-          <h2 className="text-lg font-bold text-text-primary">
+          <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
             Set Up Multi-Factor Authentication
           </h2>
-          <p className="text-sm text-text-secondary mt-2">
+          <p className="text-sm mt-2" style={{ color: "var(--text-secondary)" }}>
             {teamName} requires MFA on all accounts. Choose your second factor:
           </p>
         </div>
@@ -89,19 +90,20 @@ export function MFAPuzzle({ onComplete }: MFAPuzzleProps) {
           <div className="space-y-3">
             <button
               onClick={() => handleChoice("authenticator")}
-              className="w-full p-4 border border-border rounded-lg text-left hover:border-accent transition-colors flex items-start gap-3 group"
+              className="w-full p-4 border rounded-lg text-left hover:border-accent transition-colors flex items-start gap-3 group"
+              style={{ background: "#f8fafc", borderColor: "var(--border)" }}
             >
-              <span className="mt-0.5 w-5 h-5 rounded-full border-2 border-gray-300 group-hover:border-accent flex-shrink-0 flex items-center justify-center transition-colors">
+              <span className="mt-0.5 w-5 h-5 rounded-full border-2 group-hover:border-accent flex-shrink-0 flex items-center justify-center transition-colors" style={{ borderColor: "#d1d5db" }}>
                 <span className="w-2 h-2 rounded-full bg-transparent group-hover:bg-accent transition-colors" />
               </span>
               <div className="flex-1">
-                <div className="font-medium text-text-primary text-sm flex items-center gap-2">
+                <div className="font-medium text-sm flex items-center gap-2" style={{ color: "#0f172a" }}>
                   Authenticator App (TOTP)
                   <span className="text-[10px] font-medium bg-[var(--success-subtle)] text-[var(--success)] px-1.5 py-0.5 rounded">
                     RECOMMENDED
                   </span>
                 </div>
-                <p className="text-xs text-text-muted mt-1">
+                <p className="text-xs mt-1" style={{ color: "#334155" }}>
                   Time-based codes from Google Authenticator, Authy, or similar.
                   Codes rotate every 30 seconds.
                 </p>
@@ -110,19 +112,20 @@ export function MFAPuzzle({ onComplete }: MFAPuzzleProps) {
 
             <button
               onClick={() => handleChoice("sms")}
-              className="w-full p-4 border border-border rounded-lg text-left hover:border-accent transition-colors flex items-start gap-3 group"
+              className="w-full p-4 border rounded-lg text-left hover:border-accent transition-colors flex items-start gap-3 group"
+              style={{ background: "#f8fafc", borderColor: "var(--border)" }}
             >
-              <span className="mt-0.5 w-5 h-5 rounded-full border-2 border-gray-300 group-hover:border-accent flex-shrink-0 flex items-center justify-center transition-colors">
+              <span className="mt-0.5 w-5 h-5 rounded-full border-2 group-hover:border-accent flex-shrink-0 flex items-center justify-center transition-colors" style={{ borderColor: "#d1d5db" }}>
                 <span className="w-2 h-2 rounded-full bg-transparent group-hover:bg-accent transition-colors" />
               </span>
               <div className="flex-1">
-                <div className="font-medium text-text-primary text-sm flex items-center gap-2">
+                <div className="font-medium text-sm flex items-center gap-2" style={{ color: "#0f172a" }}>
                   SMS Text Message
                   <span className="text-[10px] font-medium bg-[var(--warning-subtle)] text-[var(--warning)] px-1.5 py-0.5 rounded">
                     LESS SECURE
                   </span>
                 </div>
-                <p className="text-xs text-text-muted mt-1">
+                <p className="text-xs mt-1" style={{ color: "#334155" }}>
                   Receive a 6-digit code via text message to your phone number.
                 </p>
               </div>
@@ -141,13 +144,14 @@ export function MFAPuzzle({ onComplete }: MFAPuzzleProps) {
                   ? "bg-[var(--success-subtle)] border-[var(--success)]/35"
                   : "bg-[var(--warning-subtle)] border-[var(--warning)]/35"
               }`}
+              style={{ background: selected === "authenticator" ? "rgba(22,163,74,0.08)" : "rgba(217,119,6,0).08)" }}
             >
               {selected === "authenticator" ? (
                 <>
-                  <p className="text-sm font-medium text-[var(--success)]">
+                  <p className="text-sm font-medium" style={{ color: "#16a34a" }}>
                     Excellent choice!
                   </p>
-                  <p className="text-xs text-text-secondary mt-1">
+                  <p className="text-xs mt-1" style={{ color: "#475569" }}>
                     Authenticator apps generate codes locally on your device.
                     They are resistant to SIM swap attacks, SS7 network
                     exploits, and phone number porting fraud.
@@ -155,10 +159,10 @@ export function MFAPuzzle({ onComplete }: MFAPuzzleProps) {
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-medium text-[var(--warning)]">
+                  <p className="text-sm font-medium" style={{ color: "#dc2626" }}>
                     SMS works, but has known vulnerabilities.
                   </p>
-                  <p className="text-xs text-text-secondary mt-1">
+                  <p className="text-xs mt-1" style={{ color: "#475569" }}>
                     SMS codes can be intercepted via SIM swap attacks, SS7
                     network exploits, or phone number porting. NIST deprecated
                     SMS as a second factor. An authenticator app is the
