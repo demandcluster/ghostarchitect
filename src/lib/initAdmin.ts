@@ -1,5 +1,6 @@
 import { hash } from 'bcryptjs';
 import { requirePrisma, NoDatabaseError } from '@/lib/prisma';
+import { execSync } from 'child_process';
 
 // Suppress console.log in production to avoid browser console errors
 const shouldLog = process.env.NODE_ENV !== 'production';
@@ -61,7 +62,6 @@ interface AdminUserResult {
     if (!adminTableExists) {
       log('Creating Prisma tables...');
       // Run Prisma migrations to create Admin, Trainer, Team, Session tables
-      const { execSync } = await import('child_process');
       try {
         execSync('npx prisma db push', {
           stdio: shouldLog ? 'inherit' : 'pipe',
@@ -76,7 +76,29 @@ interface AdminUserResult {
     }
 
     // Check if admin user already exists
-    const existingAdmin = await prisma.admin.findFirst();
+    let existingAdmin = null;
+    try {
+      existingAdmin = await prisma.admin.findFirst();
+    } catch (error: any) {
+      // Table might still not exist due to Prisma client cache
+      if (error.code === 'P2021') {
+        log('Admin table not found, trying raw query check...');
+        const rawResult = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as count FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_name = 'Admin'
+        `);
+        const count = (rawResult as any[])[0]?.count || 0;
+        if (count > 0) {
+          log('Admin table exists but Prisma client cache is stale. Regenerating client...');
+          // Generate new Prisma client to pick up schema changes
+          execSync('npx prisma generate', { stdio: 'pipe', cwd: process.cwd() });
+          // Try again with new client
+          existingAdmin = await prisma.admin.findFirst();
+        }
+      } else {
+        throw error;
+      }
+    }
     if (existingAdmin) {
       log('Admin user already exists:', existingAdmin.username);
       return { success: true, username: existingAdmin.username };
