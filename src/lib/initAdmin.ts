@@ -60,12 +60,19 @@ interface AdminUserResult {
     // Create tables if they don't exist
     if (!adminTableExists) {
       log('Creating Prisma tables...');
-      // This will create Admin, Trainer, Team, Session tables
-      // The tables are created based on src/prisma/schema.prisma
-      await prisma.$executeRawUnsafe(`
-        SELECT 'create schema'
-      `);
-      log('Prisma tables created successfully');
+      // Run Prisma migrations to create Admin, Trainer, Team, Session tables
+      const { execSync } = await import('child_process');
+      try {
+        execSync('npx prisma db push --skip-generate', {
+          stdio: shouldLog ? 'inherit' : 'pipe',
+          cwd: process.cwd(),
+          env: { ...process.env, PRISMA_SCHEMA_PATH: process.env.PRISMA_SCHEMA_PATH },
+        });
+        log('Prisma tables created successfully');
+      } catch (migrationError) {
+        logError('Failed to run Prisma migrations:', migrationError);
+        return { success: false, error: 'Failed to create database tables' };
+      }
     }
 
     // Check if admin user already exists
