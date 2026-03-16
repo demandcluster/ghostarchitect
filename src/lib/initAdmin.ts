@@ -40,6 +40,9 @@ export async function initAdminOnStartup() {
       return { success: false, error: 'Database not available' };
     }
     console.error('Failed to initialize admin user:', error);
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
   }
 }
