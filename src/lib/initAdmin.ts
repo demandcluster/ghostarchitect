@@ -31,8 +31,23 @@ export async function initAdminOnStartup() {
   try {
     const prisma = requirePrisma();
 
+// Type definitions for return values
+interface AdminUserExistsResult {
+  success: boolean;
+  admin?: string;
+  username?: string;
+  error?: string;
+}
+
+interface AdminUserResult {
+  success: boolean;
+  admin?: string;
+  username?: string;
+  error?: string;
+}
+
     // Check if tables exist
-    const adminTableExists = await prisma.$queryRawUnsafe(`
+    const result = await prisma.$queryRawUnsafe(`
       SELECT EXISTS (
         SELECT 1
         FROM information_schema.tables
@@ -40,9 +55,10 @@ export async function initAdminOnStartup() {
         AND table_name = 'Admin'
       )
     `);
+    const adminTableExists = (result as any[])[0]?.exists || false;
 
     // Create tables if they don't exist
-    if (!adminTableExists[0]?.exists) {
+    if (!adminTableExists) {
       log('Creating Prisma tables...');
       // This will create Admin, Trainer, Team, Session tables
       // The tables are created based on src/prisma/schema.prisma
@@ -56,14 +72,14 @@ export async function initAdminOnStartup() {
     const existingAdmin = await prisma.admin.findFirst();
     if (existingAdmin) {
       log('Admin user already exists:', existingAdmin.username);
-      return { success: true, admin: existingAdmin.username };
+      return { success: true, username: existingAdmin.username } satisfies AdminUserResult;
     }
 
     // Check if admin user already exists
     const existingAdmin = await prisma.admin.findFirst();
     if (existingAdmin) {
       log('Admin user already exists:', existingAdmin.username);
-      return { success: true, admin: existingAdmin.username };
+      return { success: true, username: existingAdmin.username } satisfies AdminUserResult;
     }
 
     // Get admin credentials from environment
