@@ -653,7 +653,8 @@ function AdminDashboard() {
     try {
       const res = await authFetch('/api/admin/trainers');
       if (res.ok) {
-        setTrainers(await res.json());
+        const data = await res.json();
+        setTrainers(data.trainers);
       }
     } catch {
       // silently ignore
