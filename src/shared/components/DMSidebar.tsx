@@ -58,14 +58,14 @@ function DMBubble({
     <div>
       {/* Avatar + name */}
       <div className="flex items-center gap-2 mb-1">
-        <div className="w-6 h-6 rounded-full text-accent text-[10px] font-bold flex items-center justify-center" style={{ background: "rgba(59,110,248,0.2)" }}>
+        <div className="w-6 h-6 rounded-full text-accent text-[10px] font-bold flex items-center justify-center" style={{ background: "rgba(59,110,248,0.15)" }}>
           {message.avatar}
         </div>
         <div>
-          <span className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>
+          <span className="text-xs font-medium" style={{ color: "#1e293b" }}>
             {message.sender}
           </span>
-          <span className="text-[10px] ml-1" style={{ color: "var(--text-muted)" }}>
+          <span className="text-[10px] ml-1" style={{ color: "#64748b" }}>
             {message.senderRole}
           </span>
         </div>
