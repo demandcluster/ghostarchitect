@@ -105,7 +105,6 @@
   --color-warning: var(--warning);
 }
 
-/* Base styles */
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
@@ -294,4 +293,22 @@ body {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-ring);
   }
+}
+
+.scanlines {
+  position: relative;
+}
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.025) 2px,
+    rgba(0,0,0,0.025) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
 }
