@@ -1,6 +1,24 @@
 import { hash } from 'bcryptjs';
 import { requirePrisma, NoDatabaseError } from '@/lib/prisma';
 
+// Suppress console.log in production to avoid browser console errors
+const shouldLog = process.env.NODE_ENV !== 'production';
+
+function log(message: string, ...args: any[]) {
+  if (shouldLog) {
+    console.log(message, ...args);
+  }
+}
+
+function logError(message: string, error: any) {
+  if (shouldLog) {
+    console.error(message, error);
+  } else {
+    // In production, errors are handled via API responses
+    console.warn(message, error instanceof Error ? error.message : String(error));
+  }
+}
+
 /**
  * Initialize admin user on application startup if it doesn't exist.
  * This ensures the first admin user is created automatically using
@@ -13,7 +31,7 @@ export async function initAdminOnStartup() {
     // Check if admin user already exists
     const existingAdmin = await prisma.admin.findFirst();
     if (existingAdmin) {
-      console.log('Admin user already exists:', existingAdmin.username);
+      log('Admin user already exists:', existingAdmin.username);
       return { success: true, admin: existingAdmin.username };
     }
 
@@ -22,7 +40,7 @@ export async function initAdminOnStartup() {
     const password = process.env.ADMIN_PASSWORD;
 
     if (!username || !password) {
-      console.warn('ADMIN_USERNAME or ADMIN_PASSWORD not set');
+      log('ADMIN_USERNAME or ADMIN_PASSWORD not set');
       return { success: false, error: 'Admin credentials not configured' };
     }
 
@@ -32,14 +50,14 @@ export async function initAdminOnStartup() {
       data: { username, passwordHash },
     });
 
-    console.log('Admin user created successfully:', admin.username);
+    log('Admin user created successfully:', admin.username);
     return { success: true, admin: admin.username };
   } catch (error) {
     if (error instanceof NoDatabaseError) {
-      console.warn('Database not available, skipping admin initialization');
+      log('Database not available, skipping admin initialization');
       return { success: false, error: 'Database not available' };
     }
-    console.error('Failed to initialize admin user:', error);
+    logError('Failed to initialize admin user:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error)
