@@ -97,7 +97,7 @@ function DMBubble({
                   ? choice.isCorrect
                     ? "rgba(22,163,74,0.08)"
                     : "rgba(220,38,38,0.08)"
-                  : "transparent",
+                  : "rgba(59,110,248,0.06)",
                 opacity: chosen !== null ? 1 : 0.5
               }}
             >
