@@ -655,13 +655,15 @@ function AdminDashboard() {
       if (res.ok) {
         const data = await res.json();
         setTrainers(data.trainers);
+      } else {
+        addToast('Failed to load trainers', 'error');
       }
     } catch {
-      // silently ignore
+      addToast('Failed to load trainers', 'error');
     } finally {
       setLoadingTrainers(false);
     }
-  }, [authFetch]);
+  }, [authFetch, addToast]);
 
   useEffect(() => {
     if (!isLoading && accessToken) {
@@ -1010,7 +1012,7 @@ function AdminDashboard() {
                       <span
                         style={{
                           fontSize: 14,
-                          color: 'var(--success, #00e533)',
+                          color: '#00e533',
                           textShadow: '0 0 8px rgba(0,229,51,0.5)',
                         }}
                         title={`Accepted ${fmtDate(trainer.acceptedTermsAt)}`}
@@ -1109,7 +1111,10 @@ function AdminDashboard() {
           <ResetPasswordModal
             trainer={modal.trainer}
             onClose={() => setModal({ type: 'none' })}
-            onSuccess={() => addToast('Password reset', 'success')}
+            onSuccess={() => {
+              addToast('Password reset', 'success');
+              fetchTrainers();
+            }}
           />
         )}
         {modal.type === 'delete' && (

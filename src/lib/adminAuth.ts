@@ -8,6 +8,13 @@ const ADMIN_REFRESH_SECRET = new TextEncoder().encode(
   (process.env.ADMIN_JWT_SECRET ?? process.env.JWT_SECRET ?? 'dev-admin-refresh-secret-change-me') + '-refresh',
 );
 
+// Validate secrets in production
+if (process.env.NODE_ENV === 'production') {
+  if (!process.env.ADMIN_JWT_SECRET && !process.env.JWT_SECRET) {
+    throw new Error('ADMIN_JWT_SECRET or JWT_SECRET must be set in production');
+  }
+}
+
 export interface AdminTokenPayload extends JWTPayload {
   sub: string; // adminId
   username: string;
@@ -32,11 +39,17 @@ export async function signAdminRefreshToken(adminId: string, username: string): 
 
 export async function verifyAdminAccessToken(token: string): Promise<AdminTokenPayload> {
   const { payload } = await jwtVerify(token, ADMIN_ACCESS_SECRET);
+  if (payload.role !== 'admin') {
+    throw new Error('Invalid token role');
+  }
   return payload as AdminTokenPayload;
 }
 
 export async function verifyAdminRefreshToken(token: string): Promise<AdminTokenPayload> {
   const { payload } = await jwtVerify(token, ADMIN_REFRESH_SECRET);
+  if (payload.role !== 'admin') {
+    throw new Error('Invalid token role');
+  }
   return payload as AdminTokenPayload;
 }
 

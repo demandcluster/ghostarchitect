@@ -2,8 +2,27 @@ import { hash } from 'bcryptjs';
 import { requirePrisma, NoDatabaseError } from '@/lib/prisma';
 import { execSync } from 'child_process';
 
+// Type definitions for return values
+interface AdminUserExistsResult {
+  success: boolean;
+  admin?: string;
+  username?: string;
+  error?: string;
+}
+
+interface AdminUserResult {
+  success: boolean;
+  admin?: string;
+  username?: string;
+  error?: string;
+}
+
 // Suppress console.log in production to avoid browser console errors
 const shouldLog = process.env.NODE_ENV !== 'production';
+
+// Validation patterns
+const USERNAME_RE = /^[a-zA-Z0-9_]{3,32}$/;
+const PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{12,}$/;
 
 function log(message: string, ...args: any[]) {
   if (shouldLog) {
@@ -31,21 +50,6 @@ function logError(message: string, error: any) {
 export async function initAdminOnStartup() {
   try {
     const prisma = requirePrisma();
-
-// Type definitions for return values
-interface AdminUserExistsResult {
-  success: boolean;
-  admin?: string;
-  username?: string;
-  error?: string;
-}
-
-interface AdminUserResult {
-  success: boolean;
-  admin?: string;
-  username?: string;
-  error?: string;
-}
 
     // Check if tables exist
     const result = await prisma.$queryRawUnsafe(`
@@ -116,6 +120,18 @@ interface AdminUserResult {
     if (!username || !password) {
       log('ADMIN_USERNAME or ADMIN_PASSWORD not set');
       return { success: false, error: 'Admin credentials not configured' };
+    }
+
+    // Validate admin username format
+    if (!USERNAME_RE.test(username)) {
+      log('ADMIN_USERNAME format invalid');
+      return { success: false, error: 'ADMIN_USERNAME must be 3-32 characters: letters, digits, or underscore' };
+    }
+
+    // Validate admin password complexity (12+ chars, mixed case, numbers, symbols)
+    if (!PASSWORD_RE.test(password)) {
+      log('ADMIN_PASSWORD complexity requirements not met');
+      return { success: false, error: 'ADMIN_PASSWORD must be 12+ characters with uppercase, lowercase, numbers, and symbols' };
     }
 
     // Create admin user
