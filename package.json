@@ -46,6 +46,9 @@
     "typescript": "^5",
     "vitest": "^4.0.18"
   },
+  "prisma": {
+    "schema": "src/prisma/schema.prisma"
+  },
   "overrides": {
     "hono": "^4.12.6",
     "@hono/node-server": "^1.19.10",

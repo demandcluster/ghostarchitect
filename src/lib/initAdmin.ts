@@ -66,7 +66,7 @@ interface AdminUserResult {
         execSync('npx prisma db push', {
           stdio: shouldLog ? 'inherit' : 'pipe',
           cwd: process.cwd(),
-          env: { ...process.env, PRISMA_SCHEMA_PATH: process.env.PRISMA_SCHEMA_PATH },
+          env: process.env,
         });
         log('Prisma tables created successfully');
       } catch (migrationError) {
