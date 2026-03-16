@@ -8,9 +8,10 @@ const ADMIN_REFRESH_SECRET = new TextEncoder().encode(
   (process.env.ADMIN_JWT_SECRET ?? process.env.JWT_SECRET ?? 'dev-admin-refresh-secret-change-me') + '-refresh',
 );
 
-// Validate secrets in production
-if (process.env.NODE_ENV === 'production') {
-  if (!process.env.ADMIN_JWT_SECRET && !process.env.JWT_SECRET) {
+function validateSecretsInProduction(): void {
+  if (process.env.NODE_ENV === 'production' &&
+      !process.env.ADMIN_JWT_SECRET &&
+      !process.env.JWT_SECRET) {
     throw new Error('ADMIN_JWT_SECRET or JWT_SECRET must be set in production');
   }
 }
@@ -22,6 +23,7 @@ export interface AdminTokenPayload extends JWTPayload {
 }
 
 export async function signAdminAccessToken(adminId: string, username: string): Promise<string> {
+  validateSecretsInProduction();
   return new SignJWT({ sub: adminId, username, role: 'admin' } satisfies AdminTokenPayload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -30,6 +32,7 @@ export async function signAdminAccessToken(adminId: string, username: string): P
 }
 
 export async function signAdminRefreshToken(adminId: string, username: string): Promise<string> {
+  validateSecretsInProduction();
   return new SignJWT({ sub: adminId, username, role: 'admin' } satisfies AdminTokenPayload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
@@ -38,6 +41,7 @@ export async function signAdminRefreshToken(adminId: string, username: string): 
 }
 
 export async function verifyAdminAccessToken(token: string): Promise<AdminTokenPayload> {
+  validateSecretsInProduction();
   const { payload } = await jwtVerify(token, ADMIN_ACCESS_SECRET);
   if (payload.role !== 'admin') {
     throw new Error('Invalid token role');
@@ -46,6 +50,7 @@ export async function verifyAdminAccessToken(token: string): Promise<AdminTokenP
 }
 
 export async function verifyAdminRefreshToken(token: string): Promise<AdminTokenPayload> {
+  validateSecretsInProduction();
   const { payload } = await jwtVerify(token, ADMIN_REFRESH_SECRET);
   if (payload.role !== 'admin') {
     throw new Error('Invalid token role');
