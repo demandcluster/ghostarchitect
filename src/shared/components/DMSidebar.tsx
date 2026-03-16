@@ -86,15 +86,19 @@ function DMBubble({
               disabled={chosen !== null}
               className="w-full text-left px-3 py-2 rounded text-xs transition-colors border"
               style={{
-                ...(chosen === choice.id
+                borderColor: chosen === choice.id
                   ? choice.isCorrect
-                    ? { borderColor: "rgba(22,163,74,0.4)", background: "rgba(22,163,74,0.08)" }
-                    : { borderColor: "rgba(220,38,38,0.4)", background: "rgba(220,38,38,0.08)" }
+                    ? "rgba(22,163,74,0.4)"
+                    : "rgba(220,38,38,0.4)"
                   : chosen
-                    ? { borderColor: "var(--border)", opacity: 0.5 }
-                    : { borderColor: "var(--border)" }
-              ),
-              ...(chosen === null ? { ":hover": { borderColor: "var(--accent)" } } : {})
+                    ? "var(--border)"
+                    : "var(--border)",
+                background: chosen === choice.id
+                  ? choice.isCorrect
+                    ? "rgba(22,163,74,0.08)"
+                    : "rgba(220,38,38,0.08)"
+                  : "transparent",
+                opacity: chosen !== null ? 1 : 0.5
               }}
             >
               {choice.label}
@@ -107,10 +111,11 @@ function DMBubble({
             const delta = picked.trustDelta ?? 0;
             return (
               <div className="mt-1 px-3 py-1.5 rounded text-[11px] flex items-center gap-2" style={{
-                ...(picked.isCorrect
-                  ? { background: "rgba(22,163,74,0.08)", color: "#22c55e" }
-                  : { background: "rgba(220,38,38,0.08)", color: "#ef4444" }
-              })}>
+                background: picked.isCorrect
+                  ? "rgba(22,163,74,0.08)"
+                  : "rgba(220,38,38,0.08)",
+                color: picked.isCorrect ? "#22c55e" : "#ef4444"
+              }}>
                 <span>{picked.isCorrect ? "✓ Good call." : "✗ Wrong call."}</span>
                 {delta !== 0 && (
                   <span style={{ color: delta > 0 ? "#22c55e" : "#ef4444" }}>
