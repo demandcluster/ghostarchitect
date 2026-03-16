@@ -73,10 +73,10 @@ export function Scoreboard() {
     return (
       <div className="p-6 flex flex-col items-center justify-center h-full text-center">
         <div className="text-3xl mb-3">T</div>
-        <h3 className="text-sm font-bold text-text-primary mb-2">
+        <h3 className="text-sm font-bold text-primary mb-2">
           Leaderboard
         </h3>
-        <p className="text-xs text-text-muted max-w-xs">
+        <p className="text-xs text-muted max-w-xs">
           Leaderboard is available in team mode. Ask your trainer for an invite
           code to join a team and compete on the live scoreboard.
         </p>
@@ -87,7 +87,7 @@ export function Scoreboard() {
   if (!teamId) {
     return (
       <div className="p-6 text-center">
-        <p className="text-xs text-text-muted">
+        <p className="text-xs text-muted">
           Join a team with an invite code to see the leaderboard.
         </p>
       </div>
@@ -96,7 +96,7 @@ export function Scoreboard() {
 
   if (loading) {
     return (
-      <div className="p-6 text-center text-xs text-text-muted">
+      <div className="p-6 text-center text-xs text-muted">
         Loading leaderboard...
       </div>
     );
@@ -115,7 +115,7 @@ export function Scoreboard() {
 
   return (
     <div className="p-4 h-full overflow-auto">
-      <h3 className="text-sm font-bold text-text-primary mb-3">
+      <h3 className="text-sm font-bold text-primary mb-3">
         {teamName ? `${teamName} — Scoreboard` : "Team Scoreboard"}
       </h3>
 
@@ -124,7 +124,7 @@ export function Scoreboard() {
         <div className="mb-4">
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-text-muted border-b border-border">
+              <tr className="text-muted border-b border">
                 <th className="text-left py-1 w-8">#</th>
                 <th className="text-left py-1">Player</th>
                 <th className="text-right py-1">Score</th>
@@ -144,7 +144,7 @@ export function Scoreboard() {
                     key={entry.playerHandle + entry.rank}
                     value={entry}
                     as="tr"
-                    className="border-b border-border"
+                    className="border-b border"
                     initial={{ opacity: 0, y: -5 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
@@ -154,10 +154,10 @@ export function Scoreboard() {
                     <td className="py-2 font-bold text-accent">
                       {entry.rank}
                     </td>
-                    <td className="py-2 text-text-primary font-medium">
+                    <td className="py-2 text-primary font-medium">
                       {entry.playerHandle || "Anonymous"}
                     </td>
-                    <td className="py-2 text-right font-mono text-text-primary">
+                    <td className="py-2 text-right font-mono text-primary">
                       {entry.totalScore}
                     </td>
                     <td className="py-2 text-center" title={entry.endingReached}>
@@ -165,7 +165,7 @@ export function Scoreboard() {
                         ? ENDING_ICONS[entry.endingReached] || "?"
                         : ""}
                     </td>
-                    <td className="py-2 text-right text-text-muted">
+                    <td className="py-2 text-right text-muted">
                       {entry.completedAt
                         ? new Date(entry.completedAt).toLocaleTimeString([], {
                             hour: "2-digit",
@@ -184,7 +184,7 @@ export function Scoreboard() {
       {/* In progress players */}
       {inProgress.length > 0 && (
         <div>
-          <div className="text-[10px] font-medium text-text-muted mb-2 uppercase tracking-wide">
+          <div className="text-[10px] font-medium mb-2 uppercase tracking-wide" style={{ color: "#64748b" }}>
             In Progress
           </div>
           <div className="space-y-1">
@@ -194,9 +194,10 @@ export function Scoreboard() {
               return (
                 <div
                   key={entry.playerHandle + entry.rank}
-                  className="flex items-center justify-between py-1.5 px-2 bg-bg-secondary rounded text-xs"
+                  className="flex items-center justify-between py-1.5 px-2 rounded text-xs"
+                  style={{ background: "#f8fafc" }}
                 >
-                  <span className="text-text-primary font-medium">
+                  <span className="font-medium" style={{ color: "#0f172a" }}>
                     {entry.playerHandle || "Anonymous"}
                   </span>
                   <div className="flex items-center gap-2">
@@ -208,14 +209,14 @@ export function Scoreboard() {
                             className={`w-2 h-2 rounded-full ${
                               phases[p as keyof typeof phases] !== undefined
                                 ? "bg-accent"
-                                : "bg-bg-tertiary"
+                                : "bg-tertiary"
                             }`}
                             title={p}
                           />
                         )
                       )}
                     </div>
-                    <span className="text-text-muted">
+                    <span className="text-muted">
                       {completedPhases}/4
                     </span>
                   </div>
@@ -227,7 +228,7 @@ export function Scoreboard() {
       )}
 
       {rankings.length === 0 && (
-        <p className="text-xs text-text-muted text-center py-8">
+        <p className="text-xs text-muted text-center py-8">
           No players yet. Be the first to complete the simulation!
         </p>
       )}
