@@ -28,6 +28,21 @@ export async function initAdminOnStartup() {
   try {
     const prisma = requirePrisma();
 
+    // Check if Admin table exists first
+    const adminTableExists = await prisma.$queryRawUnsafe(`
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+        AND table_name = 'Admin'
+      )
+    `);
+
+    if (!adminTableExists[0]?.exists) {
+      log('Admin table does not exist, skipping admin user creation');
+      return { success: false, error: 'Admin table does not exist in database' };
+    }
+
     // Check if admin user already exists
     const existingAdmin = await prisma.admin.findFirst();
     if (existingAdmin) {
