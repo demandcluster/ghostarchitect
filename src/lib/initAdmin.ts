@@ -72,14 +72,7 @@ interface AdminUserResult {
     const existingAdmin = await prisma.admin.findFirst();
     if (existingAdmin) {
       log('Admin user already exists:', existingAdmin.username);
-      return { success: true, username: existingAdmin.username } satisfies AdminUserResult;
-    }
-
-    // Check if admin user already exists
-    const existingAdmin = await prisma.admin.findFirst();
-    if (existingAdmin) {
-      log('Admin user already exists:', existingAdmin.username);
-      return { success: true, username: existingAdmin.username } satisfies AdminUserResult;
+      return { success: true, username: existingAdmin.username };
     }
 
     // Get admin credentials from environment
