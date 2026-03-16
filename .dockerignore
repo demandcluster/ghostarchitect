@@ -1,6 +1,5 @@
 node_modules
 .next
 .git
-k8s
 *.md
 .env*
