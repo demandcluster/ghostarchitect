@@ -63,7 +63,12 @@ interface AdminUserResult {
       log('Creating Prisma tables...');
       // Run Prisma migrations to create Admin, Trainer, Team, Session tables
       try {
-        execSync('npx prisma db push', {
+        const dbUrl = process.env.DATABASE_URL;
+        if (!dbUrl) {
+          logError('DATABASE_URL not set', new Error('DATABASE_URL environment variable is not set'));
+          return { success: false, error: 'DATABASE_URL not configured' };
+        }
+        execSync(`npx prisma db push --url="${dbUrl}"`, {
           stdio: shouldLog ? 'inherit' : 'pipe',
           cwd: process.cwd(),
           env: process.env,
