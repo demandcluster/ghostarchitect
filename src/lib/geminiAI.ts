@@ -67,23 +67,43 @@ export class GeminiAIClient {
       })
     });
 
+    console.log('[Gemini API] Request body:', {
+      model: this.config.model,
+      temperature: temperature,
+      hasJsonSchema: true
+    });
+
     if (!response.ok) {
       const error: GenerationError = {
         message: response.statusText,
         statusCode: response.status,
         isRetryable: response.status === 429 || response.status >= 500
       };
+      console.error('[Gemini API] Request failed:', {
+        status: response.status,
+        statusText: response.statusText
+      });
       throw error;
     }
 
     const responseData = await response.json();
 
+    console.log('[Gemini API] Response received:', {
+      hasCandidates: !!responseData.candidates?.[0],
+      hasContent: !!responseData.candidates?.[0]?.content?.parts?.[0]?.text,
+      responseLength: JSON.stringify(responseData).length
+    });
+
     // Parse the Gemini response
     const generatedContent = responseData.candidates[0]?.content?.parts?.[0]?.text;
 
     if (!generatedContent) {
+      console.error('[Gemini API] No content generated');
       throw new Error('No content generated from Gemini API');
     }
+
+    // Debug: Log first 500 chars of generated content
+    console.log('[Gemini API] Generated content preview:', generatedContent.substring(0, 500));
 
     // The API should return valid JSON when using response_json_schema
     const parsedContent = JSON.parse(generatedContent) as any;

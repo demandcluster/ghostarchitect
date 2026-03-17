@@ -121,6 +121,7 @@ export default function Home() {
   const contentStore = useContentStore();
   const generator = createContentGenerator();
   const generationInProgressRef = useRef(false);
+  const generationAttemptCountRef = useRef(0);
   const userInteractedRef = useRef(false);
   const contentStoreRef = useRef(contentStore); // Ref to prevent infinite loops
 
@@ -138,6 +139,19 @@ export default function Home() {
 
     // Prevent duplicate generation
     if (generationInProgressRef.current) {
+      return;
+    }
+
+    // Check if generation was disabled due to rate limits
+    if (generationDisabled) {
+      console.warn('Content generation disabled for this session');
+      return;
+    }
+
+    // Prevent too many generation attempts
+    if (generationAttemptCountRef.current > 5) {
+      console.warn(`Generation already attempted ${generationAttemptCountRef.current} times, disabling for this session`);
+      setGenerationDisabled(true);
       return;
     }
 
@@ -173,12 +187,13 @@ export default function Home() {
 
       // Set flag to prevent duplicate requests
       generationInProgressRef.current = true;
+      generationAttemptCountRef.current++;
       setIsGenerating(true);
       setGenerationProgress({ current: "Pre-breach emails", total: 0 });
 
       try {
         const contentLocale = useGameStore.getState().contentLocale;
-        console.log('Starting content generation with generator:', !!generator);
+        console.log(`Starting content generation (attempt ${generationAttemptCountRef.current}) with generator:`, !!generator);
         const result = await generator.generateAll({
           sessionId,
           locale: contentLocale,
@@ -201,6 +216,7 @@ export default function Home() {
         generationInProgressRef.current = false;
       } catch (error: any) {
         console.error("Content generation failed:", error);
+        generationAttemptCountRef.current++;
 
         // Check for rate limit errors and disable further generation
         if (error.message && (
@@ -214,6 +230,7 @@ export default function Home() {
           console.warn('Rate limit hit, disabling content generation for this session');
         }
 
+        // Fallback to offline content on error
         contentStoreRef.current.setIsOfflineContent(true);
         setIsGenerating(false);
         generationInProgressRef.current = false;
@@ -221,7 +238,7 @@ export default function Home() {
     };
 
     initContent();
-  }, [step, generator]);
+  }, [step, generator, gameStore, generationDisabled]);
 
   // Dev shortcut: set breach visual mode when ?step= targets a post-breach phase
   useEffect(() => {

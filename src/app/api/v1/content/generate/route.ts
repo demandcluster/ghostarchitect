@@ -4,8 +4,8 @@ import type { GenerationConfig } from "@/services/contentGenerator";
 
 // Simple in-memory rate limiting for API route
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT_WINDOW = 120000; // 5 minutes (more aggressive)
-const RATE_LIMIT_MAX_REQUESTS = 4; // Max 4 request per 2 minutes per IP (very conservative)
+const RATE_LIMIT_WINDOW = 120000; // 2 minutes
+const RATE_LIMIT_MAX_REQUESTS = 4; // Max 4 requests per 2 minutes per IP
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,23 +61,48 @@ export async function POST(request: NextRequest) {
       model: (process.env.GEMINI_MODEL as any) || "gemini-1.5-flash"
     });
 
-    // Generate content using the batch API
+    // Generate content using batch API
     const result = await geminiClient.generateBatch(body);
 
-    // Parse JSON strings from batch API response into arrays
-    const parsedResult = {
-      preBreachEmails: JSON.parse(result.preBreachEmails),
-      breachEmails: JSON.parse(result.breachEmails),
-      logEntries: JSON.parse(result.logEntries),
-      socialEngineeringDMs: JSON.parse(result.socialEngineeringDMs),
-      npcBadAdvice: JSON.parse(result.npcBadAdvice),
-      lolbins: JSON.parse(result.lolbins),
-      wifi: JSON.parse(result.wifi),
-      sessionId: result.sessionId,
-      isOfflineContent: result.isOfflineContent
-    };
+    // Debug: Log raw response
+    console.log('[Content Generation] Raw API response:', JSON.stringify(result, null, 2));
 
-    return NextResponse.json(parsedResult);
+    // Validate that all required fields exist and are arrays
+    // Note: geminiClient.generateBatch already parses JSON, so we just validate arrays
+    try {
+      const parsedResult = {
+        preBreachEmails: Array.isArray(result.preBreachEmails) ? result.preBreachEmails : [],
+        breachEmails: Array.isArray(result.breachEmails) ? result.breachEmails : [],
+        logEntries: Array.isArray(result.logEntries) ? result.logEntries : [],
+        socialEngineeringDMs: Array.isArray(result.socialEngineeringDMs) ? result.socialEngineeringDMs : [],
+        npcBadAdvice: Array.isArray(result.npcBadAdvice) ? result.npcBadAdvice : [],
+        lolbins: Array.isArray(result.lolbins) ? result.lolbins : [],
+        wifi: Array.isArray(result.wifi) ? result.wifi : [],
+        sessionId: result.sessionId,
+        isOfflineContent: result.isOfflineContent
+      };
+
+      console.log('[Content Generation] Parsed result:', {
+        preBreachEmails: parsedResult.preBreachEmails.length,
+        breachEmails: parsedResult.breachEmails.length,
+        logEntries: parsedResult.logEntries.length,
+        socialEngineeringDMs: parsedResult.socialEngineeringDMs.length,
+        npcBadAdvice: parsedResult.npcBadAdvice.length,
+        lolbins: parsedResult.lolbins.length,
+        wifi: parsedResult.wifi.length
+      });
+
+      return NextResponse.json(parsedResult);
+    } catch (parseError: any) {
+      console.error('[Content Generation] Validation error:', parseError.message);
+      return NextResponse.json(
+        {
+          error: 'Failed to validate generated content. API returned invalid format.',
+          rawResponse: result
+        },
+        { status: 500 }
+      );
+    }
   } catch (error: any) {
     console.error("Content generation error:", error);
 
