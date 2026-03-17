@@ -135,7 +135,6 @@ export default function Home() {
         contentStore.setIsOfflineContent(result.isOfflineContent);
 
         contentStore.persistToStorage();
-        setGenerationProgress({ current: 'WiFi networks', total: 7 });
       } catch (error) {
         console.error('Content generation failed:', error);
         contentStore.setIsOfflineContent(true);
