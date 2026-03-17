@@ -231,8 +231,12 @@ interface GameStore {
 │                 App Initialization                        │
 │  1. Check localStorage for cached content?         │
 │  2. If yes → Skip generation (instant load)        │
-│  3. If no → Show loading screen                 │
-│  4. Call generateAllContent() in background          │
+│  3. If no → Generate new session ID or use existing  │
+│  4. Sync session ID across stores                │
+│     contentStore.setSessionId(sessionId);             │
+│     gameStore.setSessionId(sessionId);               │
+│  5. Show loading screen with progress               │
+│  6. Call generateAllContent() in background          │
 └───────────────────────┬───────────────────────────────┘
                         │
                         ▼
@@ -271,20 +275,26 @@ interface GameStore {
 Before game starts, show:
 ```
 ╔═════════════════════════════════════════════════╗
-║                                                         ║
-║    Generating Scenario Content...                         ║
-║                                                         ║
-║    ✓ Pre-breach emails (3/7)                    ║
-║    ⏳ Breach phishing emails (2/10)               ║
-║    ○ Log entries (0/50)                          ║
-║    ○ Social engineering DMs (0/8)                  ║
-║    ○ LOLBins (0/10)                               ║
-║    ○ NPC advice (0/4)                             ║
-║    ○ WiFi networks (0/5)                           ║
-║                                                         ║
-║    [Cancel]  Use offline content                     ║
-║                                                         ║
-╚═════════════════════════════════════════════════════╝
+║                                                     ║
+║    Generating Scenario Content...                   ║
+║                                                     ║
+║    ✓ Pre-breach emails (3/7)              ║
+║    ⏳ Breach phishing emails (2/10) [Retrying 2/3]  ║
+║    ○ Log entries (0/50)                     ║
+║    ○ Social engineering DMs (0/8)              ║
+║    ○ LOLBins (0/10)                            ║
+║    ○ NPC advice (0/4)                         ║
+║    ○ WiFi networks (0/5)                          ║
+║                                                     ║
+║    [Cancel]  Use offline content                   ║
+║                                                     ║
+╚═══════════════════════════════════════════════════╝
+```
+
+**Retry State Display**: During API retries with exponential backoff, update progress:
+- First attempt: `⏳ Breach phishing emails (0/10)`
+- Retry attempt 2: `⏳ Breach phishing emails (0/10) - Retrying (attempt 2/3)...`
+- Final attempt 3: `⏳ Breach phishing emails (0/10) - Retrying (attempt 3/3)...`
 ```
 
 ---
@@ -477,6 +487,28 @@ describe('ContentGenerator', () => {
       logs.forEach(log => {
         expect(() => new Date(log.timestamp)).not.toThrow();
       });
+    });
+  });
+
+  describe('Content Uniqueness', () => {
+    it('generates different content across multiple sessions', async () => {
+      const session1 = await contentGenerator.generateAll({
+        locale: 'en',
+        sessionId: 'test-session-1',
+      });
+      const session2 = await contentGenerator.generateAll({
+        locale: 'en',
+        sessionId: 'test-session-2',
+      });
+
+      // Content should be different between sessions
+      expect(session1.breachEmails).not.toEqual(session2.breachEmails);
+      expect(session1.logEntries).not.toEqual(session2.logEntries);
+      expect(session1.socialEngineeringDMs).not.toEqual(session2.socialEngineeringDMs);
+
+      // But structure should match (valid content, not garbage)
+      expect(session1.breachEmails.length).toEqual(session2.breachEmails.length);
+      expect(session1.logEntries.length).toEqual(session2.logEntries.length);
     });
   });
 
