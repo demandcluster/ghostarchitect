@@ -67,7 +67,7 @@ export function TaskManagerView({
   if (showResults) {
     return (
       <div className="p-6 overflow-auto h-full">
-        <h2 className="text-lg font-bold text-text-primary mb-4">
+        <h2 className="text-lg font-bold text-primary mb-4">
           Malware Cleanup Results
         </h2>
         <div className="space-y-3">
@@ -87,7 +87,7 @@ export function TaskManagerView({
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm text-text-primary">
+                  <span className="font-mono text-sm text-primary">
                     {proc.processName} (PID {proc.pid})
                   </span>
                   <span
@@ -125,8 +125,8 @@ export function TaskManagerView({
   return (
     <div className="flex h-full">
       {/* Process list */}
-      <div className="w-[45%] border-r border-border overflow-auto">
-        <div className="grid grid-cols-[1fr_60px_auto] text-[10px] font-medium text-text-muted px-3 py-2 border-b border-border bg-bg-secondary">
+      <div className="w-[45%] border-r border overflow-auto">
+        <div className="grid grid-cols-[1fr_60px_auto] text-[10px] font-medium text-muted px-3 py-2 border-b border bg-window-sunken">
           <span>Process Name</span>
           <span>PID</span>
           <span>Action</span>
@@ -136,14 +136,14 @@ export function TaskManagerView({
             key={proc.id}
             onClick={() => setSelectedPid(proc.pid)}
             className={`
-              grid grid-cols-[1fr_60px_auto] items-center px-3 py-2 text-xs border-b border-border cursor-pointer
-              ${selectedPid === proc.pid ? "bg-accent/10" : "hover:bg-bg-secondary"}
+              grid grid-cols-[1fr_60px_auto] items-center px-3 py-2 text-xs border-b border cursor-pointer
+              ${selectedPid === proc.pid ? "bg-accent/10" : "hover:bg-window-sunken"}
             `}
           >
-            <span className="font-mono text-text-primary">
+            <span className="font-mono text-primary">
               {proc.processName}
             </span>
-            <span className="font-mono text-text-muted">{proc.pid}</span>
+            <span className="font-mono text-muted">{proc.pid}</span>
             <div className="flex gap-1">
               {(["quarantine", "ignore"] as Action[]).map((act) => (
                 <button
@@ -159,7 +159,7 @@ export function TaskManagerView({
                         ? act === "quarantine"
                           ? "bg-red-600 text-white border-red-600"
                           : "bg-green-600 text-white border-green-600"
-                        : "border-border text-text-secondary hover:border-accent"
+                        : "border text-text-secondary hover:border-accent"
                     }
                   `}
                 >
@@ -186,10 +186,10 @@ export function TaskManagerView({
       <div className="w-[55%] overflow-auto p-4">
         {selected ? (
           <div>
-            <h3 className="text-sm font-bold text-text-primary mb-2">
+            <h3 className="text-sm font-bold text-primary mb-2">
               {selected.processName}
             </h3>
-            <div className="text-xs text-text-muted mb-3">
+            <div className="text-xs text-muted mb-3">
               PID: {selected.pid}
             </div>
             <div className="mb-4">
@@ -200,13 +200,13 @@ export function TaskManagerView({
                 {selected.commandLine}
               </div>
             </div>
-            <p className="text-xs text-text-muted italic">
+            <p className="text-xs text-muted italic">
               Examine the command line carefully. Legitimate system tools can be
               abused by attackers (Living-off-the-Land Binaries).
             </p>
           </div>
         ) : (
-          <div className="text-sm text-text-muted">
+          <div className="text-sm text-muted">
             Select a process to view its command line details.
           </div>
         )}

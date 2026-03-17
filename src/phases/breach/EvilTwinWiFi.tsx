@@ -214,7 +214,7 @@ function SignalBars({ strength }: { strength: number }) {
         <div
           key={i}
           className={`w-1 rounded-sm ${
-            i <= bars ? "bg-accent" : "bg-bg-tertiary"
+            i <= bars ? "bg-accent" : "bg-gray-300"
           }`}
           style={{ height: `${i * 25}%` }}
         />

@@ -114,8 +114,8 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
   return (
     <div className="flex h-full">
       {/* Inbox list — 30% */}
-      <div className="w-[30%] border-r border-[var(--border)] overflow-auto">
-        <div className="p-2 border-b border-[var(--border)] text-xs font-medium text-[var(--text-secondary)]">
+      <div className="w-[30%] border-r overflow-auto" style={{ borderColor: "var(--border)" }}>
+        <div className="p-2 border-b text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
           Inbox ({brandedEmails.length})
         </div>
         {brandedEmails.map((email) => (
@@ -123,22 +123,23 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
             key={email.id}
             onClick={() => setSelectedId(email.id)}
             className={`
-              w-full text-left px-3 py-3.5 border-b border-[var(--border)] text-xs transition-colors
-              ${selectedId === email.id
-                ? "bg-[var(--accent-subtle)] border-l-2 border-l-[var(--accent)]"
-                : "hover:bg-[var(--bg-window-raised)]"
-              }
+              w-full text-left px-3 py-3.5 border-b text-xs transition-colors
               ${verdicts[email.id] ? "opacity-70" : ""}
             `}
+            style={{
+              borderColor: "var(--border)",
+              background: selectedId === email.id ? "var(--accent-subtle)" : "transparent",
+              borderLeft: selectedId === email.id ? "2px solid var(--accent)" : "none"
+            }}
           >
-            <div className="text-[13px] font-semibold text-[var(--text-primary)] truncate">
+            <div className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>
               {email.from}
             </div>
-            <div className="text-[var(--text-secondary)] truncate mt-0.5">
+            <div className="truncate mt-0.5" style={{ color: "var(--text-secondary)" }}>
               {email.subject}
             </div>
             <div className="flex items-center justify-between mt-1">
-              <span className="text-[var(--text-muted)]">{email.date.split(" ")[1]}</span>
+              <span style={{ color: "var(--text-muted)" }}>{email.date.split(" ")[1]}</span>
               {verdicts[email.id] && (
                 <span
                   className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${

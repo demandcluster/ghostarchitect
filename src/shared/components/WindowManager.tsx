@@ -49,11 +49,11 @@ export function WindowManager({
 
           const titleBarClasses = isBreach
             ? `h-10 flex items-center px-3 shrink-0 bg-[var(--window-header-from)] border-b border-[var(--window-header-border,var(--border))]`
-            : `h-10 flex items-center px-3 shrink-0 window-header-gradient border-b border-white/[0.08] ${!isActive ? "opacity-85" : ""}`;
+            : `h-10 flex items-center px-3 shrink-0 border-b ${!isActive ? "opacity-85" : ""}`;
 
           const bodyClasses = isBreach
-            ? "flex-1 min-h-0 overflow-hidden flex flex-col bg-[var(--bg-window)]"
-            : "flex-1 min-h-0 overflow-hidden flex flex-col bg-[var(--bg-window)]";
+            ? "flex-1 min-h-0 overflow-hidden flex flex-col"
+            : "flex-1 min-h-0 overflow-hidden flex flex-col";
 
           const widthClass =
             windows.length === 1
@@ -71,11 +71,14 @@ export function WindowManager({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
               className={`${outerClasses} ${widthClass}`}
-              style={isBreach && isActive ? { boxShadow: "var(--glow-green)" } : undefined}
+              style={{
+                ...(isBreach && isActive ? { boxShadow: "var(--glow-green)" } : undefined),
+                ...(isBreach || !isActive ? {} : { background: "linear-gradient(135deg, var(--window-header-from), var(--window-header-to))" })
+              }}
               onClick={() => handleFocus(win.id)}
             >
               {/* Window title bar */}
-              <div className={titleBarClasses}>
+              <div className={titleBarClasses} style={!isBreach ? { borderColor: "rgba(255,255,255,0.08)" } : undefined}>
                 {isBreach ? (
                   <span className={`font-mono text-[11px] uppercase tracking-[0.08em] truncate ${isActive ? "text-[var(--accent)]" : "text-[var(--text-muted)]"}`}>
                     {`> ${win.title}`}
@@ -95,7 +98,7 @@ export function WindowManager({
                 )}
               </div>
               {/* Window content */}
-              <div className={bodyClasses}>
+              <div className={bodyClasses} style={{ background: "var(--bg-window)" }}>
                 {win.content}
               </div>
             </motion.div>
@@ -122,13 +125,15 @@ export function WindowManager({
           ) : (
             <div className="h-full flex flex-col">
               <div
-                className={`h-10 flex items-center justify-between px-3 border-b border-[var(--border)] text-xs font-medium ${
-                  isBreach
-                    ? "bg-[var(--window-header-from)] font-mono"
-                    : "window-header-gradient text-white font-semibold"
-                }`}
+                className={`h-10 flex items-center justify-between px-3 border-b text-xs font-medium`}
+                style={{
+                  borderColor: "var(--border)",
+                  ...(isBreach
+                    ? { background: "var(--window-header-from)" }
+                    : { background: "linear-gradient(135deg, var(--window-header-from), var(--window-header-to))" })
+                }}
               >
-                <span className={isBreach ? "text-[var(--accent)] text-[11px] uppercase tracking-[0.08em]" : ""}>
+                <span className={isBreach ? "text-[11px] uppercase tracking-[0.08em]" : ""} style={isBreach ? { color: "var(--accent)" } : { color: "white" }}>
                   {isBreach ? "> Messages" : "Messages"}
                 </span>
                 <button

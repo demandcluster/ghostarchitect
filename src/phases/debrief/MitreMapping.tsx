@@ -63,10 +63,10 @@ const TECHNIQUES: MitreTechnique[] = [
 export function MitreMapping() {
   return (
     <div>
-      <h3 className="text-sm font-bold text-text-primary mb-3">
+      <h3 className="text-sm font-bold text-primary mb-3">
         MITRE ATT&CK Mapping
       </h3>
-      <p className="text-xs text-text-secondary mb-4">
+      <p className="text-xs text-secondary mb-4">
         Techniques observed during the Ghost Architect breach, mapped to the
         MITRE ATT&CK framework.
       </p>
@@ -75,21 +75,21 @@ export function MitreMapping() {
         {TECHNIQUES.map((t) => (
           <div
             key={t.id}
-            className="p-3 border border-border rounded-lg bg-bg-secondary"
+            className="p-3 border border rounded-lg bg-window-sunken"
           >
             <div className="flex items-center gap-2">
               <span className="font-mono text-xs text-accent font-bold">
                 {t.id}
               </span>
-              <span className="text-xs font-medium text-text-primary">
+              <span className="text-xs font-medium text-primary">
                 {t.name}
               </span>
             </div>
-            <div className="text-[10px] text-text-muted mt-0.5">
+            <div className="text-[10px] text-muted mt-0.5">
               Tactic: {t.tactic}
             </div>
-            <p className="text-xs text-text-secondary mt-1">{t.description}</p>
-            <div className="text-[10px] text-text-muted mt-1 italic">
+            <p className="text-xs text-secondary mt-1">{t.description}</p>
+            <div className="text-[10px] text-muted mt-1 italic">
               Observed: {t.observedIn}
             </div>
           </div>

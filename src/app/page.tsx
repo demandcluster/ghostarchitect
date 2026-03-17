@@ -222,7 +222,7 @@ export default function Home() {
       content: (
         <div className="p-6 space-y-5">
           {/* Header */}
-          <div className="flex items-center gap-3 pb-4 border-b border-border">
+          <div className="flex items-center gap-3 pb-4 border-b border">
             <div
               className="w-10 h-10 rounded flex items-center justify-center text-white font-bold text-sm select-none shrink-0"
               style={{ background: "var(--accent)" }}
@@ -230,16 +230,16 @@ export default function Home() {
               {teamName.slice(0, 2).toUpperCase()}
             </div>
             <div>
-              <h1 className="text-base font-bold text-text-primary leading-tight">
+              <h1 className="text-base font-bold text-primary leading-tight">
                 {teamName} Intranet Portal
               </h1>
-              <p className="text-xs text-text-secondary">{fakeDomain}</p>
+              <p className="text-xs text-secondary">{fakeDomain}</p>
             </div>
           </div>
 
           {/* First Day Checklist */}
           <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">
               First Day Checklist
             </h2>
             <ul className="space-y-1.5">
@@ -248,7 +248,7 @@ export default function Home() {
                 "Review security policy",
                 "Complete MFA setup",
               ].map((item) => (
-                <li key={item} className="flex items-center gap-2 text-sm text-text-primary">
+                <li key={item} className="flex items-center gap-2 text-sm text-primary">
                   <svg
                     width="16"
                     height="16"
@@ -268,7 +268,7 @@ export default function Home() {
 
           {/* Getting Started quick links */}
           <div>
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">
               Getting Started
             </h2>
             <div className="flex gap-2">
@@ -281,7 +281,7 @@ export default function Home() {
                 <button
                   key={label}
                   onClick={() => { setWikiTab(tab); setShowWiki(true); }}
-                  className="px-3 py-1.5 rounded border border-border text-xs text-text-secondary bg-bg-secondary hover:bg-bg-tertiary hover:text-text-primary transition-colors"
+                  className="px-3 py-1.5 rounded border border text-xs text-secondary bg-window-sunken hover:bg-window hover:text-primary transition-colors"
                 >
                   {label}
                 </button>
@@ -291,7 +291,7 @@ export default function Home() {
 
           {/* Continue button */}
           {dmDone && (
-            <div className="pt-2 border-t border-border">
+            <div className="pt-2 border-t border">
               <button
                 onClick={async () => {
                   await triggerBreach();
@@ -387,7 +387,7 @@ export default function Home() {
       content: (
         <div className="p-3">
           {flaggedLogs.length === 0 ? (
-            <p className="text-xs text-text-muted mb-4">
+            <p className="text-xs text-muted mb-4">
               Click log lines to flag them for investigation.
             </p>
           ) : (
@@ -395,7 +395,7 @@ export default function Home() {
               {flaggedLogs.map((log) => (
                 <div
                   key={log.id}
-                  className="p-2 bg-bg-secondary rounded text-xs border border-border"
+                  className="p-2 bg-window-sunken rounded text-xs border border"
                 >
                   <div className="flex items-center gap-2">
                     <span
@@ -411,9 +411,9 @@ export default function Home() {
                     >
                       [{log.level}]
                     </span>
-                    <span className="text-text-muted">{log.timestamp}</span>
+                    <span className="text-muted">{log.timestamp}</span>
                   </div>
-                  <div className="text-text-primary mt-1 font-mono text-[11px]">
+                  <div className="text-primary mt-1 font-mono text-[11px]">
                     {log.message.slice(0, 100)}
                     {log.message.length > 100 ? "..." : ""}
                   </div>

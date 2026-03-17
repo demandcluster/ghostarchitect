@@ -124,17 +124,17 @@ export function RadarChart() {
           {AXIS_ORDER.map((axis, i) => (
             <div
               key={axis}
-              className="flex items-center justify-between gap-4 px-3 py-1 bg-bg-secondary rounded"
+              className="flex items-center justify-between gap-4 px-3 py-1 bg-window-sunken rounded"
             >
-              <span className="text-text-secondary text-xs">{LABELS[axis]}</span>
-              <span className="font-bold text-text-primary">
+              <span className="text-secondary text-xs">{LABELS[axis]}</span>
+              <span className="font-bold text-primary">
                 {animatedScores[i]}/25
               </span>
             </div>
           ))}
           <div className="col-span-2 text-center mt-2">
             <span className="text-lg font-bold text-accent">{total}/100</span>
-            <span className="text-xs text-text-muted ml-2">Total Score</span>
+            <span className="text-xs text-muted ml-2">Total Score</span>
           </div>
         </div>
       )}

@@ -141,16 +141,16 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
             whileTap={{ scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
             className={`
-              px-2.5 py-1.5 rounded-lg text-xs transition-colors
+              px-2.5 py-1.5 rounded-lg text-xs transition-colors ring-2 ring-transparent focus:ring-[var(--accent-ring)]
               ${isBreach ? "font-mono" : ""}
-              ${
-                activeApp === app.id
-                  ? isBreach
-                    ? "bg-[var(--accent-subtle)] ring-1 ring-[var(--border)] text-[var(--taskbar-text-active)] focus:ring-2 focus:ring-[var(--accent-ring)]"
-                    : "bg-white/15 ring-1 ring-white/20 text-[var(--taskbar-text-active)] focus:ring-2 focus:ring-[var(--accent-ring)]"
-                  : "text-[var(--taskbar-text)] hover:bg-white/10 focus:ring-2 focus:ring-[var(--accent-ring)]"
-              }
             `}
+            style={
+              activeApp === app.id
+                ? isBreach
+                  ? { background: "var(--accent-subtle)", border: "1px solid var(--border)", color: "var(--taskbar-text-active)" }
+                  : { background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)", color: "var(--taskbar-text-active)" }
+                : { background: "transparent", color: "var(--taskbar-text)" }
+            }
             title={app.label}
           >
             <span className="inline-flex items-center justify-center w-4 h-4 text-center mr-1">

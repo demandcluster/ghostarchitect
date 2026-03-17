@@ -80,20 +80,20 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
 
   return (
     <div className="p-6 max-w-lg mx-auto overflow-y-auto h-full">
-      <h2 className="text-lg font-bold text-text-primary mb-2">
+      <h2 className="text-lg font-bold text-primary mb-2">
         IOC Extraction
       </h2>
-      <p className="text-sm text-text-secondary mb-6">
+      <p className="text-sm text-secondary mb-6">
         Document the Indicators of Compromise you identified from the logs.
         These will be shared with the SOC team and submitted to threat
         intelligence feeds.
       </p>
 
       {/* Reference Logs Panel */}
-      <div className="mb-6 border border-border rounded-lg overflow-hidden">
+      <div className="mb-6 border border rounded-lg overflow-hidden">
         <button
           onClick={() => setLogsOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-bg-secondary text-xs font-medium text-text-secondary hover:text-text-primary transition-colors"
+          className="w-full flex items-center justify-between px-3 py-2 bg-window-sunken text-xs font-medium text-secondary hover:text-primary transition-colors"
         >
           <span>Reference Logs</span>
           <span>{logsOpen ? "\u25B4" : "\u25BE"}</span>
@@ -105,8 +105,8 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
                 key={entry.id}
                 className="font-mono text-[11px] leading-relaxed"
               >
-                <span className="text-text-muted">{entry.timestamp}</span>{" "}
-                <span className={LEVEL_COLORS[entry.level] || "text-text-muted"}>
+                <span className="text-muted">{entry.timestamp}</span>{" "}
+                <span className={LEVEL_COLORS[entry.level] || "text-muted"}>
                   [{entry.level}]
                 </span>{" "}
                 <span className="text-[var(--accent-cyan,var(--info))]">{entry.source}</span>{" "}
@@ -121,7 +121,7 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
         {EXPECTED_IOCS.map((ioc) => (
           <div key={ioc.type}>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-medium text-text-secondary">
+              <label className="block text-xs font-medium text-secondary">
                 {ioc.type}
               </label>
               {!submitted && !shownHints.has(ioc.type) && (
@@ -134,7 +134,7 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
               )}
             </div>
             {shownHints.has(ioc.type) && (
-              <p className="text-[11px] text-text-muted mb-1 italic">
+              <p className="text-[11px] text-muted mb-1 italic">
                 Hint: {ioc.hint}
               </p>
             )}
@@ -148,7 +148,7 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
                 }))
               }
               disabled={submitted}
-              className="w-full px-3 py-2 bg-bg-secondary border border-border rounded text-sm font-mono text-text-primary focus:outline-none focus:border-accent"
+              className="w-full px-3 py-2 bg-window-sunken border border rounded text-sm font-mono text-primary focus:outline-none focus:border-accent"
               placeholder={`Enter ${ioc.type.toLowerCase()}`}
             />
             {submitted && (

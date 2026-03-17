@@ -43,7 +43,7 @@ export function TrophyBadge({ isOpen, onClose }: TrophyBadgeProps) {
           transition={{ duration: 0.3 }}
         >
           <motion.div
-            className="bg-[var(--bg-secondary)] rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl border border-[var(--border)]"
+            className="bg-[var(--bg-window)] rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl border border-[var(--border)]"
             initial={{ y: "100%", opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}

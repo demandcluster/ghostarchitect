@@ -31,7 +31,7 @@ function FiredEnding({ score, fakeDomain, teamName }: { score: number; fakeDomai
       className="space-y-6"
     >
       {/* Mock news article */}
-      <div className="bg-bg-secondary rounded-lg border border-border overflow-hidden">
+      <div className="bg-window-sunken rounded-lg border border overflow-hidden">
         <div className="bg-red-600 text-white px-4 py-2 text-xs font-bold">
           BREAKING NEWS
         </div>
@@ -113,7 +113,7 @@ function PromotedEnding({ score, fakeDomain }: { score: number; fakeDomain: stri
         </p>
       </div>
 
-      <div className="bg-bg-secondary rounded-lg border border-border p-4">
+      <div className="bg-window-sunken rounded-lg border border p-4">
         <div className="text-xs text-text-muted mb-2">
           NEW INCIDENT INCOMING...
         </div>
@@ -171,7 +171,7 @@ function NeutralEnding({ score }: { score: number }) {
       animate={{ opacity: 1 }}
       className="space-y-4"
     >
-      <div className="bg-bg-secondary rounded-lg border border-border p-6">
+      <div className="bg-window-sunken rounded-lg border border p-6">
         <h3 className="text-lg font-bold text-text-primary">
           Investigation Concluded
         </h3>
