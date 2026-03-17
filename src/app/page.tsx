@@ -27,6 +27,9 @@ import { SOCIAL_ENGINEERING_DM, NPC_BAD_ADVICE } from "@/content/dmScripts";
 import { LOG_ENTRIES } from "@/content/logEntries";
 import { LOLBINS } from "@/content/fileListings";
 import type { DMChoice, LogEntry } from "@/content/types";
+import { ContentLoadingScreen } from "@/components/ContentLoadingScreen";
+import { createContentGenerator } from "@/services/contentGenerator";
+import { useContentStore } from "@/stores/contentStore";
 
 type GameStep =
   | "start"
@@ -57,6 +60,7 @@ export default function Home() {
   const setVisualMode = useGameStore((s) => s.setVisualMode);
   const teamName = useGameStore((s) => s.teamName);
   const fakeDomain = useGameStore((s) => s.fakeDomain);
+  const gameStore = useGameStore();
   const { trigger: triggerBreach } = useBreachTransition();
   const adjustTrust = useScoreStore((s) => s.adjustTrust);
   const addAction = useScoreStore((s) => s.addAction);
@@ -70,6 +74,66 @@ export default function Home() {
   const [npcDmReveal, setNpcDmReveal] = useState(0);
   const [npcDmIndex, setNpcDmIndex] = useState(0);
   const { isTransitioning, changeStep } = useStepTransition(setStep);
+
+  // Content generation state
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState({ current: '', total: 0 });
+  const [retryState, setRetryState] = useState<{ attempt: number; max: number } | undefined>();
+  const contentStore = useContentStore();
+  const generator = createContentGenerator();
+
+  // Initialize content generation
+  useEffect(() => {
+    const initContent = async () => {
+      // Try to restore from localStorage first
+      contentStore.restoreFromStorage();
+
+      if (contentStore.isContentReady()) {
+        // Content already cached, skip generation
+        setIsGenerating(false);
+        return;
+      }
+
+      // Generate new session ID
+      const sessionId = crypto.randomUUID();
+      contentStore.setSessionId(sessionId);
+      gameStore.setSessionId(sessionId);
+
+      if (!generator) {
+        // Fallback to offline content
+        contentStore.restoreFromStorage();
+        setIsGenerating(false);
+        return;
+      }
+
+      setIsGenerating(true);
+      setGenerationProgress({ current: 'Pre-breach emails', total: 0 });
+
+      try {
+        const locale = gameStore.contentLocale;
+        const result = await generator.generateAll({ sessionId, locale, temperature: 0.9 });
+
+        contentStore.setPreBreachEmails(result.preBreachEmails);
+        contentStore.setBreachEmails(result.breachEmails);
+        contentStore.setLogEntries(result.logEntries);
+        contentStore.setSocialEngineeringDMs(result.socialEngineeringDMs);
+        contentStore.setNPCBadAdvice(result.npcBadAdvice);
+        contentStore.setLOLBins(result.lolbins);
+        contentStore.setWiFi(result.wifi);
+        contentStore.setIsOfflineContent(result.isOfflineContent);
+
+        contentStore.persistToStorage();
+        setGenerationProgress({ current: 'WiFi networks', total: 7 });
+      } catch (error) {
+        console.error('Content generation failed:', error);
+        contentStore.setIsOfflineContent(true);
+      } finally {
+        setIsGenerating(false);
+      }
+    };
+
+    initContent();
+  }, []); // Run once on mount
 
   // Dev shortcut: set breach visual mode when ?step= targets a post-breach phase
   useEffect(() => {
@@ -548,18 +612,31 @@ export default function Home() {
   }
 
   return (
-    <OSShell
-      key={step}
-      windows={windows}
-      dmSidebar={dmSidebar}
-      onAppClick={(appId) => {
-        if (appId === "scoreboard") {
-          setShowScoreboard((v) => !v);
-        }
-        if (appId === "wiki") {
-          setShowWiki((v) => !v);
-        }
-      }}
-    />
+    <>
+      {isGenerating && (
+        <ContentLoadingScreen
+          progress={generationProgress}
+          retryState={retryState}
+          onCancel={() => {
+            // Cancel generation and use fallback
+            contentStore.setIsOfflineContent(true);
+            setIsGenerating(false);
+          }}
+        />
+      )}
+      <OSShell
+        key={step}
+        windows={windows}
+        dmSidebar={dmSidebar}
+        onAppClick={(appId) => {
+          if (appId === "scoreboard") {
+            setShowScoreboard((v) => !v);
+          }
+          if (appId === "wiki") {
+            setShowWiki((v) => !v);
+          }
+        }}
+      />
+    </>
   );
 }
