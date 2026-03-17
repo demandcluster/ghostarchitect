@@ -29,7 +29,7 @@ export function ContentLoadingScreen({ progress, retryState, onCancel }: Content
   const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
-    const currentIndex = STEPS.indexOf(progress.current);
+    const currentIndex = STEPS.indexOf(progress.current as any);
     if (currentIndex !== -1) {
       setStepIndex(currentIndex);
     }

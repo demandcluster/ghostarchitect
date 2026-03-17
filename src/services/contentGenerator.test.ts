@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { ContentGenerator } from './contentGenerator';
 import type { ZhipuAIClient } from '@/lib/zhipuAI';
 import type { Email, LogEntry, DMMessage, LOLBin, WiFiNetwork } from '@/content/types';
