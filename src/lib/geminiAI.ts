@@ -43,7 +43,6 @@ export class GeminiAIClient {
     sessionId: string;
     isOfflineContent: boolean;
   }> {
-    const model = `models/${this.config.model}:batchPredict?key=${this.config.apiKey}`;
     const temperature = config.temperature ?? 0.9;
 
     // Create a comprehensive prompt for batch generation
@@ -123,19 +122,20 @@ Requirements for each content type:
 
 Return ONLY valid JSON, no markdown, no additional text.`;
 
-    const response = await fetch(`${this.config.baseURL}${model}`, {
+    const response = await fetch(`${this.config.baseURL}models/${this.config.model}:generateContent?key=${this.config.apiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        requests: [{
-          contents: [{
-            parts: [{
-              text: batchPrompt
-            }]
+        contents: [{
+          parts: [{
+            text: batchPrompt
           }]
-        }]
+        }],
+        generationConfig: {
+          temperature: temperature
+        }
       })
     });
 
@@ -150,8 +150,8 @@ Return ONLY valid JSON, no markdown, no additional text.`;
 
     const responseData = await response.json();
 
-    // Parse the batch prediction response
-    const generatedContent = responseData.predictions[0].candidates[0].content.parts[0].text;
+    // Parse the Gemini response
+    const generatedContent = responseData.candidates[0].content.parts[0].text;
 
     // Set session ID from config
     const parsedContent = JSON.parse(generatedContent) as any;
