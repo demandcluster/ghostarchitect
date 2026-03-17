@@ -98,6 +98,8 @@ export default function Home() {
   useEffect(() => {
     const initContent = async () => {
       // Try to restore from localStorage first
+        // Ensure store is hydrated before using it
+        const storeReady = contentStore.sessionId !== null || contentStore.preBreachEmails.length > 0;
       contentStore.restoreFromStorage();
 
       if (contentStore.isContentReady()) {
@@ -144,7 +146,7 @@ export default function Home() {
     };
 
     initContent();
-  }, []); // Run once on mount
+    }, []); // Run once on mount
 
   // Dev shortcut: set breach visual mode when ?step= targets a post-breach phase
   useEffect(() => {
