@@ -1,0 +1,19 @@
+      setIsGenerating(true);
+      try {
+        const locale = gameStore.contentLocale;
+        const result = await generator.generateAll({ sessionId, locale, temperature: 0.9 });
+        contentStore.setPreBreachEmails(result.preBreachEmails);
+        contentStore.setBreachEmails(result.breachEmails);
+        contentStore.setLogEntries(result.logEntries);
+        contentStore.setSocialEngineeringDMs(result.socialEngineeringDMs);
+        contentStore.setNPCBadAdvice(result.npcBadAdvice);
+        contentStore.setLOLBins(result.lolbins);
+        contentStore.setWiFi(result.wifi);
+        contentStore.setIsOfflineContent(result.isOfflineContent);
+        contentStore.persistToStorage();
+      } catch (error) {
+        console.error('Content generation failed:', error);
+        contentStore.setIsOfflineContent(true);
+      } finally {
+        setIsGenerating(false);
+      }

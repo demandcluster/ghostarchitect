@@ -44,6 +44,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 # Prisma schema needed at runtime for query engine path resolution
 COPY --from=builder --chown=nextjs:nodejs /app/src/prisma/schema.prisma ./src/prisma/schema.prisma
 
+# Pre-create uploads directory with proper permissions for logo uploads
+RUN mkdir -p /app/public/uploads/logos && \
+    chown -R nextjs:nodejs /app/public/uploads && \
+    chmod -R 755 /app/public/uploads
+
 USER nextjs
 
 EXPOSE 3000

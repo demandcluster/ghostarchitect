@@ -50,7 +50,7 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     if (file.size > MAX_BYTES) {
       return NextResponse.json(
-        { error: 'File too large. Maximum size is 500 KB' },
+        { error: 'File too large. Maximum size is 5 MB' },
         { status: 413 },
       );
     }
@@ -61,7 +61,24 @@ export async function POST(request: NextRequest, { params }: Params) {
     const filename = `${id}.${ext}`;
     const filepath = path.join(uploadsDir, filename);
     const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(filepath, buffer);
+
+    try {
+      await writeFile(filepath, buffer);
+    } catch (writeError: any) {
+      if (writeError.code === 'EACCES' || writeError.code === 'EPERM') {
+        return NextResponse.json(
+          { error: 'Permission denied: Unable to write to upload directory. Contact administrator.' },
+          { status: 500 }
+        );
+      }
+      if (writeError.code === 'ENOSPC') {
+        return NextResponse.json(
+          { error: 'Disk full: Unable to save logo. Contact administrator.' },
+          { status: 500 }
+        );
+      }
+      throw writeError; // Re-throw other errors to be caught by outer catch block
+    }
 
     const logoUrl = `/uploads/logos/${filename}`;
     const updated = await prisma.team.update({

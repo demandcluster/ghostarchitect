@@ -1,6 +1,6 @@
 export interface ZhipuAIConfig {
   apiKey: string;
-  model: 'glm-4' | 'glm-4-plus';
+  model: "glm-4" | "glm-4-plus";
   baseURL?: string;
 }
 
@@ -21,23 +21,26 @@ export class ZhipuAIClient {
 
   constructor(config: ZhipuAIConfig) {
     this.config = {
-      baseURL: config.baseURL || 'https://open.bigmodel.cn/api/paas/v4/',
+      baseURL: config.baseURL || "https://api.z.ai/coding/api/paas/v4/",
       ...config
     };
   }
 
-  async generateContent(prompt: string, options?: GenerationOptions): Promise<string> {
+  async generateContent(
+    prompt: string,
+    options?: GenerationOptions
+  ): Promise<string> {
     const response = await fetch(`${this.config.baseURL}chat/completions`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.config.apiKey}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.config.apiKey}`
       },
       body: JSON.stringify({
         model: this.config.model,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: "user", content: prompt }],
         temperature: options?.temperature ?? 0.9,
-        max_tokens: options?.maxTokens ?? 4000,
+        max_tokens: options?.maxTokens ?? 4000
       })
     });
 
@@ -54,7 +57,10 @@ export class ZhipuAIClient {
     return data.choices[0].message.content;
   }
 
-  async generateBatch(prompts: string[], options?: GenerationOptions): Promise<string[]> {
+  async generateBatch(
+    prompts: string[],
+    options?: GenerationOptions
+  ): Promise<string[]> {
     // For now, process sequentially
     // Can optimize to parallel requests in Phase 2
     const results: string[] = [];
@@ -69,7 +75,7 @@ export class ZhipuAIClient {
     try {
       const response = await fetch(`${this.config.baseURL}models`, {
         headers: {
-          'Authorization': `Bearer ${this.config.apiKey}`
+          Authorization: `Bearer ${this.config.apiKey}`
         }
       });
       return response.ok;
@@ -80,13 +86,14 @@ export class ZhipuAIClient {
 }
 
 export function createZhipuAIClient(): ZhipuAIClient | null {
-  const apiKey = process.env.NEXT_PUBLIC_ZHIPU_API_KEY;
+  // Use server-side environment variable (not NEXT_PUBLIC_*) to keep API key secure
+  const apiKey = process.env.ZHIPU_API_KEY;
   if (!apiKey) {
-    console.warn('Zhipu AI API key not found, content generation disabled');
+    console.warn("Zhipu AI API key not found, content generation disabled");
     return null;
   }
 
-  const model = (process.env.NEXT_PUBLIC_ZHIPU_MODEL as 'glm-4' | 'glm-4-plus') || 'glm-4';
+  const model = (process.env.ZHIPU_MODEL as "glm-4" | "glm-4-plus") || "glm-4";
 
   return new ZhipuAIClient({ apiKey, model });
 }

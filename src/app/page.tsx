@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { isLikelyBot } from "@/lib/botDetection";
 import { OSShell } from "@/shared/components/OSShell";
 import { DMSidebar } from "@/shared/components/DMSidebar";
 import { useBreachTransition } from "@/shared/components/TransitionOverlay";
@@ -30,6 +31,7 @@ import type { DMChoice, LogEntry } from "@/content/types";
 import { ContentLoadingScreen } from "@/components/ContentLoadingScreen";
 import { createContentGenerator } from "@/services/contentGenerator";
 import { useContentStore } from "@/stores/contentStore";
+import { useShallow } from "zustand/react/shallow";
 
 type GameStep =
   | "start"
@@ -48,12 +50,16 @@ type GameStep =
 
 export default function Home() {
   const [step, setStep] = useState<GameStep>(() => {
-    if (process.env.NODE_ENV === "development" && typeof window !== "undefined") {
+    if (
+      process.env.NODE_ENV === "development" &&
+      typeof window !== "undefined"
+    ) {
       const p = new URLSearchParams(window.location.search).get("step");
       if (p) return p as GameStep;
     }
     return "start";
   });
+
   const [showScoreboard, setShowScoreboard] = useState(false);
   const phase = useGameStore((s) => s.phase);
   const setPhase = useGameStore((s) => s.setPhase);
@@ -64,7 +70,16 @@ export default function Home() {
   const { trigger: triggerBreach } = useBreachTransition();
 
   // Content store state
-  const { preBreachEmails, breachEmails, logEntries, socialEngineeringDMs, npcBadAdvice, lolbins, wifi, isContentReady } = useContentStore(s => ({
+  const {
+    preBreachEmails,
+    breachEmails,
+    logEntries,
+    socialEngineeringDMs,
+    npcBadAdvice,
+    lolbins,
+    wifi,
+    isContentReady
+  } = useContentStore(useShallow((s) => ({
     preBreachEmails: s.preBreachEmails,
     breachEmails: s.breachEmails,
     logEntries: s.logEntries,
@@ -72,14 +87,19 @@ export default function Home() {
     npcBadAdvice: s.npcBadAdvice,
     lolbins: s.lolbins,
     wifi: s.wifi,
-    isContentReady: s.isContentReady,
-  }));
+    isContentReady: s.isContentReady
+  })));
   const adjustTrust = useScoreStore((s) => s.adjustTrust);
   const addAction = useScoreStore((s) => s.addAction);
   const addFlag = useNarrativeStore((s) => s.addFlag);
   const addTimelineEntry = useNarrativeStore((s) => s.addTimelineEntry);
   const [showWiki, setShowWiki] = useState(false);
-  const [wikiTab, setWikiTab] = useState<"social-engineering" | "network-security" | "log-analysis" | "incident-response">("social-engineering");
+  const [wikiTab, setWikiTab] = useState<
+    | "social-engineering"
+    | "network-security"
+    | "log-analysis"
+    | "incident-response"
+  >("social-engineering");
   const [dmReveal, setDmReveal] = useState(0);
   const [dmDone, setDmDone] = useState(false);
   const [flaggedLogs, setFlaggedLogs] = useState<LogEntry[]>([]);
@@ -89,70 +109,133 @@ export default function Home() {
 
   // Content generation state
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState({ current: '', total: 0 });
-  const [retryState, setRetryState] = useState<{ attempt: number; max: number } | undefined>();
+  const [generationProgress, setGenerationProgress] = useState({
+    current: "",
+    total: 0
+  });
+  const [retryState, setRetryState] = useState<
+    { attempt: number; max: number } | undefined
+  >();
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [generationDisabled, setGenerationDisabled] = useState(false);
   const contentStore = useContentStore();
   const generator = createContentGenerator();
+  const generationInProgressRef = useRef(false);
+  const userInteractedRef = useRef(false);
+  const contentStoreRef = useRef(contentStore); // Ref to prevent infinite loops
 
-  // Initialize content generation
+  // Keep ref in sync with store
   useEffect(() => {
-    const initContent = async () => {
-      // Try to restore from localStorage first
-        // Ensure store is hydrated before using it
-        // Ensure store is hydrated before using it
-        const storeReady = contentStore.sessionId !== null || contentStore.preBreachEmails.length > 0;
-      contentStore.restoreFromStorage();
+    contentStoreRef.current = contentStore;
+  }, [contentStore]);
 
-      if (contentStore.isContentReady()) {
+  // Initialize content generation (only after user login/MFA completion)
+  useEffect(() => {
+    // Don't generate content on start, login or mfa steps
+    if (step === "start" || step === "login" || step === "mfa") {
+      return;
+    }
+
+    // Prevent duplicate generation
+    if (generationInProgressRef.current) {
+      return;
+    }
+
+    const initContent = async () => {
+      // Check for cached content from previous sessions
+      if (contentStoreRef.current.isContentReady()) {
         // Content already cached, skip generation
+        setIsGenerating(false);
+        return;
+      }
+
+      // Try to restore from localStorage first
+      contentStoreRef.current.restoreFromStorage();
+
+      if (contentStoreRef.current.isContentReady()) {
+        // Content restored from storage, skip generation
         setIsGenerating(false);
         return;
       }
 
       // Generate new session ID
       const sessionId = crypto.randomUUID();
-      contentStore.setSessionId(sessionId);
+      contentStoreRef.current.setSessionId(sessionId);
       gameStore.setSessionId(sessionId);
 
       if (!generator) {
+        console.log('Generator not available, using fallback content');
         // Fallback to offline content
-        contentStore.restoreFromStorage();
+        contentStoreRef.current.setIsOfflineContent(true);
         setIsGenerating(false);
         return;
       }
 
+      // Set flag to prevent duplicate requests
+      generationInProgressRef.current = true;
       setIsGenerating(true);
-      setGenerationProgress({ current: 'Pre-breach emails', total: 0 });
+      setGenerationProgress({ current: "Pre-breach emails", total: 0 });
 
       try {
-        const locale = gameStore.contentLocale;
-        const result = await generator.generateAll({ sessionId, locale, temperature: 0.9 });
+        const contentLocale = useGameStore.getState().contentLocale;
+        console.log('Starting content generation with generator:', !!generator);
+        const result = await generator.generateAll({
+          sessionId,
+          locale: contentLocale,
+          temperature: 0.9
+        });
 
-        contentStore.setPreBreachEmails(result.preBreachEmails);
-        contentStore.setBreachEmails(result.breachEmails);
-        contentStore.setLogEntries(result.logEntries);
-        contentStore.setSocialEngineeringDMs(result.socialEngineeringDMs);
-        contentStore.setNPCBadAdvice(result.npcBadAdvice);
-        contentStore.setLOLBins(result.lolbins);
-        contentStore.setWiFi(result.wifi);
-        contentStore.setIsOfflineContent(result.isOfflineContent);
+        // Server has already parsed the JSON strings into arrays
+        contentStoreRef.current.setPreBreachEmails(result.preBreachEmails);
+        contentStoreRef.current.setBreachEmails(result.breachEmails);
+        contentStoreRef.current.setLogEntries(result.logEntries);
+        contentStoreRef.current.setSocialEngineeringDMs(result.socialEngineeringDMs);
+        contentStoreRef.current.setNPCBadAdvice(result.npcBadAdvice);
+        contentStoreRef.current.setLOLBins(result.lolbins);
+        contentStoreRef.current.setWiFi(result.wifi);
+        contentStoreRef.current.setIsOfflineContent(result.isOfflineContent);
 
-        contentStore.persistToStorage();
-      } catch (error) {
-        console.error('Content generation failed:', error);
-        contentStore.setIsOfflineContent(true);
-      } finally {
+        contentStoreRef.current.persistToStorage();
+        setGenerationError(null); // Clear any previous error
         setIsGenerating(false);
+        generationInProgressRef.current = false;
+      } catch (error: any) {
+        console.error("Content generation failed:", error);
+
+        // Check for rate limit errors and disable further generation
+        if (error.message && (
+          error.message.includes('Rate limit') ||
+          error.message.includes('Too Many Requests') ||
+          error.message.includes('Please wait') ||
+          error.message.includes('Too many errors')
+        )) {
+          setGenerationError(error.message);
+          setGenerationDisabled(true); // Disable generation to prevent hammering
+          console.warn('Rate limit hit, disabling content generation for this session');
+        }
+
+        contentStoreRef.current.setIsOfflineContent(true);
+        setIsGenerating(false);
+        generationInProgressRef.current = false;
       }
     };
+
+    initContent();
+  }, [step, generator]);
 
   // Dev shortcut: set breach visual mode when ?step= targets a post-breach phase
   useEffect(() => {
     if (process.env.NODE_ENV !== "development") return;
     const p = new URLSearchParams(window.location.search).get("step");
-    if (p && (p.startsWith("breach-") || p.startsWith("investigation-") || p === "debrief")) {
+    if (
+      p &&
+      (p.startsWith("breach-") ||
+        p.startsWith("investigation-") ||
+        p === "debrief")
+    ) {
       setVisualMode("breach");
     }
+  }, [setVisualMode]);
 
   const handleDMChoice = useCallback(
     (messageId: string, choice: DMChoice) => {
@@ -161,7 +244,7 @@ export default function Home() {
         addAction({
           id: `dm-${messageId}-${choice.id}`,
           ...choice.scoreEffect,
-          label: choice.label,
+          label: choice.label
         });
       }
       if (choice.flag) addFlag(choice.flag);
@@ -170,10 +253,12 @@ export default function Home() {
         id: `dm-${messageId}`,
         phase: "onboarding",
         description: `DM response: "${choice.label}"`,
-        decisionKey: messageId,
+        decisionKey: messageId
       });
 
-      const dmMessages = isContentReady() ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
+      const dmMessages = isContentReady()
+        ? socialEngineeringDMs
+        : SOCIAL_ENGINEERING_DM;
       const nextIdx = dmMessages.findIndex(
         (m) => m.id === choice.nextMessageId
       );
@@ -184,7 +269,14 @@ export default function Home() {
         }, 1000);
       }
     },
-    [adjustTrust, addAction, addFlag, addTimelineEntry, isContentReady, socialEngineeringDMs]
+    [
+      adjustTrust,
+      addAction,
+      addFlag,
+      addTimelineEntry,
+      isContentReady,
+      socialEngineeringDMs
+    ]
   );
 
   const handleNpcChoice = useCallback(
@@ -194,7 +286,7 @@ export default function Home() {
         addAction({
           id: `npc-${messageId}-${choice.id}`,
           ...choice.scoreEffect,
-          label: choice.label,
+          label: choice.label
         });
       }
       if (choice.flag) addFlag(choice.flag);
@@ -203,7 +295,7 @@ export default function Home() {
         id: `npc-${messageId}`,
         phase: "investigation",
         description: `NPC advice response: "${choice.label}"`,
-        decisionKey: messageId,
+        decisionKey: messageId
       });
 
       // Reveal next NPC after delay
@@ -213,9 +305,17 @@ export default function Home() {
           setNpcDmIndex((i) => i + 1);
           setNpcDmReveal((r) => r + 1);
         }
-      }, 1500);
+      }, 1000);
     },
-    [adjustTrust, addAction, addFlag, addTimelineEntry, npcDmIndex, isContentReady, npcBadAdvice]
+    [
+      adjustTrust,
+      addAction,
+      addFlag,
+      addTimelineEntry,
+      npcDmIndex,
+      isContentReady,
+      npcBadAdvice
+    ]
   );
 
   const handleEmailComplete = useCallback(
@@ -240,7 +340,7 @@ export default function Home() {
         category: "phishingIQ",
         points,
         maxPoints: 125,
-        label: `Email triage: ${total}/${max} correct`,
+        label: `Email triage: ${total}/${max} correct`
       });
 
       if (correctPhishing === phishingEmails.length) {
@@ -250,12 +350,12 @@ export default function Home() {
       addTimelineEntry({
         id: "email-triage",
         phase: "breach",
-        description: `Email triage completed: ${total}/${max} correct`,
+        description: `Email triage completed: ${total}/${max} correct`
       });
 
       await changeStep("breach-password");
     },
-    [addAction, addFlag, addTimelineEntry, changeStep]
+    [addAction, addFlag, addTimelineEntry, changeStep, isContentReady, breachEmails]
   );
 
   // Start screen (full screen, no OS shell)
@@ -272,11 +372,12 @@ export default function Home() {
     return (
       <MFAPuzzle
         onComplete={() => {
+          userInteractedRef.current = true; // Mark user as having interacted
           changeStep("onboarding-portal");
-          setTimeout(() => setDmReveal(1), 2000);   // James informational
-          setTimeout(() => setDmReveal(2), 4000);   // David Park choice
-          setTimeout(() => setDmReveal(3), 7000);   // Sarah first message
-          setTimeout(() => setDmReveal(4), 10000);  // Sarah API key request
+          setTimeout(() => setDmReveal(1), 2000); // James informational
+          setTimeout(() => setDmReveal(2), 4000); // David Park choice
+          setTimeout(() => setDmReveal(3), 7000); // Sarah first message
+          setTimeout(() => setDmReveal(4), 10000); // Sarah API key request
         }}
       />
     );
@@ -290,8 +391,11 @@ export default function Home() {
       id: "email",
       title: `${teamName} Mail`,
       content: (
-        <EmailClient emails={isContentReady() ? preBreachEmails : PRE_BREACH_EMAILS} onComplete={() => {}} />
-      ),
+        <EmailClient
+          emails={isContentReady() ? preBreachEmails : PRE_BREACH_EMAILS}
+          onComplete={() => {}}
+        />
+      )
     });
     windows.push({
       id: "welcome",
@@ -323,9 +427,12 @@ export default function Home() {
               {[
                 "Read welcome email",
                 "Review security policy",
-                "Complete MFA setup",
+                "Complete MFA setup"
               ].map((item) => (
-                <li key={item} className="flex items-center gap-2 text-sm text-primary">
+                <li
+                  key={item}
+                  className="flex items-center gap-2 text-sm text-primary"
+                >
                   <svg
                     width="16"
                     height="16"
@@ -334,8 +441,20 @@ export default function Home() {
                     className="shrink-0"
                     style={{ color: "var(--accent)" }}
                   >
-                    <circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="1.5" />
-                    <path d="M5 8l2 2 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    <circle
+                      cx="8"
+                      cy="8"
+                      r="7"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                    />
+                    <path
+                      d="M5 8l2 2 4-4"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                   <span>{item}</span>
                 </li>
@@ -352,12 +471,15 @@ export default function Home() {
               {(
                 [
                   { label: "IT Helpdesk", tab: "incident-response" },
-                  { label: "Security Portal", tab: "social-engineering" },
+                  { label: "Security Portal", tab: "social-engineering" }
                 ] as const
               ).map(({ label, tab }) => (
                 <button
                   key={label}
-                  onClick={() => { setWikiTab(tab); setShowWiki(true); }}
+                  onClick={() => {
+                    setWikiTab(tab);
+                    setShowWiki(true);
+                  }}
                   className="px-3 py-1.5 rounded border border text-xs text-secondary bg-window-sunken hover:bg-window hover:text-primary transition-colors"
                 >
                   {label}
@@ -388,7 +510,7 @@ export default function Home() {
             </div>
           )}
         </div>
-      ),
+      )
     });
   }
 
@@ -397,8 +519,11 @@ export default function Home() {
       id: "email",
       title: `${teamName} Mail — INCIDENT MODE`,
       content: (
-        <EmailClient emails={isContentReady() ? breachEmails : BREACH_EMAILS} onComplete={handleEmailComplete} />
-      ),
+        <EmailClient
+          emails={isContentReady() ? breachEmails : BREACH_EMAILS}
+          onComplete={handleEmailComplete}
+        />
+      )
     });
   }
 
@@ -406,7 +531,7 @@ export default function Home() {
     windows.push({
       id: "password",
       title: "Password Reset Required",
-      content: <PasswordPuzzle onComplete={() => changeStep("breach-wifi")} />,
+      content: <PasswordPuzzle onComplete={() => changeStep("breach-wifi")} />
     });
   }
 
@@ -420,13 +545,13 @@ export default function Home() {
             addTimelineEntry({
               id: "breach-complete",
               phase: "breach",
-              description: "Breach phase completed",
+              description: "Breach phase completed"
             });
             setPhase("investigation");
             await changeStep("investigation-containment");
           }}
         />
-      ),
+      )
     });
   }
 
@@ -442,7 +567,7 @@ export default function Home() {
             setNpcDmReveal(1);
           }}
         />
-      ),
+      )
     });
   }
 
@@ -455,7 +580,7 @@ export default function Home() {
           entries={isContentReady() ? logEntries : LOG_ENTRIES}
           onFlaggedChange={setFlaggedLogs}
         />
-      ),
+      )
     });
     // Flagged events panel as second window
     windows.push({
@@ -483,7 +608,7 @@ export default function Home() {
                             ? "#e63946"
                             : log.level === "WARN"
                               ? "#ffdd57"
-                              : "#e0e0e0",
+                              : "#e0e0e0"
                       }}
                     >
                       [{log.level}]
@@ -500,7 +625,9 @@ export default function Home() {
           )}
           <button
             onClick={async () => {
-              const malicious = (isContentReady() ? logEntries : LOG_ENTRIES).filter((e) => e.isMalicious);
+              const malicious = (
+                isContentReady() ? logEntries : LOG_ENTRIES
+              ).filter((e) => e.isMalicious);
               const correctFlags = flaggedLogs.filter(
                 (f) => f.isMalicious
               ).length;
@@ -518,13 +645,13 @@ export default function Home() {
                   )
                 ),
                 maxPoints: 25,
-                label: `Log analysis: ${correctFlags} correct flags, ${falseFlags} false positives`,
+                label: `Log analysis: ${correctFlags} correct flags, ${falseFlags} false positives`
               });
 
               addTimelineEntry({
                 id: "log-analysis",
                 phase: "investigation",
-                description: `Flagged ${flaggedLogs.length} log entries (${correctFlags} malicious)`,
+                description: `Flagged ${flaggedLogs.length} log entries (${correctFlags} malicious)`
               });
 
               await changeStep("investigation-lolbins");
@@ -534,7 +661,7 @@ export default function Home() {
             {flaggedLogs.length > 0 ? "Submit Flagged Events" : "Continue →"}
           </button>
         </div>
-      ),
+      )
     });
   }
 
@@ -547,7 +674,7 @@ export default function Home() {
           processes={isContentReady() ? lolbins : LOLBINS}
           onComplete={() => changeStep("investigation-ioc")}
         />
-      ),
+      )
     });
   }
 
@@ -556,8 +683,10 @@ export default function Home() {
       id: "ioc",
       title: "IOC Documentation",
       content: (
-        <IOCExtraction onComplete={() => changeStep("investigation-rotation")} />
-      ),
+        <IOCExtraction
+          onComplete={() => changeStep("investigation-rotation")}
+        />
+      )
     });
   }
 
@@ -571,13 +700,13 @@ export default function Home() {
             addTimelineEntry({
               id: "investigation-complete",
               phase: "investigation",
-              description: "Investigation phase completed",
+              description: "Investigation phase completed"
             });
             setPhase("debrief");
             await changeStep("debrief");
           }}
         />
-      ),
+      )
     });
   }
 
@@ -585,7 +714,7 @@ export default function Home() {
     windows.push({
       id: "debrief",
       title: "Incident Debrief",
-      content: <DebriefPage />,
+      content: <DebriefPage />
     });
   }
 
@@ -594,13 +723,18 @@ export default function Home() {
   const dmSidebar =
     step === "onboarding-portal" ? (
       <DMSidebar
-        messages={isContentReady() ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM}
+        messages={
+          isContentReady() ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM
+        }
         onChoice={handleDMChoice}
         revealUpTo={dmReveal}
       />
     ) : isInvestigation ? (
       <DMSidebar
-        messages={(isContentReady() ? npcBadAdvice : NPC_BAD_ADVICE).slice(0, npcDmIndex + 1)}
+        messages={(isContentReady() ? npcBadAdvice : NPC_BAD_ADVICE).slice(
+          0,
+          npcDmIndex + 1
+        )}
         onChoice={handleNpcChoice}
         revealUpTo={npcDmReveal}
       />
@@ -611,7 +745,7 @@ export default function Home() {
     windows.push({
       id: "scoreboard",
       title: "Scoreboard",
-      content: <Scoreboard />,
+      content: <Scoreboard />
     });
   }
 
@@ -620,7 +754,7 @@ export default function Home() {
     windows.push({
       id: "wiki",
       title: "Security Wiki",
-      content: <WikiPanel key={wikiTab} initialTab={wikiTab} />,
+      content: <WikiPanel key={wikiTab} initialTab={wikiTab} />
     });
   }
 
@@ -630,9 +764,10 @@ export default function Home() {
         <ContentLoadingScreen
           progress={generationProgress}
           retryState={retryState}
+          error={generationError}
           onCancel={() => {
             // Cancel generation and use fallback
-            contentStore.setIsOfflineContent(true);
+            contentStoreRef.current.setIsOfflineContent(true);
             setIsGenerating(false);
           }}
         />

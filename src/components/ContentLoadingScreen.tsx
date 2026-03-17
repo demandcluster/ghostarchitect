@@ -12,6 +12,7 @@ interface ContentLoadingScreenProps {
     attempt: number;
     max: number;
   };
+  error?: string | null;
   onCancel: () => void;
 }
 
@@ -25,7 +26,7 @@ const STEPS = [
   'WiFi networks',
 ] as const;
 
-export function ContentLoadingScreen({ progress, retryState, onCancel }: ContentLoadingScreenProps) {
+export function ContentLoadingScreen({ progress, retryState, error, onCancel }: ContentLoadingScreenProps) {
   const [stepIndex, setStepIndex] = useState(0);
 
   useEffect(() => {
@@ -54,6 +55,16 @@ export function ContentLoadingScreen({ progress, retryState, onCancel }: Content
         <h2 className="text-xl font-bold mb-4 text-center" style={{ color: 'var(--text-primary)' }}>
           Generating Scenario Content...
         </h2>
+
+        {error && (
+          <div className="mb-4 p-3 rounded text-sm text-center" style={{
+            background: 'var(--bg-window-sunken)',
+            border: '1px solid var(--warning)',
+            color: 'var(--warning)'
+          }}>
+            ⚠️ {error}
+          </div>
+        )}
 
         <div className="space-y-2">
           {STEPS.map((step, idx) => (
