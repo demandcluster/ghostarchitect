@@ -145,8 +145,6 @@ export default function Home() {
         setIsGenerating(false);
       }
     };
-    }, []); // Run once on mount
-    }, []); // Run once on mount
 
   // Dev shortcut: set breach visual mode when ?step= targets a post-breach phase
   useEffect(() => {
@@ -155,7 +153,6 @@ export default function Home() {
     if (p && (p.startsWith("breach-") || p.startsWith("investigation-") || p === "debrief")) {
       setVisualMode("breach");
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleDMChoice = useCallback(
     (messageId: string, choice: DMChoice) => {
