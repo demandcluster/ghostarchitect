@@ -18,6 +18,7 @@ interface GameState {
   fakeDomain: string;
   teamName: string;
   logoUrl: string | null;
+  contentLocale: string;
 
   setPhase: (phase: Phase) => void;
   setVisualMode: (mode: VisualMode) => void;
@@ -29,6 +30,7 @@ interface GameState {
   setFakeDomain: (domain: string) => void;
   setTeamName: (name: string) => void;
   setLogoUrl: (url: string | null) => void;
+  setContentLocale: (locale: string) => void;
   reset: () => void;
 }
 
@@ -56,6 +58,7 @@ const initialState = {
   fakeDomain: savedFakeDomain || "nexuscorp.com",
   teamName: savedTeamName || "NexusCorp",
   logoUrl: savedLogoUrl || null,
+  contentLocale: 'en',
 };
 
 export const useGameStore = create<GameState>((set) => ({
@@ -104,6 +107,7 @@ export const useGameStore = create<GameState>((set) => ({
     }
     set({ logoUrl: url });
   },
+  setContentLocale: (locale) => set({ contentLocale: locale }),
   reset: () => {
     if (typeof window !== 'undefined') {
       ['playerHandle', 'teamId', 'sessionId', 'fakeDomain', 'teamName', 'logoUrl']
