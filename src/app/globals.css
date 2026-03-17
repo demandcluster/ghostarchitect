@@ -3,7 +3,7 @@
 /* Corporate theme (default) */
 :root,
 [data-theme="corporate"] {
-  --bg-primary:       #0f172a;
+  --bg-primary:       #00010c;
   --bg-secondary:     #1e293b;
   --bg-tertiary:      #334155;
   --bg-glass:         rgba(255,255,255,0.06);
@@ -293,5 +293,15 @@ body {
   .input-base:focus {
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-ring);
+  }
+
+  /* Scanline animation */
+  @keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+
+  .animate-scan {
+    animation: scan 2s linear infinite;
   }
 }

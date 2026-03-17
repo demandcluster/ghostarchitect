@@ -286,9 +286,19 @@ export default function Home() {
       if (nextIdx >= 0) {
         setTimeout(() => {
           setDmReveal(nextIdx + 1);
-          setDmDone(true);
         }, 1000);
       }
+
+      // Check if all messages are now revealed
+      const totalMessages = dmMessages.length;
+      setTimeout(() => {
+        setDmReveal((current) => {
+          if (current >= totalMessages) {
+            setDmDone(true);
+          }
+          return current;
+        });
+      }, 1100);
     },
     [
       adjustTrust,
@@ -296,7 +306,8 @@ export default function Home() {
       addFlag,
       addTimelineEntry,
       isContentReady,
-      socialEngineeringDMs
+      socialEngineeringDMs,
+      setDmDone
     ]
   );
 
@@ -693,14 +704,38 @@ export default function Home() {
   }
 
   if (step === "investigation-lolbins") {
+    const npcDms = isContentReady() ? npcBadAdvice : NPC_BAD_ADVICE;
+    const allNpcMessagesAnswered = npcDmIndex >= npcDms.length;
+
     windows.push({
       id: "taskmanager",
       title: "Task Manager — Process Analysis",
       content: (
-        <TaskManagerView
-          processes={isContentReady() ? lolbins : LOLBINS}
-          onComplete={() => changeStep("investigation-ioc")}
-        />
+        <div className="h-full flex flex-col">
+          <div className="flex-1 overflow-auto">
+            <TaskManagerView
+              processes={isContentReady() ? lolbins : LOLBINS}
+              onComplete={() => {}}
+            />
+          </div>
+          {allNpcMessagesAnswered && (
+            <div className="p-4 border-t" style={{ borderColor: 'var(--border)' }}>
+              <button
+                onClick={() => changeStep("investigation-ioc")}
+                className="w-full px-4 py-2 rounded text-sm font-semibold text-white transition-colors"
+                style={{ background: 'var(--accent)' }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = 'var(--accent-hover)')
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = 'var(--accent)')
+                }
+              >
+                Continue to IOC Analysis
+              </button>
+            </div>
+          )}
+        </div>
       )
     });
   }
@@ -763,7 +798,7 @@ export default function Home() {
           npcDmIndex + 1
         )}
         onChoice={handleNpcChoice}
-        revealUpTo={npcDmReveal}
+        revealUpTo={npcDmIndex + 1}
       />
     ) : undefined;
 

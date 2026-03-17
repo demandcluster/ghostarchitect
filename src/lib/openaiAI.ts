@@ -36,7 +36,7 @@ export class OpenAIClient {
   constructor(config: OpenAIConfig) {
     this.config = {
       baseURL: config.baseURL || "https://api.openai.com/v1/",
-      model: config.model || "gpt-4o-mini",
+      model: config.model || "gpt-3.5-turbo",
       ...config
     };
   }
@@ -61,14 +61,31 @@ IMPORTANT: Return ONLY a JSON object with these exact top-level keys:
 - preBreachEmails (array of email objects with id, from, to, subject, date, body, headers object, isPhishing, indicators array, difficulty string)
 - breachEmails (array of email objects with same structure)
 - logEntries (array of log objects with id, timestamp, level enum, source, message, isMalicious, attackTechnique, mitreId)
-- socialEngineeringDMs (array of 4-6 DM objects with id, sender, senderRole, avatar (URL pattern: https://api.dicebear.com/9.x/initials/svg?seed={sender_name} where {sender_name} is replaced with actual sender name from responses), text, timestamp, choices array containing at least 3 choices each)
-- npcBadAdvice (array of 4-6 DM objects with same structure containing at least 3 choices each, with avatar using same URL pattern with sender name)
+- socialEngineeringDMs (array of 6-10 DM objects with id, sender, senderRole, avatar (URL pattern: https://api.dicebear.com/9.x/initials/svg?seed={sender_name} where {sender_name} is replaced with actual sender name from responses), text, timestamp, choices array)
+- npcBadAdvice (array of 6-10 DM objects with same structure, with avatar using same URL pattern with sender name)
 - lolbins (array of process objects with id, processName, pid, commandLine, isMalicious, description, mitreId)
 - wifi (array of WiFi objects with ssid, bssid, signalStrength, authType enum, isEvilTwin, indicators array)
 
-Each DM message (socialEngineeringDMs and npcBadAdvice) MUST have a non-empty choices array with at least 3 options. Each choice must have id, label, and isCorrect fields. Include both a single correct correct (safe) and incorrect (dangerous) choices. Only one option should be correct unless the message is social and there are only good answers. Make sure to include some legitimate/helpful messages alongside the malicious ones. IMPORTANT: For avatar URLs, use the format pattern: https://api.dicebear.com/9.x/initials/svg?seed={sender_name} where {sender_name} will be replaced with the actual sender name from the response.
+DM MESSAGE STRUCTURE RULES:
+1. Each DM message can have EITHER a choices array OR no choices (informational/follow-up message)
+2. Messages WITH choices must have at least 3 choices. Each choice needs: id, label, isCorrect, nextMessageId
+3. Messages WITHOUT choices are follow-up/feedback messages (no user response needed)
+4. Use nextMessageId in choices to chain to follow-up messages
+5. Include both correct (safe) and incorrect (dangerous) choices
+6. Not all messages need choices - include informational messages and follow-up responses
+7. Timestamps control reveal order: use -1 for initial welcome, 0+ for subsequent, same timestamp = revealed together
+8. For correct choices, the nextMessageId should point to a positive feedback message
+9. For incorrect choices, the nextMessageId should point to a warning/correction message
 
-Use locale: ${config.locale}. Generate realistic, educational content. Ensure DM messages include a mix of legitimate security advice (correct choices available) and malicious social engineering attempts (trap choices). Not all messages should be malicious traps - include helpful guidance messages as well.`;
+MESSAGE FLOW EXAMPLE:
+- Message A (timestamp 0) with choices, each choice has nextMessageId pointing to B or C
+- Message B (timestamp 1) - positive feedback after correct choice
+- Message C (timestamp 1) - warning after incorrect choice
+- Message D (timestamp 2) - next scenario message with choices
+
+IMPORTANT: For avatar URLs, use the format pattern: https://api.dicebear.com/9.x/initials/svg?seed={sender_name} where {sender_name} will be replaced with the actual sender name from the response.
+
+Use locale: ${config.locale}. Generate realistic, educational content. Ensure DM messages include a mix of legitimate security advice (correct choices available), malicious social engineering attempts (trap choices), and follow-up feedback messages. Not all messages should have choices - include helpful guidance and feedback messages.`;
 
     try {
       const response = await fetch(`${this.config.baseURL}chat/completions`, {
@@ -255,7 +272,7 @@ export function createOpenAIClient(): OpenAIClient | null {
     return null;
   }
 
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const model = process.env.OPENAI_MODEL || "gpt-3.5-turbo";
 
   return new OpenAIClient({ apiKey, model });
 }

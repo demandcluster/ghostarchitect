@@ -26,8 +26,20 @@ const STEPS = [
   'WiFi networks',
 ] as const;
 
+const LOADING_MESSAGES = [
+  "Analyzing threat patterns...",
+  "Simulating attack vectors...",
+  "Generating phishing emails...",
+  "Crafting log entries...",
+  "Building social engineering scenarios...",
+  "Preparing incident response data...",
+  "Finalizing content..."
+] as const;
+
 export function ContentLoadingScreen({ progress, retryState, error, onCancel }: ContentLoadingScreenProps) {
   const [stepIndex, setStepIndex] = useState(0);
+  const [fakeProgress, setFakeProgress] = useState(0);
+  const [currentMessage, setCurrentMessage] = useState<string>(LOADING_MESSAGES[0]);
 
   useEffect(() => {
     const currentIndex = STEPS.indexOf(progress.current as any);
@@ -35,6 +47,31 @@ export function ContentLoadingScreen({ progress, retryState, error, onCancel }: 
       setStepIndex(currentIndex);
     }
   }, [progress.current]);
+
+  // Fake progress animation
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFakeProgress((prev) => {
+        if (prev >= 95) return prev;
+        const increment = Math.random() * 3 + 0.5;
+        return Math.min(95, prev + increment);
+      });
+    }, 200);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Rotate loading messages
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentMessage((prev) => {
+        const idx = LOADING_MESSAGES.indexOf(prev as any);
+        return LOADING_MESSAGES[(idx + 1) % LOADING_MESSAGES.length];
+      });
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const getStatusIcon = (step: string, idx: number) => {
     if (idx < stepIndex) return '✓';
@@ -65,6 +102,39 @@ export function ContentLoadingScreen({ progress, retryState, error, onCancel }: 
             ⚠️ {error}
           </div>
         )}
+
+        {/* Animated loading message */}
+        <div className="mb-4 p-3 rounded" style={{
+          background: 'var(--bg-window-sunken)',
+          border: '1px solid var(--accent)',
+        }}>
+          <motion.p
+            key={currentMessage}
+            initial={{ opacity: 0, y: 5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            className="text-sm text-center"
+            style={{ color: 'var(--accent)' }}
+          >
+            {currentMessage}
+          </motion.p>
+        </div>
+
+        {/* Progress bar */}
+        <div className="mb-4">
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--bg-window-sunken)' }}>
+            <motion.div
+              className="h-full rounded-full transition-all duration-300"
+              style={{ background: 'var(--accent)' }}
+              initial={{ width: '0%' }}
+              animate={{ width: `${fakeProgress}%` }}
+              transition={{ duration: 0.3 }}
+            />
+          </div>
+          <div className="text-xs text-center mt-1" style={{ color: 'var(--text-muted)' }}>
+            {Math.round(fakeProgress)}% complete
+          </div>
+        </div>
 
         <div className="space-y-2">
           {STEPS.map((step, idx) => (
