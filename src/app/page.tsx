@@ -99,6 +99,7 @@ export default function Home() {
     const initContent = async () => {
       // Try to restore from localStorage first
         // Ensure store is hydrated before using it
+        // Ensure store is hydrated before using it
         const storeReady = contentStore.sessionId !== null || contentStore.preBreachEmails.length > 0;
       contentStore.restoreFromStorage();
 
@@ -144,8 +145,7 @@ export default function Home() {
         setIsGenerating(false);
       }
     };
-
-    initContent();
+    }, []); // Run once on mount
     }, []); // Run once on mount
 
   // Dev shortcut: set breach visual mode when ?step= targets a post-breach phase
