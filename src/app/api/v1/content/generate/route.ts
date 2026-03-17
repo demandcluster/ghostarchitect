@@ -4,8 +4,8 @@ import type { GenerationConfig } from "@/services/contentGenerator";
 
 // Simple in-memory rate limiting for API route
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT_WINDOW = 300000; // 5 minutes (more aggressive)
-const RATE_LIMIT_MAX_REQUESTS = 1; // Max 1 request per 5 minutes per IP (very conservative)
+const RATE_LIMIT_WINDOW = 120000; // 5 minutes (more aggressive)
+const RATE_LIMIT_MAX_REQUESTS = 4; // Max 4 request per 2 minutes per IP (very conservative)
 
 export async function POST(request: NextRequest) {
   try {
@@ -85,7 +85,9 @@ export async function POST(request: NextRequest) {
     if (error.statusCode === 429) {
       return NextResponse.json(
         {
-          error: error.message || "Rate limit exceeded. Please wait a few minutes before retrying.",
+          error:
+            error.message ||
+            "Rate limit exceeded. Please wait a few minutes before retrying.",
           isOffline: true
         },
         { status: 429 }
