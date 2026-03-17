@@ -105,6 +105,7 @@ export default function Home() {
   const [flaggedLogs, setFlaggedLogs] = useState<LogEntry[]>([]);
   const [npcDmReveal, setNpcDmReveal] = useState(0);
   const [npcDmIndex, setNpcDmIndex] = useState(0);
+  const [npcDmDone, setNpcDmDone] = useState(false);
   const { isTransitioning, changeStep } = useStepTransition(setStep);
 
   // Content generation state
@@ -256,7 +257,10 @@ export default function Home() {
 
   const handleDMChoice = useCallback(
     (messageId: string, choice: DMChoice) => {
-      if (choice.trustDelta) adjustTrust(choice.trustDelta);
+      // Game logic: correct choice = +10 trust, wrong choice = -10 trust
+      const trustAdjustment = choice.isCorrect ? 10 : -10;
+      adjustTrust(trustAdjustment);
+
       if (choice.scoreEffect) {
         addAction({
           id: `dm-${messageId}-${choice.id}`,
@@ -298,7 +302,10 @@ export default function Home() {
 
   const handleNpcChoice = useCallback(
     (messageId: string, choice: DMChoice) => {
-      if (choice.trustDelta) adjustTrust(choice.trustDelta);
+      // Game logic: correct choice = +10 trust, wrong choice = -10 trust
+      const trustAdjustment = choice.isCorrect ? 10 : -10;
+      adjustTrust(trustAdjustment);
+
       if (choice.scoreEffect) {
         addAction({
           id: `npc-${messageId}-${choice.id}`,
@@ -321,6 +328,9 @@ export default function Home() {
         if (npcDmIndex < npcDms.length - 1) {
           setNpcDmIndex((i) => i + 1);
           setNpcDmReveal((r) => r + 1);
+        } else {
+          // All NPC messages completed
+          setNpcDmDone(true);
         }
       }, 1000);
     },

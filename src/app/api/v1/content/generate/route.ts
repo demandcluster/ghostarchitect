@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GeminiAIClient } from "@/lib/geminiAI";
+import { OpenAIClient } from "@/lib/openaiAI";
 import type { GenerationConfig } from "@/services/contentGenerator";
 
 // Simple in-memory rate limiting for API route
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Use server-side environment variable (not NEXT_PUBLIC_*)
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
         { error: "API key not configured" },
@@ -56,19 +56,19 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as GenerationConfig;
 
     // Create client with server-side API key
-    const geminiClient = new GeminiAIClient({
+    const openaiClient = new OpenAIClient({
       apiKey,
-      model: (process.env.GEMINI_MODEL as any) || "gemini-1.5-flash"
+      model: process.env.OPENAI_MODEL || "gpt-4.1-mini"
     });
 
     // Generate content using batch API
-    const result = await geminiClient.generateBatch(body);
+    const result = await openaiClient.generateBatch(body);
 
     // Debug: Log raw response
-    console.log('[Content Generation] Raw API response:', JSON.stringify(result, null, 2));
+    console.log('[OpenAI Content Generation] Raw API response:', JSON.stringify(result, null, 2));
 
     // Validate that all required fields exist and are arrays
-    // Note: geminiClient.generateBatch already parses JSON, so we just validate arrays
+    // Note: openaiClient.generateBatch already parses JSON, so we just validate arrays
     try {
       const parsedResult = {
         preBreachEmails: Array.isArray(result.preBreachEmails) ? result.preBreachEmails : [],
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
         isOfflineContent: result.isOfflineContent
       };
 
-      console.log('[Content Generation] Parsed result:', {
+      console.log('[OpenAI Content Generation] Parsed result:', {
         preBreachEmails: parsedResult.preBreachEmails.length,
         breachEmails: parsedResult.breachEmails.length,
         logEntries: parsedResult.logEntries.length,
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json(parsedResult);
     } catch (parseError: any) {
-      console.error('[Content Generation] Validation error:', parseError.message);
+      console.error('[OpenAI Content Generation] Validation error:', parseError.message);
       return NextResponse.json(
         {
           error: 'Failed to validate generated content. API returned invalid format.',
@@ -104,7 +104,7 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error: any) {
-    console.error("Content generation error:", error);
+    console.error("OpenAI content generation error:", error);
 
     // Handle various error types with appropriate responses
     if (error.statusCode === 429) {

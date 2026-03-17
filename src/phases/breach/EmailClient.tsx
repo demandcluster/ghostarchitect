@@ -15,6 +15,8 @@ interface EmailClientProps {
 }
 
 function applyDomain(text: string, fakeDomain: string, teamName: string): string {
+  // Handle undefined/null text values from OpenAI-generated content
+  if (!text) return '';
   // Derive the base name from the fake domain (e.g. "acme.com" → "acme")
   const fakeBase = fakeDomain.split(".")[0];
   return text
@@ -28,21 +30,32 @@ function applyDomain(text: string, fakeDomain: string, teamName: string): string
 function brandEmail(email: Email, fakeDomain: string, teamName: string): Email {
   const sub = (s: string) => applyDomain(s, fakeDomain, teamName);
   const subOpt = (s?: string) => (s ? sub(s) : s);
+
+  // Ensure headers exist and are properly structured
+  const headers = email.headers || {
+    returnPath: '',
+    spf: '',
+    dkim: '',
+    dmarc: '',
+    xMailer: '',
+    replyTo: '',
+  };
+
   return {
     ...email,
-    from: sub(email.from),
-    to: sub(email.to),
-    subject: sub(email.subject),
-    body: sub(email.body),
+    from: sub(email.from ?? ''),
+    to: sub(email.to ?? ''),
+    subject: sub(email.subject ?? ''),
+    body: sub(email.body ?? ''),
     headers: {
-      returnPath: sub(email.headers.returnPath),
-      spf: sub(email.headers.spf),
-      dkim: sub(email.headers.dkim),
-      dmarc: sub(email.headers.dmarc),
-      xMailer: subOpt(email.headers.xMailer),
-      replyTo: subOpt(email.headers.replyTo),
+      returnPath: headers.returnPath ? sub(headers.returnPath) : '',
+      spf: headers.spf ? sub(headers.spf) : '',
+      dkim: headers.dkim ? sub(headers.dkim) : '',
+      dmarc: headers.dmarc ? sub(headers.dmarc) : '',
+      xMailer: headers.xMailer ? subOpt(headers.xMailer) : '',
+      replyTo: headers.replyTo ? subOpt(headers.replyTo) : '',
     },
-    indicators: email.indicators?.map(sub),
+    indicators: email.indicators?.map((i) => i || '') || [],
   };
 }
 

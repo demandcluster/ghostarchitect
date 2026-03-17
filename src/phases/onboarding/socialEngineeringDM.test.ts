@@ -5,12 +5,14 @@ import { useNarrativeStore } from "@/stores/narrativeStore";
 import { deriveFlags } from "@/engine/rules";
 import type { DMChoice } from "@/content/types";
 
-/** Simulates choosing a DM response — applies scoreEffect, trustDelta, and flag */
+/** Simulates choosing a DM response — applies scoreEffect, game-logic trust, and flag */
 function simulateDMChoice(choice: DMChoice) {
   const store = useScoreStore.getState();
   const narrative = useNarrativeStore.getState();
 
-  store.adjustTrust(choice.trustDelta);
+  // Game logic: correct choice = +10 trust, wrong choice = -10 trust
+  const trustAdjustment = choice.isCorrect ? 10 : -10;
+  store.adjustTrust(trustAdjustment);
 
   if (choice.scoreEffect) {
     store.addAction({
@@ -167,19 +169,6 @@ describe("socialEngineeringDM", () => {
   });
 
   describe("DM choice data integrity", () => {
-    it("bad choice has negative trustDelta", () => {
-      const choiceMsg = SOCIAL_ENGINEERING_DM.find((m) => m.choices)!;
-      const badChoice = choiceMsg.choices!.find((c) => !c.isCorrect)!;
-      expect(badChoice.trustDelta).toBeLessThan(0);
-    });
-
-    it("good choices have positive trustDelta", () => {
-      const choiceMsg = SOCIAL_ENGINEERING_DM.find((m) => m.choices)!;
-      const goodChoices = choiceMsg.choices!.filter((c) => c.isCorrect);
-      for (const choice of goodChoices) {
-        expect(choice.trustDelta).toBeGreaterThan(0);
-      }
-    });
 
     it("bad choice has flag for social engineering", () => {
       const choiceMsg = SOCIAL_ENGINEERING_DM.find((m) =>

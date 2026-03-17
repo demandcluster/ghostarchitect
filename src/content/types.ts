@@ -46,7 +46,6 @@ export interface DMChoice {
   id: string;
   label: string;
   isCorrect: boolean;
-  trustDelta: number;
   scoreEffect?: {
     category: "phishingIQ" | "passwordHygiene" | "networkSecurity" | "forensicSkill";
     points: number;

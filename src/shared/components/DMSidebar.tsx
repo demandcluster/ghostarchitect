@@ -58,17 +58,28 @@ function DMBubble({
     <div>
       {/* Avatar + name */}
       <div className="flex items-center gap-2 mb-1">
-        <div className="w-6 h-6 rounded-full text-accent text-[10px] font-bold flex items-center justify-center" style={{ background: "rgba(59,110,248,0.08)" }}>
-          {message.avatar}
-        </div>
-        <div>
-          <span className="text-xs font-medium" style={{ color: "#475569" }}>
-            {message.sender}
-          </span>
-          <span className="text-[10px] ml-1" style={{ color: "#94a3b8" }}>
-            {message.senderRole}
-          </span>
-        </div>
+        {message.avatar.startsWith('http://') || message.avatar.startsWith('https://') || message.avatar.startsWith('/') ? (
+          <img
+            src={message.avatar}
+            alt={message.sender}
+            className="w-6 h-6 rounded-full object-cover"
+            style={{ border: '2px solid rgba(59,110,248,0.2)' }}
+          />
+        ) : (
+          <div className="w-6 h-6 rounded-full text-accent text-[10px] font-bold flex items-center justify-center" style={{ background: "rgba(59,110,248,0.08)" }}>
+            {message.avatar}
+          </div>
+        )}
+      </div>
+
+      {/* Name and role */}
+      <div>
+        <span className="text-xs font-medium" style={{ color: "#475569" }}>
+          {message.sender}
+        </span>
+        <span className="text-[10px] ml-1" style={{ color: "#94a3b8" }}>
+          {message.senderRole}
+        </span>
       </div>
 
       {/* Message text */}
@@ -104,29 +115,27 @@ function DMBubble({
               {choice.label}
             </button>
           ))}
-
-          {/* Post-choice feedback */}
-          {chosen && (() => {
-            const picked = message.choices!.find((c) => c.id === chosen)!;
-            const delta = picked.trustDelta ?? 0;
-            return (
-              <div className="mt-1 px-3 py-1.5 rounded text-[11px] flex items-center gap-2" style={{
-                background: picked.isCorrect
-                  ? "rgba(22,163,74,0.08)"
-                  : "rgba(220,38,38,0.08)",
-                color: picked.isCorrect ? "#22c55e" : "#ef4444"
-              }}>
-                <span>{picked.isCorrect ? "✓ Good call." : "✗ Wrong call."}</span>
-                {delta !== 0 && (
-                  <span style={{ color: delta > 0 ? "#22c55e" : "#ef4444" }}>
-                    {delta > 0 ? `+${delta}` : delta} trust
-                  </span>
-                )}
-              </div>
-            );
-          })()}
         </div>
       )}
+
+      {/* Post-choice feedback */}
+      {chosen && (() => {
+        const picked = message.choices!.find((c) => c.id === chosen)!;
+        const delta = picked.isCorrect ? 10 : -10;
+        return (
+          <div className="mt-1 px-3 py-1.5 rounded text-[11px] flex items-center gap-2" style={{
+            background: picked.isCorrect
+              ? "rgba(22,163,74,0.08)"
+              : "rgba(220,38,38,0.08)",
+            color: picked.isCorrect ? "#22c55e" : "#ef4444"
+          }}>
+            <span>{picked.isCorrect ? "✓ Good call." : "✗ Wrong call."}</span>
+            <span style={{ color: delta > 0 ? "#22c55e" : "#ef4444" }}>
+              {delta > 0 ? `+${delta}` : delta} trust
+            </span>
+          </div>
+        );
+      })()}
     </div>
   );
 }
