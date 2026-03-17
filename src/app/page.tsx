@@ -62,6 +62,18 @@ export default function Home() {
   const fakeDomain = useGameStore((s) => s.fakeDomain);
   const gameStore = useGameStore();
   const { trigger: triggerBreach } = useBreachTransition();
+
+  // Content store state
+  const { preBreachEmails, breachEmails, logEntries, socialEngineeringDMs, npcBadAdvice, lolbins, wifi, isContentReady } = useContentStore(s => ({
+    preBreachEmails: s.preBreachEmails,
+    breachEmails: s.breachEmails,
+    logEntries: s.logEntries,
+    socialEngineeringDMs: s.socialEngineeringDMs,
+    npcBadAdvice: s.npcBadAdvice,
+    lolbins: s.lolbins,
+    wifi: s.wifi,
+    isContentReady: s.isContentReady,
+  }));
   const adjustTrust = useScoreStore((s) => s.adjustTrust);
   const addAction = useScoreStore((s) => s.addAction);
   const addFlag = useNarrativeStore((s) => s.addFlag);
@@ -163,7 +175,8 @@ export default function Home() {
         decisionKey: messageId,
       });
 
-      const nextIdx = SOCIAL_ENGINEERING_DM.findIndex(
+      const dmMessages = isContentReady() ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
+      const nextIdx = dmMessages.findIndex(
         (m) => m.id === choice.nextMessageId
       );
       if (nextIdx >= 0) {
@@ -173,7 +186,7 @@ export default function Home() {
         }, 1000);
       }
     },
-    [adjustTrust, addAction, addFlag, addTimelineEntry]
+    [adjustTrust, addAction, addFlag, addTimelineEntry, isContentReady, socialEngineeringDMs]
   );
 
   const handleNpcChoice = useCallback(
@@ -197,28 +210,30 @@ export default function Home() {
 
       // Reveal next NPC after delay
       setTimeout(() => {
-        if (npcDmIndex < NPC_BAD_ADVICE.length - 1) {
+        const npcDms = isContentReady() ? npcBadAdvice : NPC_BAD_ADVICE;
+        if (npcDmIndex < npcDms.length - 1) {
           setNpcDmIndex((i) => i + 1);
           setNpcDmReveal((r) => r + 1);
         }
       }, 1500);
     },
-    [adjustTrust, addAction, addFlag, addTimelineEntry, npcDmIndex]
+    [adjustTrust, addAction, addFlag, addTimelineEntry, npcDmIndex, isContentReady, npcBadAdvice]
   );
 
   const handleEmailComplete = useCallback(
     async (results: Record<string, string>) => {
-      const phishingEmails = BREACH_EMAILS.filter((e) => e.isPhishing);
+      const emails = isContentReady() ? breachEmails : BREACH_EMAILS;
+      const phishingEmails = emails.filter((e) => e.isPhishing);
       const correctPhishing = phishingEmails.filter(
         (e) => results[e.id] === "phishing"
       ).length;
-      const safeEmails = BREACH_EMAILS.filter((e) => !e.isPhishing);
+      const safeEmails = emails.filter((e) => !e.isPhishing);
       const correctSafe = safeEmails.filter(
         (e) => results[e.id] === "safe"
       ).length;
 
       const total = correctPhishing + correctSafe;
-      const max = BREACH_EMAILS.length;
+      const max = emails.length;
       const wrongCount = max - total;
       const points = Math.max(0, total * 12 - wrongCount * 8);
 
@@ -277,7 +292,7 @@ export default function Home() {
       id: "email",
       title: `${teamName} Mail`,
       content: (
-        <EmailClient emails={PRE_BREACH_EMAILS} onComplete={() => {}} />
+        <EmailClient emails={isContentReady() ? preBreachEmails : PRE_BREACH_EMAILS} onComplete={() => {}} />
       ),
     });
     windows.push({
@@ -384,7 +399,7 @@ export default function Home() {
       id: "email",
       title: `${teamName} Mail — INCIDENT MODE`,
       content: (
-        <EmailClient emails={BREACH_EMAILS} onComplete={handleEmailComplete} />
+        <EmailClient emails={isContentReady() ? breachEmails : BREACH_EMAILS} onComplete={handleEmailComplete} />
       ),
     });
   }
@@ -439,7 +454,7 @@ export default function Home() {
       title: "Log Analysis Terminal",
       content: (
         <LogTerminal
-          entries={LOG_ENTRIES}
+          entries={isContentReady() ? logEntries : LOG_ENTRIES}
           onFlaggedChange={setFlaggedLogs}
         />
       ),
@@ -487,7 +502,7 @@ export default function Home() {
           )}
           <button
             onClick={async () => {
-              const malicious = LOG_ENTRIES.filter((e) => e.isMalicious);
+              const malicious = (isContentReady() ? logEntries : LOG_ENTRIES).filter((e) => e.isMalicious);
               const correctFlags = flaggedLogs.filter(
                 (f) => f.isMalicious
               ).length;
@@ -531,7 +546,7 @@ export default function Home() {
       title: "Task Manager — Process Analysis",
       content: (
         <TaskManagerView
-          processes={LOLBINS}
+          processes={isContentReady() ? lolbins : LOLBINS}
           onComplete={() => changeStep("investigation-ioc")}
         />
       ),
@@ -581,13 +596,13 @@ export default function Home() {
   const dmSidebar =
     step === "onboarding-portal" ? (
       <DMSidebar
-        messages={SOCIAL_ENGINEERING_DM}
+        messages={isContentReady() ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM}
         onChoice={handleDMChoice}
         revealUpTo={dmReveal}
       />
     ) : isInvestigation ? (
       <DMSidebar
-        messages={NPC_BAD_ADVICE.slice(0, npcDmIndex + 1)}
+        messages={(isContentReady() ? npcBadAdvice : NPC_BAD_ADVICE).slice(0, npcDmIndex + 1)}
         onChoice={handleNpcChoice}
         revealUpTo={npcDmReveal}
       />
