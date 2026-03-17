@@ -85,7 +85,7 @@ export const SOCIAL_ENGINEERING_DM: DMMessage[] = [
       },
       {
         id: "se-2-c",
-        label: "That sounds unusual. I'll walk to your desk to confirm in person.",
+        label: "You'll need to retrieve your own MFA token or use vault delegation. I cannot help access credentials.",
         isCorrect: true,
         trustDelta: 10,
         scoreEffect: {
