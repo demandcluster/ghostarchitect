@@ -8,77 +8,133 @@ import { getGameService } from "@/services/config/serviceConfig";
 const PRIVACY_ACK_KEY = "ghost-architect:privacyAck";
 
 function BreachLogo() {
-  const [glitchPhase, setGlitchPhase] = useState(0);
+  const [isGlitching, setIsGlitching] = useState(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setGlitchPhase((p) => (p + 1) % 4);
-    }, 3000);
-    return () => clearInterval(interval);
+    // Intermittent glitch trigger
+    const triggerGlitch = () => {
+      setIsGlitching(true);
+      setTimeout(() => setIsGlitching(false), 150 + Math.random() * 300);
+      
+      const nextDelay = 3000 + Math.random() * 7000;
+      setTimeout(triggerGlitch, nextDelay);
+    };
+
+    const initialTimeout = setTimeout(triggerGlitch, 5000);
+    return () => clearTimeout(initialTimeout);
   }, []);
 
   return (
-    <div className="relative inline-block">
-      {/* Scanline effect */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div
-          className="absolute inset-0 animate-scan"
-          style={{
-            background:
-              "linear-gradient(transparent 50%, rgba(0,229,51,0.03) 50%, transparent 50.1%)",
-            backgroundSize: "100% 4px"
+    <div className="relative group cursor-default select-none">
+      {/* Glow effect behind logo */}
+      <motion.div
+        className="absolute inset-0 rounded-full blur-3xl opacity-20 bg-[var(--accent)]"
+        animate={{
+          scale: isGlitching ? [1, 1.4, 0.9, 1.1] : [1, 1.1, 1],
+          opacity: isGlitching ? [0.2, 0.5, 0.1, 0.3] : [0.15, 0.25, 0.15],
+        }}
+        transition={{ 
+          duration: isGlitching ? 0.2 : 4, 
+          repeat: isGlitching ? 0 : Infinity, 
+          ease: "easeInOut" 
+        }}
+      />
+
+      <div className="relative">
+        {/* Chromatic Aberration Layers (only visible during glitch) */}
+        <AnimatePresence>
+          {isGlitching && (
+            <>
+              {/* Red shift */}
+              <motion.img
+                src="/ghostarchi.png"
+                alt=""
+                className="absolute inset-0 w-full max-w-[280px] md:max-w-[360px] object-contain mix-blend-screen"
+                initial={{ x: -5, opacity: 0 }}
+                animate={{ x: [-2, 5, -3], opacity: 0.5 }}
+                exit={{ opacity: 0 }}
+                style={{ filter: "hue-rotate(300deg) saturate(3) brightness(1.2)" }}
+              />
+              {/* Blue shift */}
+              <motion.img
+                src="/ghostarchi.png"
+                alt=""
+                className="absolute inset-0 w-full max-w-[280px] md:max-w-[360px] object-contain mix-blend-screen"
+                initial={{ x: 5, opacity: 0 }}
+                animate={{ x: [3, -5, 2], opacity: 0.5 }}
+                exit={{ opacity: 0 }}
+                style={{ filter: "hue-rotate(180deg) saturate(3) brightness(1.2)" }}
+              />
+            </>
+          )}
+        </AnimatePresence>
+
+        {/* Main logo */}
+        <motion.img
+          src="/ghostarchi.png"
+          alt="Ghost Architect Logo"
+          className="relative w-full max-w-[280px] md:max-w-[360px] object-contain"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ 
+            opacity: 1, 
+            y: 0,
+            x: isGlitching ? [0, -2, 2, -1, 0] : 0,
+            skewX: isGlitching ? [0, 10, -10, 5, 0] : 0,
+            filter: isGlitching 
+              ? "drop-shadow(0 0 30px rgba(0,229,51,0.5)) contrast(2) brightness(1.5)" 
+              : "drop-shadow(0 0 30px rgba(0,229,51,0.25)) grayscale(0.2) contrast(1.1)",
+          }}
+          transition={{ 
+            opacity: { duration: 1 },
+            duration: 0.2,
+            times: [0, 0.2, 0.4, 0.6, 1]
           }}
         />
       </div>
+      
+      {/* VHS-style tracking noise and scanlines */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
+        {/* Primary Scanline */}
+        <motion.div
+          className="w-full h-[2px] bg-[var(--accent)] shadow-[0_0_10px_var(--accent)] opacity-50"
+          initial={{ top: "-10%" }}
+          animate={{ top: "110%" }}
+          transition={{ duration: 3.5, repeat: Infinity, ease: "linear" }}
+          style={{ position: 'absolute' }}
+        />
+        {/* Secondary faint scanline */}
+        <motion.div
+          className="w-full h-[1px] bg-white opacity-20"
+          initial={{ top: "-10%" }}
+          animate={{ top: "110%" }}
+          transition={{ duration: 5, repeat: Infinity, ease: "linear", delay: 2 }}
+          style={{ position: 'absolute' }}
+        />
+        {/* Fixed 'tracking' noise lines */}
+        <div className="absolute top-1/3 w-full h-[1px] bg-[var(--accent)] opacity-10" />
+        <div className="absolute top-2/3 w-full h-[1px] bg-[var(--accent)] opacity-10" />
+      </div>
 
-      {/* Subtle digital noise */}
-      <div
-        className="absolute inset-0 pointer-events-none"
+      {/* Subtle Noise Texture */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-[0.03] mix-blend-overlay"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
-          opacity: "0.02"
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`
         }}
       />
 
-      {/* Glitch overlay */}
-      <AnimatePresence mode="wait">
-        {glitchPhase === 1 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.15 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.1 }}
-            className="absolute inset-0 flex items-center justify-center"
-          >
-            <div
-              className="absolute inset-0"
-              style={{
-                background:
-                  "linear-gradient(90deg, transparent 45%, rgba(0,229,51,0.08) 50%, transparent 55%)"
-              }}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Main logo */}
-      <motion.img
-        src="/ghostarchi.png"
-        alt="Ghost Architect Logo"
-        className="relative w-full max-w-2xl md:max-w-4xl object-contain"
-        initial={{ opacity: 0, scale: 0.6 }}
-        animate={{
-          opacity: 1,
-          scale: [0.6, 0.62, 0.6],
-          filter: glitchPhase === 1 ? "hue-rotate(2deg)" : "hue-rotate(0deg)"
-        }}
-        transition={{
-          opacity: { duration: 0.8 },
-          scale: { duration: 6, repeat: Infinity, ease: "easeInOut" },
-          filter: { duration: 0.8 }
-        }}
-        style={{ filter: "drop-shadow(0 0 20px rgba(0,229,51,0.15))" }}
-      />
+      {/* Glitch lines overlay (Only active during glitch) */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <motion.div 
+          className="absolute w-full h-[2px] bg-white opacity-0"
+          animate={{ 
+            top: isGlitching ? ["20%", "80%", "40%"] : "50%",
+            opacity: isGlitching ? [0, 0.8, 0] : 0,
+            scaleX: isGlitching ? [1, 1.5, 1] : 1
+          }}
+          transition={{ duration: 0.2 }}
+        />
+      </div>
     </div>
   );
 }
@@ -97,71 +153,50 @@ function PrivacyModal({ onAccept, onNoStore }: PrivacyModalProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.85)", backdropFilter: "blur(4px)" }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{ background: "rgba(0,1,12,0.92)", backdropFilter: "blur(8px)" }}
     >
       <motion.div
         key="privacy-panel"
-        initial={{ opacity: 0, y: 24, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 16, scale: 0.97 }}
-        transition={{ duration: 0.3, ease: "easeOut" }}
-        className="relative w-full max-w-md font-mono text-sm rounded-xl border border-[rgba(0,229,51,0.25)] bg-[#0a0e14] p-8 shadow-[0_0_60px_rgba(0,229,51,0.08)]"
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 10 }}
+        className="relative w-full max-w-md rounded-2xl border border-[rgba(0,229,51,0.3)] bg-[#050709] p-8 shadow-[0_0_80px_rgba(0,229,51,0.15)]"
       >
-        {/* Title */}
-        <div className="mb-6">
-          <p className="text-[10px] text-[var(--accent)] tracking-[0.2em] mb-1 opacity-70">
-            SYSTEM NOTICE
-          </p>
-          <h2 className="text-base font-bold tracking-widest text-white uppercase">
-            Data &amp; Privacy Notice
+        <div className="mb-8 text-center">
+          <div className="inline-block px-3 py-1 rounded-full bg-[rgba(0,229,51,0.1)] border border-[rgba(0,229,51,0.2)] text-[10px] text-[var(--accent)] tracking-[0.3em] font-bold mb-3 uppercase">
+            System Protocol
+          </div>
+          <h2 className="text-xl font-bold tracking-tight text-white uppercase">
+            Privacy &amp; Data Security
           </h2>
-          <div className="mt-2 h-px w-full bg-[rgba(0,229,51,0.15)]" />
         </div>
 
-        {/* Content rows */}
-        <div className="space-y-4 text-[12px] leading-relaxed text-[var(--text-secondary)]">
-          <div>
-            <span className="text-[var(--accent)] font-semibold">
-              WHAT WE COLLECT
-            </span>
-            <p className="mt-1 text-[var(--text-muted)]">
-              An anonymous ID (random UUID), your chosen display name, and your
-              game scores. No email address. No real account.
+        <div className="space-y-5 text-sm">
+          <div className="flex gap-4">
+            <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-1.5 shrink-0 shadow-[0_0_8px_var(--accent)]" />
+            <p className="text-[var(--text-secondary)]">
+              <strong className="text-white block mb-0.5">ANONYMOUS IDENTIFICATION</strong>
+              No accounts or emails. We use a random UUID and your temporary handle.
             </p>
           </div>
-
-          <div>
-            <span className="text-[var(--accent)] font-semibold">
-              WHO SEES IT
-            </span>
-            <p className="mt-1 text-[var(--text-muted)]">
-              Your trainer can see your display name, scores, and game outcome.
-              No data is sold or shared with third parties.
+          <div className="flex gap-4">
+            <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-1.5 shrink-0 shadow-[0_0_8px_var(--accent)]" />
+            <p className="text-[var(--text-secondary)]">
+              <strong className="text-white block mb-0.5">TRANSPARENT OVERSIGHT</strong>
+              Your trainer can monitor progress and scores. Data is never shared with third parties.
             </p>
           </div>
-
-          <div>
-            <span className="text-[var(--accent)] font-semibold">HOW LONG</span>
-            <p className="mt-1 text-[var(--text-muted)]">
-              Session data is deleted when your trainer&apos;s team expires.
-            </p>
-          </div>
-
-          <div>
-            <span className="text-[var(--accent)] font-semibold">
-              YOUR RIGHTS
-            </span>
-            <p className="mt-1 text-[var(--text-muted)]">
-              You can delete your session data at any time from the end-of-game
-              screen.
+          <div className="flex gap-4">
+            <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] mt-1.5 shrink-0 shadow-[0_0_8px_var(--accent)]" />
+            <p className="text-[var(--text-secondary)]">
+              <strong className="text-white block mb-0.5">AUTOMATIC PURGE</strong>
+              Session data is deleted when your team expires or upon your manual request.
             </p>
           </div>
         </div>
 
-        {/* Simulation checkbox */}
-        <label className="mt-6 flex items-start gap-3 cursor-pointer group">
+        <label className="mt-8 flex items-start gap-3 cursor-pointer group p-4 rounded-xl border border-dashed border-[rgba(0,229,51,0.2)] bg-[rgba(0,229,51,0.02)] hover:bg-[rgba(0,229,51,0.05)] transition-colors">
           <div className="relative mt-0.5 flex-shrink-0">
             <input
               type="checkbox"
@@ -170,39 +205,25 @@ function PrivacyModal({ onAccept, onNoStore }: PrivacyModalProps) {
               className="sr-only"
             />
             <div
-              className="w-4 h-4 border rounded-sm transition-colors"
+              className="w-5 h-5 border-2 rounded transition-all flex items-center justify-center"
               style={{
-                borderColor: simulationChecked
-                  ? "var(--accent)"
-                  : "rgba(0,229,51,0.3)",
+                borderColor: simulationChecked ? "var(--accent)" : "rgba(0,229,51,0.4)",
                 background: simulationChecked ? "var(--accent)" : "transparent"
               }}
             >
               {simulationChecked && (
-                <svg
-                  className="w-full h-full text-black"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                >
-                  <path
-                    d="M2 6l3 3 5-5"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
+                <svg className="w-3.5 h-3.5 text-black stroke-[3]" viewBox="0 0 12 12">
+                  <path d="M2 6l3 3 5-5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               )}
             </div>
           </div>
-          <span className="text-[11px] text-[var(--text-muted)] group-hover:text-[var(--text-secondary)] transition-colors leading-relaxed">
-            I understand this is a simulation. I will not enter real credentials
-            or personal information.
+          <span className="text-[11px] text-[var(--text-secondary)] group-hover:text-white transition-colors leading-relaxed">
+            I understand this is a <strong className="text-[var(--accent)]">security simulation</strong>. I will not enter real passwords or sensitive personal information.
           </span>
         </label>
 
-        {/* Actions */}
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-8 space-y-3">
           <button
             onClick={() => {
               if (!simulationChecked) return;
@@ -210,16 +231,16 @@ function PrivacyModal({ onAccept, onNoStore }: PrivacyModalProps) {
               onAccept();
             }}
             disabled={!simulationChecked}
-            className="w-full border border-[var(--accent)] text-[var(--accent)] font-mono px-6 py-2.5 text-xs tracking-widest hover:bg-[var(--accent)] hover:text-black transition-all hover:shadow-[0_0_20px_rgba(0,229,51,0.3)] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[var(--accent)]"
+            className="w-full bg-[var(--accent)] text-black font-bold py-3.5 rounded-xl text-xs tracking-[0.2em] hover:brightness-110 transition-all hover:shadow-[0_0_30px_rgba(0,229,51,0.4)] disabled:opacity-30 disabled:cursor-not-allowed uppercase"
           >
-            ACCEPT &amp; CONTINUE
+            Acknowledge &amp; Enter
           </button>
 
           <button
             onClick={onNoStore}
-            className="w-full text-[var(--text-muted)] text-[10px] tracking-wider hover:text-[var(--text-secondary)] transition-colors py-1"
+            className="w-full text-[var(--text-muted)] text-[10px] tracking-widest hover:text-white transition-colors py-2 uppercase"
           >
-            Play without data storage
+            Play Ephemerally (No Storage)
           </button>
         </div>
       </motion.div>
@@ -258,21 +279,9 @@ export function StartScreen({ onStart }: StartScreenProps) {
       setPlayerHandle(savedHandle);
     }
 
-    // Show privacy modal if not yet acknowledged
     const ack = localStorage.getItem(PRIVACY_ACK_KEY);
-    if (!ack) {
-      setShowPrivacyModal(true);
-    }
+    if (!ack) setShowPrivacyModal(true);
   }, []);
-
-  const handlePrivacyAccept = () => {
-    setShowPrivacyModal(false);
-  };
-
-  const handleNoStore = () => {
-    setNoStore(true);
-    setShowPrivacyModal(false);
-  };
 
   const handleContinue = () => {
     const savedHandle = localStorage.getItem("ghost-architect:playerHandle");
@@ -300,8 +309,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
 
     try {
       const service = await getGameService();
-      const anonymousId =
-        crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
+      const anonymousId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
 
       const session = await service.joinTeam(
         inviteCode.trim().toUpperCase(),
@@ -309,25 +317,14 @@ export function StartScreen({ onStart }: StartScreenProps) {
         playerHandle.trim() || undefined
       );
 
-      if (session.teamId) {
-        setTeamId(session.teamId);
-      }
-      if (session.teamName) {
-        setTeamName(session.teamName);
-      }
-      if (session.fakeDomain) {
-        setFakeDomain(session.fakeDomain);
-      }
-      if ((session as { logoUrl?: string | null }).logoUrl) {
-        setLogoUrl((session as { logoUrl?: string | null }).logoUrl ?? null);
-      }
-      // Use the server-assigned handle (may differ if dedup occurred)
-      const assignedHandle =
-        session.playerHandle ?? playerHandle.trim() ?? null;
-      if (assignedHandle) {
-        setPlayerHandleStore(assignedHandle);
-      }
-      // In no-store mode keep session id in memory only — don't persist to localStorage
+      if (session.teamId) setTeamId(session.teamId);
+      if (session.teamName) setTeamName(session.teamName);
+      if (session.fakeDomain) setFakeDomain(session.fakeDomain);
+      if ((session as any).logoUrl) setLogoUrl((session as any).logoUrl);
+      
+      const assignedHandle = session.playerHandle ?? playerHandle.trim() ?? null;
+      if (assignedHandle) setPlayerHandleStore(assignedHandle);
+      
       if (noStore) {
         useGameStore.setState({ sessionId: session.id });
       } else {
@@ -335,24 +332,15 @@ export function StartScreen({ onStart }: StartScreenProps) {
       }
       onStart();
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to join. Check your invite code."
-      );
+      setError(err instanceof Error ? err.message : "Failed to join. Check your invite code.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleSkip = () => {
-    if (playerHandle.trim()) {
-      setPlayerHandleStore(playerHandle.trim());
-    }
-    // Only persist session if the player consented; no-store players play ephemerally
-    if (!noStore) {
-      initSession();
-    }
+    if (playerHandle.trim()) setPlayerHandleStore(playerHandle.trim());
+    if (!noStore) initSession();
     onStart();
   };
 
@@ -361,205 +349,148 @@ export function StartScreen({ onStart }: StartScreenProps) {
       <AnimatePresence>
         {showPrivacyModal && (
           <PrivacyModal
-            onAccept={handlePrivacyAccept}
-            onNoStore={handleNoStore}
+            onAccept={() => setShowPrivacyModal(false)}
+            onNoStore={() => { setNoStore(true); setShowPrivacyModal(false); }}
           />
         )}
       </AnimatePresence>
 
-      <div
-        className="relative flex flex-col items-center justify-center h-screen overflow-hidden"
-        style={{ background: "var(--bg-primary)" }}
-      >
-        {/* Dot grid background */}
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            backgroundImage:
-              "radial-gradient(rgba(0,229,51,0.15) 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-            WebkitMaskImage:
-              "radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)",
-            maskImage:
-              "radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%)"
-          }}
-        />
-
-        {/* Ghost ASCII art */}
-        <div className="absolute top-8 left-8 text-gray-700 text-xs font-mono select-none whitespace-pre">
-          {`  .-.
- (o o)
- | O |
-  '~'`}
+      <div className="relative flex flex-col items-center min-h-screen bg-[var(--bg-primary)] overflow-hidden px-6 pt-12 md:pt-24 pb-32">
+        {/* Technical Background */}
+        <div 
+          className="absolute inset-0 pointer-events-none overflow-hidden"
+          style={{ opacity: 0.4 }}
+        >
+          {/* Animated Grid */}
+          <div 
+            className="absolute inset-0"
+            style={{
+              backgroundImage: 'linear-gradient(rgba(0,229,51,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,51,0.05) 1px, transparent 1px)',
+              backgroundSize: '40px 40px',
+              maskImage: 'radial-gradient(ellipse 60% 60% at 50% 50%, black 20%, transparent 100%)'
+            }}
+          />
+          {/* Scanning Line */}
+          <motion.div 
+            className="absolute left-0 w-full h-32 bg-gradient-to-b from-transparent via-[rgba(0,229,51,0.03)] to-transparent"
+            animate={{ top: ['-20%', '120%'] }}
+            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+          />
         </div>
 
-        {/* Session restore banner */}
-        {hasRestoredSession && restoredHandle && (
-          <motion.div
-            initial={{ opacity: 0, y: 0 }}
-            animate={{ opacity: 1, y: -20 }}
-            className="absolute top-8 font-mono text-xs z-50"
-          >
-            <div className="border border-[rgba(0,229,51,0.2)] bg-[rgba(0,229,51,0.05)] px-6 py-1 rounded">
-              <span className="text-[var(--text-muted)]">SESSION RESTORED</span>
-              <span className="text-[var(--accent)] mx-2">&mdash;</span>
-              <span className="text-[var(--text-secondary)]">
-                Continue as{" "}
-                <span className="text-[var(--accent)]">{restoredHandle}</span>?
-              </span>
-              <span className="ml-4 space-x-3">
-                <button
-                  onClick={handleContinue}
-                  className="text-[var(--accent)] hover:underline"
-                >
-                  [CONTINUE]
-                </button>
-                <button
-                  onClick={handleNewSession}
-                  className="text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-                >
-                  [NEW SESSION]
-                </button>
-              </span>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Title section */}
-        <motion.div
-          initial={{ opacity: 0, y: 0 }}
-          animate={{ opacity: 1, y: -40 }}
-          transition={{ duration: 0.8 }}
-          className="text-center "
-        >
-          <BreachLogo />
-        </motion.div>
-
-        {/* Input section */}
-        <motion.form
-          initial={{ opacity: 0, y: 0 }}
-          animate={{ opacity: 0.8, y: -160 }}
-          transition={{ delay: 0.8, duration: 0.5 }}
-          onSubmit={handleSubmit}
-          className="relative z-10 w-full max-w-xs space-y-6 font-mono text-sm rounded-2xl border border-[rgba(0,229,51,0.12)] bg-[rgba(0,0,0,0.4)] backdrop-blur-sm p-4"
-        >
-          <div>
-            <label className="text-[var(--accent)] text-xs mb-1 uppercase tracking-wider block">
-              {"> "}OPERATOR HANDLE
-            </label>
-            <input
-              type="text"
-              value={playerHandle}
-              onChange={(e) => setPlayerHandle(e.target.value)}
-              className="bg-transparent border-0 border-b border-[rgba(0,229,51,0.3)] text-white outline-none w-full pb-1 placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] transition-[border-color,box-shadow]"
-              style={{ caretColor: "var(--accent)" }}
-              onFocus={(e) => {
-                e.currentTarget.style.boxShadow = "0 1px 0 0 var(--accent)";
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.boxShadow = "none";
-              }}
-              placeholder="anonymous"
-              maxLength={24}
-            />
-          </div>
-
-          <div>
-            <label className="text-[var(--accent)] text-xs mb-1 uppercase tracking-wider block">
-              {"> "}TEAM INVITE CODE
-            </label>
-            <input
-              type="text"
-              value={inviteCode}
-              onChange={(e) => {
-                setInviteCode(e.target.value.toUpperCase());
-                setError("");
-              }}
-              className="bg-transparent border-0 border-b border-[rgba(0,229,51,0.3)] text-white outline-none w-full pb-1 uppercase tracking-[0.3em] placeholder:text-[var(--text-muted)] focus:border-[var(--accent)] transition-[border-color,box-shadow]"
-              style={{ caretColor: "var(--accent)" }}
-              onFocus={(e) => {
-                e.currentTarget.style.boxShadow = "0 1px 0 0 var(--accent)";
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.boxShadow = "none";
-              }}
-              placeholder="XXXXXX"
-              maxLength={6}
-            />
-          </div>
-
-          {error && <p className="text-xs text-[var(--danger)]">{error}</p>}
-
-          <div className="pt-4">
-            {inviteCode.trim().length > 0 ? (
-              <button
-                type="submit"
-                disabled={loading || inviteCode.trim().length < 6}
-                className="w-full border border-[var(--accent)] text-[var(--accent)] font-mono px-8 py-3 text-sm hover:bg-[var(--accent)] hover:text-black transition-all hover:shadow-[0_0_20px_rgba(0,229,51,0.4)] disabled:opacity-50 disabled:hover:bg-transparent disabled:hover:text-[var(--accent)]"
+        {/* Top Navigation / Status Area */}
+        <div className="relative w-full max-w-5xl flex flex-col items-center gap-6 z-20">
+          <AnimatePresence>
+            {hasRestoredSession && restoredHandle && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="w-fit"
               >
-                {loading ? "CONNECTING..." : "INITIALIZE SESSION"}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleSkip}
-                className="w-full border border-[var(--accent)] text-[var(--accent)] font-mono px-8 py-3 text-sm hover:bg-[var(--accent)] hover:text-black transition-all hover:shadow-[0_0_20px_rgba(0,229,51,0.4)]"
-              >
-                START SOLO
-              </button>
+                <div className="flex items-center gap-4 border border-[rgba(0,229,51,0.3)] bg-[rgba(0,229,51,0.08)] backdrop-blur-md px-5 py-2 rounded-full font-mono text-[10px] md:text-xs">
+                  <div className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
+                  <span className="text-white tracking-widest">
+                    ACTIVE SESSION: <span className="text-[var(--accent)] uppercase">{restoredHandle}</span>
+                  </span>
+                  <div className="h-3 w-[1px] bg-[rgba(0,229,51,0.2)] mx-1" />
+                  <div className="flex gap-3">
+                    <button onClick={handleContinue} className="text-[var(--accent)] hover:text-white transition-colors">[CONTINUE]</button>
+                    <button onClick={handleNewSession} className="text-white/40 hover:text-white transition-colors">[PURGE]</button>
+                  </div>
+                </div>
+              </motion.div>
             )}
-          </div>
-        </motion.form>
+          </AnimatePresence>
 
-        {/* Footer */}
-        <div className="absolute bottom-4 flex flex-col items-center gap-2 font-mono text-[10px] text-[var(--text-muted)]">
-          <p>SIMULATION — NO REAL DATA</p>
+          <BreachLogo />
+        </div>
 
-          {/* Compliance badges */}
-          <div className="flex items-center gap-2 flex-wrap justify-center">
+        {/* Main Interaction Area */}
+        <div className="relative flex flex-col items-center mt-12 md:mt-16 w-full max-w-sm z-20">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="w-full"
+          >
+            <form onSubmit={handleSubmit} className="w-full space-y-8 bg-[rgba(0,1,12,0.6)] backdrop-blur-xl p-8 rounded-3xl border border-[rgba(0,229,51,0.15)] shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[var(--accent)] text-[10px] font-bold tracking-[0.2em] uppercase block px-1">
+                    Operator Designation
+                  </label>
+                  <input
+                    type="text"
+                    value={playerHandle}
+                    onChange={(e) => setPlayerHandle(e.target.value)}
+                    className="w-full bg-[rgba(0,229,51,0.03)] border border-[rgba(0,229,51,0.2)] rounded-xl px-4 py-3 text-white outline-none focus:border-[var(--accent)] focus:bg-[rgba(0,229,51,0.06)] transition-all font-mono placeholder:text-white/30"
+                    placeholder="anonymous_operator"
+                    maxLength={24}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[var(--accent)] text-[10px] font-bold tracking-[0.2em] uppercase block px-1">
+                    Team Protocol Code
+                  </label>
+                  <input
+                    type="text"
+                    value={inviteCode}
+                    onChange={(e) => { setInviteCode(e.target.value.toUpperCase()); setError(""); }}
+                    className="w-full bg-[rgba(0,229,51,0.03)] border border-[rgba(0,229,51,0.2)] rounded-xl px-4 py-3 text-white outline-none focus:border-[var(--accent)] focus:bg-[rgba(0,229,51,0.06)] transition-all font-mono tracking-[0.4em] uppercase placeholder:text-white/30"
+                    placeholder="XXXXXX"
+                    maxLength={6}
+                  />
+                </div>
+              </div>
+
+              {error && (
+                <div className="bg-[rgba(255,45,85,0.1)] border border-[rgba(255,45,85,0.3)] rounded-lg p-3 text-[11px] text-[var(--danger)] text-center font-mono">
+                  ERROR: {error.toUpperCase()}
+                </div>
+              )}
+
+              <div className="pt-2">
+                {inviteCode.trim().length > 0 ? (
+                  <button
+                    type="submit"
+                    disabled={loading || inviteCode.trim().length < 6}
+                    className="w-full bg-[var(--accent)] text-black font-bold py-4 rounded-xl text-xs tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all hover:shadow-[0_0_25px_rgba(0,229,51,0.4)] disabled:opacity-20 disabled:cursor-not-allowed uppercase"
+                  >
+                    {loading ? "INITIALIZING..." : "COMMENCE SIMULATION"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    className="w-full border border-[var(--accent)] text-[var(--accent)] font-bold py-4 rounded-xl text-xs tracking-[0.2em] hover:bg-[var(--accent)] hover:text-black transition-all hover:shadow-[0_0_20px_rgba(0,229,51,0.2)] uppercase"
+                  >
+                    PROCEED SOLO
+                  </button>
+                )}
+              </div>
+            </form>
+          </motion.div>
+        </div>
+
+        {/* Immersive Footer */}
+        <div className="absolute bottom-8 w-full px-6 z-20 flex flex-col items-center gap-6">
+          <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar max-w-full justify-center">
             {[
-              {
-                label: "No Email Collection",
-                title:
-                  "Players need no account. Only an optional display name is stored."
-              },
-              {
-                label: "No Real Accounts",
-                title:
-                  "Players are identified by an anonymous UUID only. No registration required."
-              },
-              {
-                label: "Fictional PII Only",
-                title:
-                  "All personal data in simulation content is entirely fictitious and structurally invalid."
-              },
-              {
-                label: "Invite-Code Access",
-                title:
-                  "Data collection is limited to participants explicitly invited by a trainer."
-              },
-              {
-                label: "Privacy by Design",
-                title:
-                  "Data minimisation applied throughout. Trainer auth uses short-lived JWTs with no email storage."
-              }
-            ].map(({ label, title }) => (
-              <span
-                key={label}
-                title={title}
-                className="border border-[rgba(0,229,51,0.2)] bg-[rgba(0,229,51,0.04)] text-[var(--accent)] px-2 py-0.5 rounded text-[9px] tracking-wide cursor-default select-none opacity-70 hover:opacity-100 transition-opacity"
-              >
-                {label}
+              "SECURED PROTOCOL",
+              "ZERO DATA RETENTION",
+              "PRIVACY BY DESIGN",
+              "TRAINING SIMULATION"
+            ].map((tag) => (
+              <span key={tag} className="whitespace-nowrap px-3 py-1 rounded border border-white/5 bg-white/[0.02] text-[9px] text-white/30 font-mono tracking-widest uppercase">
+                {tag}
               </span>
             ))}
           </div>
-
-          <p>
-            Free to play &mdash; offered by{" "}
-            <span className="text-[var(--text-secondary)]">Demandcluster</span>{" "}
-            &middot; developed by{" "}
-            <span className="text-[var(--text-secondary)]">Ron van Etten</span>
-          </p>
+          
+          <div className="text-center font-mono text-[9px] tracking-widest text-white/20 uppercase">
+            &copy; 2026 GHOST ARCHITECT &middot; DEMANDCLUSTER &middot; TECHNICAL SIMULATION v2.4.0
+          </div>
         </div>
       </div>
     </>

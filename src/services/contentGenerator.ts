@@ -18,6 +18,9 @@ export interface GenerationConfig {
   locale: string;
   sessionId: string;
   temperature?: number;
+  section?: 'initial' | 'secondary' | 'all';
+  teamName?: string;
+  fakeDomain?: string;
 }
 
 export interface IContentGenerator {
@@ -46,6 +49,9 @@ export class ContentGenerator implements IContentGenerator {
           sessionId: config.sessionId,
           locale: config.locale,
           temperature: temperature,
+          section: config.section,
+          teamName: config.teamName,
+          fakeDomain: config.fakeDomain,
         }),
       });
 

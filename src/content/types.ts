@@ -18,6 +18,7 @@ export interface Email {
   isPhishing: boolean;
   indicators: string[];
   difficulty: "easy" | "medium" | "hard";
+  complexity?: number; // 1-10 quality score from Auditor
 }
 
 export interface LogEntry {
@@ -29,6 +30,7 @@ export interface LogEntry {
   isMalicious: boolean;
   attackTechnique?: string;
   mitreId?: string;
+  complexity?: number;
 }
 
 export interface DMMessage {
@@ -40,6 +42,7 @@ export interface DMMessage {
   timestamp: number;
   choices?: DMChoice[];
   isBadAdvice?: boolean;
+  complexity?: number;
 }
 
 export interface DMChoice {
@@ -63,6 +66,7 @@ export interface LOLBin {
   isMalicious: boolean;
   description: string;
   mitreId?: string;
+  complexity?: number;
 }
 
 export interface WiFiNetwork {
@@ -72,6 +76,7 @@ export interface WiFiNetwork {
   authType: "WPA2-PSK" | "802.1X" | "Open";
   isEvilTwin: boolean;
   indicators: string[];
+  complexity?: number;
 }
 
 export interface FileListing {

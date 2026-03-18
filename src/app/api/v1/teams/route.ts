@@ -26,6 +26,14 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Background refill: ensure pool grows with teams
+    try {
+      const { ContentPoolManager } = await import('@/lib/contentPool');
+      ContentPoolManager.getInstance().refillPool('all').catch(console.error);
+    } catch (e) {
+      console.warn('Could not trigger background refill');
+    }
+
     return NextResponse.json(team, { status: 201 });
   } catch (error) {
     if (error instanceof NoDatabaseError) {

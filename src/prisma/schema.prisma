@@ -53,7 +53,38 @@ model Session {
   totalScore    Int?
   endingReached String?
   deviceInfo    String?   // populated by client on session create — coarse platform label only (e.g. "desktop/chrome") — never a full UA string
+  seenContent   SessionSeenContent[]
 
   @@index([teamId])
   @@index([anonymousId])
+}
+
+model ContentPool {
+  id           String   @id @default(uuid())
+  type         String   // EMAIL_PRE, EMAIL_BREACH, DM_SOCIAL, DM_ADVICE, LOG, LOLBIN, WIFI
+  data         Json     // The templated JSON content (e.g. {{teamName}}, {{fakeDomain}})
+  qualityScore Float    @default(0)
+  audited      Boolean  @default(false)
+  usageCount   Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  seenBy       SessionSeenContent[]
+
+  @@index([type, audited, qualityScore])
+}
+
+model SessionSeenContent {
+  id        String      @id @default(uuid())
+  sessionId String
+  session   Session     @relation(fields: [sessionId], references: [id])
+  contentId String
+  content   ContentPool @relation(fields: [contentId], references: [id])
+
+  @@unique([sessionId, contentId])
+}
+
+model SystemConfig {
+  key   String @id
+  value String
 }

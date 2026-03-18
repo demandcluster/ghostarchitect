@@ -15,7 +15,6 @@ export interface OpenAIConfig {
 export interface GenerationOptions {
   temperature?: number;
   maxTokens?: number;
-  locale?: string;
 }
 
 export interface GenerationError {
@@ -24,10 +23,15 @@ export interface GenerationError {
   isRetryable?: boolean;
 }
 
+export type GenerationSection = "initial" | "secondary" | "all";
+
 export interface BatchGenerationConfig {
   locale: string;
   sessionId: string;
   temperature?: number;
+  section?: GenerationSection;
+  teamName?: string;
+  fakeDomain?: string;
 }
 
 export class OpenAIClient {
@@ -36,7 +40,7 @@ export class OpenAIClient {
   constructor(config: OpenAIConfig) {
     this.config = {
       baseURL: config.baseURL || "https://api.openai.com/v1/",
-      model: config.model || "gpt-3.5-turbo",
+      model: config.model || "gpt-4o-mini",
       ...config
     };
   }
@@ -45,7 +49,7 @@ export class OpenAIClient {
     preBreachEmails: Email[];
     breachEmails: Email[];
     logEntries: LogEntry[];
-    socialEngineeringDMs: DMMessage[];
+    socialEngineeringDMs: DMMessage[]; // This will now hold individual scenario units for the pool
     npcBadAdvice: DMMessage[];
     lolbins: LOLBin[];
     wifi: WiFiNetwork[];
@@ -53,39 +57,87 @@ export class OpenAIClient {
     isOfflineContent: boolean;
   }> {
     const temperature = config.temperature ?? 0.9;
+    const section = config.section ?? "all";
+    
+    // For pool generation, we use placeholders instead of specific team data
+    const teamName = "{{teamName}}";
+    const fakeDomain = "{{fakeDomain}}";
+
+    let sectionPrompt = "";
+    let requiredFields: string[] = [];
+
+    if (section === "initial") {
+      requiredFields = ["preBreachEmails", "dmIntro", "dmScenarios"];
+      sectionPrompt = `ACT AS A PROFESSIONAL CORPORATE ROLEPLAY SCRIPTWRITER.
+The target audience is CYBERSECURITY PROFESSIONALS.
+IMPORTANT: Use the placeholder "${teamName}" for the company name and "${fakeDomain}" for the domain.
+
+CRITICAL ROLEPLAY RULES:
+1. DIALOGUE MUST BE CONVERSATIONAL. Characters use technical terms NATURALLY.
+2. NO clinical naming (e.g., AVOID "Alice.SmithManager"). Use realistic names.
+3. "CORRECT" ANSWERS MUST ALWAYS REDIRECT TO SECURE PROTOCOL (Vault, IAM, Ticket).
+4. "INCORRECT" ANSWERS: Should include reckless sharing and passive/unhelpful actions.
+
+INITIAL CONTENT FOCUS (ONBOARDING PHASE):
+- preBreachEmails (EXACTLY 4-6 high-fidelity legitimate internal emails. MUST use ${fakeDomain}).
+- dmIntro (EXACTLY 1 welcome message from a technical director).
+- dmScenarios (EXACTLY 6-8 INDEPENDENT scenarios. 50% MUST be LEGITIMATE technical peer requests, 50% MUST be SOCIAL ENGINEERING threats).
+
+SCENARIO STRUCTURE:
+Each scenario in 'dmScenarios' MUST be an object:
+{
+  "id": "scenario-unique-id",
+  "setup": { "id": "s-setup", "sender": "Name", "senderRole": "Role", "avatar": "URL", "text": "...", "choices": [...] },
+  "onPass": { "id": "s-pass", "sender": "Name", "senderRole": "Role", "avatar": "URL", "text": "Technical feedback for correct choice" },
+  "onFail": { "id": "s-fail", "sender": "Name", "senderRole": "Role", "avatar": "URL", "text": "Technical feedback for incorrect choice" }
+}`;
+    } else if (section === "secondary") {
+      requiredFields = ["breachEmails", "logEntries", "npcBadAdvice", "lolbins", "wifi"];
+      sectionPrompt = `ACT AS A SENIOR SYSTEM ADMINISTRATOR AND NARRATOR.
+The target audience is CYBERSECURITY PROFESSIONALS.
+Use placeholders "${teamName}" and "${fakeDomain}".
+
+SECONDARY CONTENT FOCUS (BREACH & INVESTIGATION):
+- breachEmails (EXACTLY 6-8 emails. Mix of real alerts and sophisticated phishing).
+- logEntries (EXACTLY 25-30 system logs. Technical and realistic).
+- npcBadAdvice (EXACTLY 4-6 dialogues from technical peers giving urgent but wrong advice).
+- lolbins (EXACTLY 8-12 realistic processes).
+- wifi (EXACTLY 5-8 networks).
+
+TECHNICAL LOG DEPTH:
+Logs must show a multi-stage attack chain: Recon -> Exploit -> Persistence -> Lateral Movement.`;
+    } else {
+      requiredFields = [
+        "preBreachEmails",
+        "breachEmails",
+        "logEntries",
+        "dmIntro",
+        "dmScenarios",
+        "npcBadAdvice",
+        "lolbins",
+        "wifi"
+      ];
+      sectionPrompt = `ACT AS A SENIOR CYBERSECURITY ROLEPLAY SCRIPTWRITER. 
+Generate ALL immersive content using placeholders "${teamName}" and "${fakeDomain}".
+Target audience: CYBERSECURITY PROFESSIONALS.
+Follow all SCENARIO STRUCTURE and COMPLIANCE rules for every section.`;
+    }
 
     // Create a comprehensive prompt for batch generation with explicit structure
-    const batchPrompt = `Generate all content for a cybersecurity training scenario. Make it challenging.
+    const batchPrompt = `${sectionPrompt} 
 
-IMPORTANT: Return ONLY a JSON object with these exact top-level keys:
-- preBreachEmails (array of email objects with id, from, to, subject, date, body, headers object, isPhishing, indicators array, difficulty string)
-- breachEmails (array of email objects with same structure)
-- logEntries (array of log objects with id, timestamp, level enum, source, message, isMalicious, attackTechnique, mitreId)
-- socialEngineeringDMs (array of 6-10 DM objects with id, sender, senderRole, avatar (URL pattern: https://api.dicebear.com/9.x/initials/svg?seed={sender_name} where {sender_name} is replaced with actual sender name from responses), text, timestamp, choices array)
-- npcBadAdvice (array of 6-10 DM objects with same structure, with avatar using same URL pattern with sender name)
-- lolbins (array of process objects with id, processName, pid, commandLine, isMalicious, description, mitreId)
-- wifi (array of WiFi objects with ssid, bssid, signalStrength, authType enum, isEvilTwin, indicators array)
+IMPORTANT: Return ONLY a JSON object with THESE EXACT top-level keys:
+${requiredFields.map((f) => `- ${f}`).join("\n")}
 
-DM MESSAGE STRUCTURE RULES:
-1. Each DM message can have EITHER a choices array OR no choices (informational/follow-up message)
-2. Messages WITH choices must have at least 3 choices. Each choice needs: id, label, isCorrect, nextMessageId
-3. Messages WITHOUT choices are follow-up/feedback messages (no user response needed)
-4. Use nextMessageId in choices to chain to follow-up messages
-5. Include both correct (safe) and incorrect (dangerous) choices
-6. Not all messages need choices - include informational messages and follow-up responses
-7. Timestamps control reveal order: use -1 for initial welcome, 0+ for subsequent, same timestamp = revealed together
-8. For correct choices, the nextMessageId should point to a positive feedback message
-9. For incorrect choices, the nextMessageId should point to a warning/correction message
+DM CHOICE JSON STRUCTURE (MANDATORY):
+"choices": [
+  { "id": "c1", "label": "Technical redirection to secure protocol (Vault/IAM/Ticket)", "isCorrect": true, "nextMessageId": "ON_PASS_ID" },
+  { "id": "c2", "label": "Reckless sharing/Dangerous shortcut", "isCorrect": false, "nextMessageId": "ON_FAIL_ID" },
+  { "id": "c3", "label": "Passive/Unhelpful action (e.g. Ignoring)", "isCorrect": false, "nextMessageId": "ON_FAIL_ID" }
+]
+* Note: Use literal "ON_PASS_ID" and "ON_FAIL_ID" in the prompt; the manager will fix these during pool hydration.
 
-MESSAGE FLOW EXAMPLE:
-- Message A (timestamp 0) with choices, each choice has nextMessageId pointing to B or C
-- Message B (timestamp 1) - positive feedback after correct choice
-- Message C (timestamp 1) - warning after incorrect choice
-- Message D (timestamp 2) - next scenario message with choices
-
-IMPORTANT: For avatar URLs, use the format pattern: https://api.dicebear.com/9.x/initials/svg?seed={sender_name} where {sender_name} will be replaced with the actual sender name from the response.
-
-Use locale: ${config.locale}. Generate realistic, educational content. Ensure DM messages include a mix of legitimate security advice (correct choices available), malicious social engineering attempts (trap choices), and follow-up feedback messages. Not all messages should have choices - include helpful guidance and feedback messages.`;
+Use locale: ${config.locale}. Make it challenging, believable, and completely IMMERSIVE.`;
 
     try {
       const response = await fetch(`${this.config.baseURL}chat/completions`, {
@@ -107,141 +159,52 @@ Use locale: ${config.locale}. Generate realistic, educational content. Ensure DM
         })
       });
 
-      console.log("[OpenAI API] Request body:", {
-        model: this.config.model,
-        temperature: temperature,
-        responseType: "json_object"
-      });
-
       if (!response.ok) {
         const error: GenerationError = {
           message: response.statusText,
           statusCode: response.status,
           isRetryable: response.status === 429 || response.status >= 500
         };
-        console.error("[OpenAI API] Request failed:", {
-          status: response.status,
-          statusText: response.statusText
-        });
         throw error;
       }
 
       const responseData = await response.json();
-
-      console.log("[OpenAI API] Response received:", {
-        hasChoices: !!responseData.choices?.[0],
-        hasContent: !!responseData.choices?.[0]?.message?.content,
-        responseLength: JSON.stringify(responseData).length
-      });
-
-      // Parse the OpenAI response
-      const generatedContent = responseData.choices[0]?.message?.content;
+      const generatedContent = responseData.choices?.[0]?.message?.content;
 
       if (!generatedContent) {
-        console.error("[OpenAI API] No content generated");
         throw new Error("No content generated from OpenAI API");
       }
 
-      // Debug: Log first 500 chars of generated content
-      console.log(
-        "[OpenAI API] Generated content preview:",
-        generatedContent.substring(0, 500)
-      );
-
-      // Parse JSON response
       const parsedContent = JSON.parse(generatedContent) as any;
-
-      console.log(
-        "[OpenAI API] Parsed content keys:",
-        Object.keys(parsedContent)
-      );
-
-      // Check if our expected fields are directly in the response
-      const hasDirectFields =
-        parsedContent.preBreachEmails ||
-        parsedContent.breachEmails ||
-        parsedContent.logEntries ||
-        parsedContent.socialEngineeringDMs ||
-        parsedContent.npcBadAdvice ||
-        parsedContent.lolbins ||
-        parsedContent.wifi;
-
-      // If not, try to find fields in a nested structure
       let finalContent = parsedContent;
 
+      // Check if fields are nested
+      const hasDirectFields = requiredFields.some((f) => parsedContent[f]);
       if (!hasDirectFields) {
-        console.log(
-          "[OpenAI API] Direct fields not found, checking nested structure"
-        );
-        // Try to find our fields in nested structures
         for (const key of Object.keys(parsedContent)) {
           const nestedValue = parsedContent[key];
           if (nestedValue && typeof nestedValue === "object") {
-            console.log(
-              `[OpenAI API] Found nested key ${key} with:`,
-              Object.keys(nestedValue)
-            );
             finalContent = { ...finalContent, ...nestedValue };
           }
         }
       }
-      console.log(
-        "[OpenAI API] Final content keys:",
-        Object.keys(finalContent)
-      );
-      // Check again after merging
-      const hasAllFields =
-        finalContent.preBreachEmails &&
-        finalContent.breachEmails &&
-        finalContent.logEntries &&
-        finalContent.socialEngineeringDMs &&
-        finalContent.npcBadAdvice &&
-        finalContent.lolbins &&
-        finalContent.wifi;
 
-      if (!hasAllFields) {
-        console.error(
-          "[OpenAI API] Still missing required fields after checking nested structure"
-        );
-        throw new Error(
-          "Invalid content structure from OpenAI API - missing required fields"
-        );
-      }
-
-      // Ensure all fields are arrays, default to empty arrays if not present
+      // Map specialized fields back to the standard return interface
       const validatedContent = {
-        preBreachEmails: Array.isArray(finalContent.preBreachEmails)
-          ? finalContent.preBreachEmails
-          : [],
-        breachEmails: Array.isArray(finalContent.breachEmails)
-          ? finalContent.breachEmails
-          : [],
-        logEntries: Array.isArray(finalContent.logEntries)
-          ? finalContent.logEntries
-          : [],
-        socialEngineeringDMs: Array.isArray(finalContent.socialEngineeringDMs)
-          ? finalContent.socialEngineeringDMs
-          : [],
-        npcBadAdvice: Array.isArray(finalContent.npcBadAdvice)
-          ? finalContent.npcBadAdvice
-          : [],
-        lolbins: Array.isArray(finalContent.lolbins)
-          ? finalContent.lolbins
-          : [],
+        preBreachEmails: Array.isArray(finalContent.preBreachEmails) ? finalContent.preBreachEmails : [],
+        breachEmails: Array.isArray(finalContent.breachEmails) ? finalContent.breachEmails : [],
+        logEntries: Array.isArray(finalContent.logEntries) ? finalContent.logEntries : [],
+        // Temporary storage for pool hydration:
+        socialEngineeringDMs: [
+          ...(finalContent.dmIntro ? [finalContent.dmIntro] : []),
+          ...(Array.isArray(finalContent.dmScenarios) ? finalContent.dmScenarios : [])
+        ] as any[], 
+        npcBadAdvice: Array.isArray(finalContent.npcBadAdvice) ? finalContent.npcBadAdvice : [],
+        lolbins: Array.isArray(finalContent.lolbins) ? finalContent.lolbins : [],
         wifi: Array.isArray(finalContent.wifi) ? finalContent.wifi : [],
         sessionId: config.sessionId,
         isOfflineContent: false
       };
-
-      console.log("[OpenAI API] Validated content structure:", {
-        preBreachEmails: validatedContent.preBreachEmails.length,
-        breachEmails: validatedContent.breachEmails.length,
-        logEntries: validatedContent.logEntries.length,
-        socialEngineeringDMs: validatedContent.socialEngineeringDMs.length,
-        npcBadAdvice: validatedContent.npcBadAdvice.length,
-        lolbins: validatedContent.lolbins.length,
-        wifi: validatedContent.wifi.length
-      });
 
       return validatedContent;
     } catch (error: any) {
@@ -265,6 +228,69 @@ Use locale: ${config.locale}. Generate realistic, educational content. Ensure DM
   }
 }
 
+/**
+ * Client for auditing generated content quality.
+ * Uses a more powerful model to ensure technical accuracy and roleplay fidelity.
+ */
+export class AuditClient {
+  private apiKey: string;
+  private model: string;
+
+  constructor(apiKey: string, model: string = "gpt-4o") {
+    this.apiKey = apiKey;
+    this.model = model;
+  }
+
+  async auditContent(type: string, content: any): Promise<{ score: number; feedback: string }> {
+    try {
+      const prompt = `AUDIT this cybersecurity game content for a professional audience.
+Type: ${type}
+Content: ${JSON.stringify(content)}
+
+CRITICAL COMPLIANCE & STANDARDS CHECK:
+1. TECHNICAL ACCURACY: Are the "correct" answers actually correct according to industry best practices (NIST, ISO 27001)? 
+   - MANDATORY: Sharing ANY credentials, keys, or secrets over chat is ALWAYS INCORRECT, even with "verification".
+   - MANDATORY: The ONLY correct response to a secret request is redirecting the user to a secure official channel (e.g., "Use the secrets manager", "I'll grant you IAM access").
+2. CHAIN INTEGRITY (FOR DMs): If this is a scenario, ensure 'setup', 'onPass', and 'onFail' are technicaly consistent and logically linked.
+3. COMPLIANCE: Does the content align with GDPR and technical security controls?
+4. SECURITY PEDAGOGY: Ensure the game NEVER teaches "shadow IT" or "trust-based" shortcuts.
+5. QUALITY: Is the roleplay immersive? (e.g., no "NameManager" style names).
+
+SCORING (1-10):
+- 1-3: Dangerous teaching or logical errors. REJECT IMMEDIATELY.
+- 4-6: Accurate but simple.
+- 7-10: High-fidelity technical reinforcement.
+
+Return ONLY a JSON object: { "score": number, "feedback": "string" }`;
+
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+          model: this.model,
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" }
+        })
+      });
+
+      if (!response.ok) return { score: 5, feedback: "Audit failed" };
+      
+      const data = await response.json();
+      const result = JSON.parse(data.choices[0].message.content);
+      return {
+        score: Number(result.score) || 5,
+        feedback: String(result.feedback) || ""
+      };
+    } catch (e) {
+      console.error("Audit error:", e);
+      return { score: 5, feedback: "Error during audit" };
+    }
+  }
+}
+
 export function createOpenAIClient(): OpenAIClient | null {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -272,7 +298,7 @@ export function createOpenAIClient(): OpenAIClient | null {
     return null;
   }
 
-  const model = process.env.OPENAI_MODEL || "gpt-3.5-turbo";
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
   return new OpenAIClient({ apiKey, model });
 }

@@ -69,13 +69,10 @@ export const useContentStore = create<ContentStore>((set, get) => ({
 
   isContentReady: () => {
     const state = get();
-    // Check if main content arrays are populated (DMs may be optional)
+    // Stage 1 content optimization: Only require onboarding content to start
     return (
       state.preBreachEmails.length > 0 &&
-      state.breachEmails.length > 0 &&
-      state.logEntries.length > 0 &&
-      state.lolbins.length > 0 &&
-      state.wifi.length > 0
+      state.socialEngineeringDMs.length > 0
     );
   },
 

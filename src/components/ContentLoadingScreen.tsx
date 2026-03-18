@@ -8,6 +8,7 @@ interface ContentLoadingScreenProps {
     current: string;
     total: number;
   };
+  fakeProgress: number;
   retryState?: {
     attempt: number;
     max: number;
@@ -19,26 +20,19 @@ interface ContentLoadingScreenProps {
 const STEPS = [
   'Pre-breach emails',
   'Breach phishing emails',
-  'Log entries',
   'Social engineering DMs',
-  'LOLBins',
-  'NPC advice',
-  'WiFi networks',
 ] as const;
 
 const LOADING_MESSAGES = [
   "Analyzing threat patterns...",
   "Simulating attack vectors...",
   "Generating phishing emails...",
-  "Crafting log entries...",
   "Building social engineering scenarios...",
-  "Preparing incident response data...",
-  "Finalizing content..."
+  "Finalizing initial content..."
 ] as const;
 
-export function ContentLoadingScreen({ progress, retryState, error, onCancel }: ContentLoadingScreenProps) {
+export function ContentLoadingScreen({ progress, fakeProgress, retryState, error, onCancel }: ContentLoadingScreenProps) {
   const [stepIndex, setStepIndex] = useState(0);
-  const [fakeProgress, setFakeProgress] = useState(0);
   const [currentMessage, setCurrentMessage] = useState<string>(LOADING_MESSAGES[0]);
 
   useEffect(() => {
@@ -48,19 +42,6 @@ export function ContentLoadingScreen({ progress, retryState, error, onCancel }: 
     }
   }, [progress.current]);
 
-  // Fake progress animation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setFakeProgress((prev) => {
-        if (prev >= 95) return prev;
-        const increment = Math.random() * 3 + 0.5;
-        return Math.min(95, prev + increment);
-      });
-    }, 200);
-
-    return () => clearInterval(interval);
-  }, []);
-
   // Rotate loading messages
   useEffect(() => {
     const interval = setInterval(() => {
@@ -68,7 +49,7 @@ export function ContentLoadingScreen({ progress, retryState, error, onCancel }: 
         const idx = LOADING_MESSAGES.indexOf(prev as any);
         return LOADING_MESSAGES[(idx + 1) % LOADING_MESSAGES.length];
       });
-    }, 3000);
+    }, 2500);
 
     return () => clearInterval(interval);
   }, []);
@@ -90,7 +71,7 @@ export function ContentLoadingScreen({ progress, retryState, error, onCancel }: 
         style={{ background: 'var(--bg-window)', border: '1px solid var(--border)' }}
       >
         <h2 className="text-xl font-bold mb-4 text-center" style={{ color: 'var(--text-primary)' }}>
-          Generating Scenario Content...
+          Preparing Security Portal...
         </h2>
 
         {error && (
@@ -143,7 +124,7 @@ export function ContentLoadingScreen({ progress, retryState, error, onCancel }: 
               <span className="flex-1 text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {step}: {idx === stepIndex ? (
                   <span>
-                    {progress.total}/{7}
+                    Loading...
                     {retryState && (
                       <span className="ml-2" style={{ color: 'var(--warning)' }}>
                         - Retrying ({retryState.attempt}/{retryState.max})...
@@ -152,7 +133,7 @@ export function ContentLoadingScreen({ progress, retryState, error, onCancel }: 
                   </span>
                 ) : (
                   <span className="text-muted">
-                    {idx < stepIndex ? `${progress.total}/7` : '0/7'}
+                    {idx < stepIndex ? 'Ready' : 'Waiting...'}
                   </span>
                 )}
               </span>

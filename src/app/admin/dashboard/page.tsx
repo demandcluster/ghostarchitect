@@ -612,6 +612,142 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
 }
 
 // ---------------------------------------------------------------------------
+// Content Pool Panel
+// ---------------------------------------------------------------------------
+
+function ContentPoolPanel({ authFetch }: { authFetch: (url: string, options?: RequestInit) => Promise<Response> }) {
+  const [data, setData] = useState<{ counts: { type: string; count: number }[]; summary: { total: number; audited: number; pending: number } } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const fetchCounts = useCallback(async () => {
+    try {
+      const res = await authFetch('/api/admin/content');
+      if (res.ok) {
+        setData(await res.json());
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [authFetch]);
+
+  useEffect(() => {
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 10000); // Refresh every 10s
+    return () => clearInterval(interval);
+  }, [fetchCounts]);
+
+  const triggerRefill = async (section: string) => {
+    setActionLoading(section);
+    try {
+      await authFetch('/api/admin/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section })
+      });
+      // Give it a moment then refresh
+      setTimeout(fetchCounts, 2000);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  if (loading && !data) return null;
+
+  return (
+    <div style={{ marginBottom: 40 }}>
+      <div style={{ marginBottom: 16 }}>
+        <div style={labelStyle}>System Health</div>
+        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
+          AI Content Pool
+        </h2>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+        {/* Summary Card */}
+        <div style={{ 
+          background: 'var(--bg-secondary)', 
+          border: '1px solid var(--border)', 
+          borderRadius: 8, 
+          padding: 16,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between'
+        }}>
+          <div>
+            <div style={labelStyle}>Pool Status</div>
+            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)' }}>
+              {data?.summary.total || 0}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
+              {data?.summary.audited || 0} Audited / {data?.summary.pending || 0} Pending
+            </div>
+          </div>
+          <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => triggerRefill('all')}
+              disabled={!!actionLoading}
+              style={{ ...primaryBtnStyle(!!actionLoading), padding: '6px 0', fontSize: 10 }}
+            >
+              {actionLoading === 'all' ? 'REFILLING...' : 'REFILL ALL'}
+            </button>
+          </div>
+        </div>
+
+        {/* Breakdown Card */}
+        <div style={{ 
+          background: 'var(--bg-secondary)', 
+          border: '1px solid var(--border)', 
+          borderRadius: 8, 
+          padding: 16,
+          gridColumn: 'span 2'
+        }}>
+          <div style={labelStyle}>Pool Breakdown</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', marginTop: 8 }}>
+            {[
+              'EMAIL_PRE', 'EMAIL_BREACH', 'DM_INTRO', 'DM_SCENARIO', 'NPC_ADVICE', 'LOG_BATCH', 'LOLBIN_BATCH', 'WIFI_BATCH'
+            ].map(type => {
+              const item = data?.counts.find(c => c.type === type);
+              const count = item ? item.count : 0;
+              return (
+                <div key={type} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 4 }}>
+                  <span style={{ fontSize: 11, color: count > 0 ? 'var(--text-secondary)' : 'var(--danger)' }}>
+                    {type}{count === 0 ? ' (MISSING)' : ''}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: count > 0 ? 'var(--text-primary)' : 'var(--danger)' }}>
+                    {count}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => triggerRefill('initial')}
+              disabled={!!actionLoading}
+              style={{ ...primaryBtnStyle(!!actionLoading), padding: '6px 0', fontSize: 10, flex: 1 }}
+            >
+              {actionLoading === 'initial' ? 'REFILLING...' : 'REFILL STAGE 1'}
+            </button>
+            <button
+              onClick={() => triggerRefill('secondary')}
+              disabled={!!actionLoading}
+              style={{ ...primaryBtnStyle(!!actionLoading), padding: '6px 0', fontSize: 10, flex: 1 }}
+            >
+              {actionLoading === 'secondary' ? 'REFILLING...' : 'REFILL STAGE 2'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Inner dashboard — uses AdminAuthProvider context
 // ---------------------------------------------------------------------------
 
@@ -625,6 +761,7 @@ function AdminDashboard() {
   const { accessToken, adminUsername, logout, authFetch, isLoading } = useAdminAuth();
   const router = useRouter();
 
+  const [activeTab, setActiveTab] = useState<'trainers' | 'pool'>('trainers');
   const [trainers, setTrainers] = useState<TrainerRow[]>([]);
   const [loadingTrainers, setLoadingTrainers] = useState(true);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
@@ -810,290 +947,324 @@ function AdminDashboard() {
           margin: '0 auto',
         }}
       >
-        {/* Panel header */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: 20,
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontSize: 11,
-                letterSpacing: '0.2em',
-                color: 'var(--text-muted)',
-                marginBottom: 4,
-                textTransform: 'uppercase',
-              }}
-            >
-              Administration
-            </div>
-            <h1
-              style={{
-                margin: 0,
-                fontSize: 20,
-                fontWeight: 700,
-                color: 'var(--accent)',
-                letterSpacing: '0.06em',
-              }}
-            >
-              Trainer Management
-            </h1>
-          </div>
-
+        {/* Tabs */}
+        <div style={{ display: 'flex', gap: 24, marginBottom: 24, borderBottom: '1px solid var(--border)' }}>
           <button
-            onClick={() => setModal({ type: 'create' })}
+            onClick={() => setActiveTab('trainers')}
             style={{
-              background: 'rgba(0,229,51,0.12)',
-              border: '1px solid var(--border-strong)',
-              borderRadius: 6,
-              padding: '9px 18px',
-              fontSize: 11,
-              fontFamily: '"JetBrains Mono", monospace',
+              padding: '8px 4px',
+              fontSize: 12,
               fontWeight: 700,
-              letterSpacing: '0.16em',
-              color: 'var(--accent)',
+              letterSpacing: '0.1em',
+              color: activeTab === 'trainers' ? 'var(--accent)' : 'var(--text-muted)',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'trainers' ? '2px solid var(--accent)' : '2px solid transparent',
               cursor: 'pointer',
-              textShadow: 'var(--glow-green)',
-              transition: 'all 0.15s ease',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(0,229,51,0.2)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'rgba(0,229,51,0.12)';
+              transition: 'all 0.2s ease',
             }}
           >
-            + NEW TRAINER
+            TRAINERS
+          </button>
+          <button
+            onClick={() => setActiveTab('pool')}
+            style={{
+              padding: '8px 4px',
+              fontSize: 12,
+              fontWeight: 700,
+              letterSpacing: '0.1em',
+              color: activeTab === 'pool' ? 'var(--accent)' : 'var(--text-muted)',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: activeTab === 'pool' ? '2px solid var(--accent)' : '2px solid transparent',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            SYSTEM HEALTH
           </button>
         </div>
 
-        {/* Table panel */}
-        <div
-          style={{
-            background: 'var(--bg-secondary)',
-            border: '1px solid var(--border)',
-            borderRadius: 8,
-            overflow: 'hidden',
-          }}
-        >
-          {/* Table header */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '2fr 80px 110px 90px 1fr',
-              padding: '10px 20px',
-              background: 'rgba(0,0,0,0.3)',
-              borderBottom: '1px solid var(--border)',
-              fontSize: 10,
-              letterSpacing: '0.16em',
-              color: 'var(--text-muted)',
-              textTransform: 'uppercase',
-            }}
-          >
-            <span>Username</span>
-            <span>Teams</span>
-            <span>Created</span>
-            <span>Terms</span>
-            <span style={{ textAlign: 'right' }}>Actions</span>
-          </div>
-
-          {/* Rows */}
-          {loadingTrainers ? (
+        {activeTab === 'trainers' ? (
+          <>
+            {/* Panel header */}
             <div
               style={{
-                padding: '40px 20px',
-                textAlign: 'center',
-                color: 'var(--text-muted)',
-                fontSize: 13,
-                letterSpacing: '0.06em',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 20,
               }}
             >
-              Loading...
-            </div>
-          ) : trainers.length === 0 ? (
-            <div
-              style={{
-                padding: '64px 20px',
-                textAlign: 'center',
-                color: 'var(--text-muted)',
-                fontSize: 13,
-                letterSpacing: '0.06em',
-              }}
-            >
-              No trainer accounts yet. Create the first one.
-            </div>
-          ) : (
-            <AnimatePresence initial={false}>
-              {trainers.map((trainer, i) => (
-                <motion.div
-                  key={trainer.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
-                  transition={{ duration: 0.2 }}
+              <div>
+                <h1
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: '2fr 80px 110px 90px 1fr',
-                    padding: '14px 20px',
-                    borderBottom: i < trainers.length - 1 ? '1px solid var(--border)' : 'none',
-                    alignItems: 'center',
+                    margin: 0,
+                    fontSize: 20,
+                    fontWeight: 700,
+                    color: 'var(--text-primary)',
+                    letterSpacing: '0.06em',
                   }}
                 >
-                  {/* Username */}
-                  <div>
-                    <span
-                      style={{
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: 'var(--text-primary)',
-                        letterSpacing: '0.03em',
-                      }}
-                    >
-                      {trainer.username}
-                    </span>
-                    {trainer.role !== 'trainer' && (
-                      <span
-                        style={{
-                          marginLeft: 8,
-                          fontSize: 10,
-                          background: 'rgba(77,159,255,0.15)',
-                          color: '#4d9fff',
-                          border: '1px solid rgba(77,159,255,0.3)',
-                          borderRadius: 3,
-                          padding: '1px 6px',
-                          letterSpacing: '0.08em',
-                        }}
-                      >
-                        {trainer.role.toUpperCase()}
-                      </span>
-                    )}
-                  </div>
+                  Trainer Management
+                </h1>
+              </div>
 
-                  {/* Teams badge */}
-                  <div>
-                    <span
+              <button
+                onClick={() => setModal({ type: 'create' })}
+                style={{
+                  background: 'rgba(0,229,51,0.12)',
+                  border: '1px solid var(--border-strong)',
+                  borderRadius: 6,
+                  padding: '9px 18px',
+                  fontSize: 11,
+                  fontFamily: '"JetBrains Mono", monospace',
+                  fontWeight: 700,
+                  letterSpacing: '0.16em',
+                  color: 'var(--accent)',
+                  cursor: 'pointer',
+                  textShadow: 'var(--glow-green)',
+                  transition: 'all 0.15s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(0,229,51,0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(0,229,51,0.12)';
+                }}
+              >
+                + NEW TRAINER
+              </button>
+            </div>
+
+            {/* Table panel */}
+            <div
+              style={{
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                overflow: 'hidden',
+                marginBottom: 40,
+              }}
+            >
+              {/* Table header */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '2fr 80px 110px 90px 1fr',
+                  padding: '10px 20px',
+                  background: 'rgba(0,0,0,0.3)',
+                  borderBottom: '1px solid var(--border)',
+                  fontSize: 10,
+                  letterSpacing: '0.16em',
+                  color: 'var(--text-muted)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                <span>Username</span>
+                <span>Teams</span>
+                <span>Created</span>
+                <span>Terms</span>
+                <span style={{ textAlign: 'right' }}>Actions</span>
+              </div>
+
+              {/* Rows */}
+              {loadingTrainers ? (
+                <div
+                  style={{
+                    padding: '40px 20px',
+                    textAlign: 'center',
+                    color: 'var(--text-muted)',
+                    fontSize: 13,
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  Loading...
+                </div>
+              ) : trainers.length === 0 ? (
+                <div
+                  style={{
+                    padding: '64px 20px',
+                    textAlign: 'center',
+                    color: 'var(--text-muted)',
+                    fontSize: 13,
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  No trainer accounts yet. Create the first one.
+                </div>
+              ) : (
+                <AnimatePresence initial={false}>
+                  {trainers.map((trainer, i) => (
+                    <motion.div
+                      key={trainer.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                      transition={{ duration: 0.2 }}
                       style={{
-                        display: 'inline-flex',
+                        display: 'grid',
+                        gridTemplateColumns: '2fr 80px 110px 90px 1fr',
+                        padding: '14px 20px',
+                        borderBottom: i < trainers.length - 1 ? '1px solid var(--border)' : 'none',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        minWidth: 28,
-                        height: 22,
-                        background: trainer.teamCount > 0 ? 'rgba(0,229,51,0.1)' : 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${trainer.teamCount > 0 ? 'rgba(0,229,51,0.3)' : 'var(--border)'}`,
-                        borderRadius: 4,
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: trainer.teamCount > 0 ? 'var(--accent)' : 'var(--text-muted)',
-                        padding: '0 8px',
                       }}
                     >
-                      {trainer.teamCount}
-                    </span>
-                  </div>
+                      {/* Username */}
+                      <div>
+                        <span
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 600,
+                            color: 'var(--text-primary)',
+                            letterSpacing: '0.03em',
+                          }}
+                        >
+                          {trainer.username}
+                        </span>
+                        {trainer.role !== 'trainer' && (
+                          <span
+                            style={{
+                              marginLeft: 8,
+                              fontSize: 10,
+                              background: 'rgba(77,159,255,0.15)',
+                              color: '#4d9fff',
+                              border: '1px solid rgba(77,159,255,0.3)',
+                              borderRadius: 3,
+                              padding: '1px 6px',
+                              letterSpacing: '0.08em',
+                            }}
+                          >
+                            {trainer.role.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
 
-                  {/* Created */}
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: 'var(--text-secondary)',
-                      letterSpacing: '0.04em',
-                    }}
-                  >
-                    {fmtDate(trainer.createdAt)}
-                  </div>
+                      {/* Teams badge */}
+                      <div>
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minWidth: 28,
+                            height: 22,
+                            background: trainer.teamCount > 0 ? 'rgba(0,229,51,0.1)' : 'rgba(255,255,255,0.04)',
+                            border: `1px solid ${trainer.teamCount > 0 ? 'rgba(0,229,51,0.3)' : 'var(--border)'}`,
+                            borderRadius: 4,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            color: trainer.teamCount > 0 ? 'var(--accent)' : 'var(--text-muted)',
+                            padding: '0 8px',
+                          }}
+                        >
+                          {trainer.teamCount}
+                        </span>
+                      </div>
 
-                  {/* Terms */}
-                  <div>
-                    {trainer.acceptedTermsAt ? (
-                      <span
+                      {/* Created */}
+                      <div
                         style={{
-                          fontSize: 14,
-                          color: '#00e533',
-                          textShadow: '0 0 8px rgba(0,229,51,0.5)',
+                          fontSize: 12,
+                          color: 'var(--text-secondary)',
+                          letterSpacing: '0.04em',
                         }}
-                        title={`Accepted ${fmtDate(trainer.acceptedTermsAt)}`}
                       >
-                        ✓
-                      </span>
-                    ) : (
-                      <span
-                        style={{
-                          fontSize: 14,
-                          color: 'var(--danger)',
-                        }}
-                        title="Terms not accepted"
-                      >
-                        ✗
-                      </span>
-                    )}
-                  </div>
+                        {fmtDate(trainer.createdAt)}
+                      </div>
 
-                  {/* Actions */}
-                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={() => setModal({ type: 'reset', trainer })}
-                      style={{
-                        background: 'transparent',
-                        border: '1px solid var(--border)',
-                        borderRadius: 4,
-                        padding: '5px 12px',
-                        fontSize: 10,
-                        fontFamily: '"JetBrains Mono", monospace',
-                        fontWeight: 700,
-                        letterSpacing: '0.1em',
-                        color: 'var(--text-muted)',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s ease',
-                        whiteSpace: 'nowrap',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.color = 'var(--accent)';
-                        e.currentTarget.style.borderColor = 'var(--border-strong)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.color = 'var(--text-muted)';
-                        e.currentTarget.style.borderColor = 'var(--border)';
-                      }}
-                    >
-                      Reset Password
-                    </button>
-                    <button
-                      onClick={() => setModal({ type: 'delete', trainer })}
-                      style={{
-                        background: 'transparent',
-                        border: '1px solid rgba(255,45,85,0.3)',
-                        borderRadius: 4,
-                        padding: '5px 12px',
-                        fontSize: 10,
-                        fontFamily: '"JetBrains Mono", monospace',
-                        fontWeight: 700,
-                        letterSpacing: '0.1em',
-                        color: 'var(--danger)',
-                        cursor: 'pointer',
-                        opacity: 0.6,
-                        transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.opacity = '1';
-                        e.currentTarget.style.background = 'rgba(255,45,85,0.08)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.opacity = '0.6';
-                        e.currentTarget.style.background = 'transparent';
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          )}
-        </div>
+                      {/* Terms */}
+                      <div>
+                        {trainer.acceptedTermsAt ? (
+                          <span
+                            style={{
+                              fontSize: 14,
+                              color: '#00e533',
+                              textShadow: '0 0 8px rgba(0,229,51,0.5)',
+                            }}
+                            title={`Accepted ${fmtDate(trainer.acceptedTermsAt)}`}
+                          >
+                            ✓
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              fontSize: 14,
+                              color: 'var(--danger)',
+                            }}
+                            title="Terms not accepted"
+                          >
+                            ✗
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => setModal({ type: 'reset', trainer })}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid var(--border)',
+                            borderRadius: 4,
+                            padding: '5px 12px',
+                            fontSize: 10,
+                            fontFamily: '"JetBrains Mono", monospace',
+                            fontWeight: 700,
+                            letterSpacing: '0.1em',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                            whiteSpace: 'nowrap',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = 'var(--accent)';
+                            e.currentTarget.style.borderColor = 'var(--border-strong)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = 'var(--text-muted)';
+                            e.currentTarget.style.borderColor = 'var(--border)';
+                          }}
+                        >
+                          Reset Password
+                        </button>
+                        <button
+                          onClick={() => setModal({ type: 'delete', trainer })}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid rgba(255,45,85,0.3)',
+                            borderRadius: 4,
+                            padding: '5px 12px',
+                            fontSize: 10,
+                            fontFamily: '"JetBrains Mono", monospace',
+                            fontWeight: 700,
+                            letterSpacing: '0.1em',
+                            color: 'var(--danger)',
+                            cursor: 'pointer',
+                            opacity: 0.6,
+                            transition: 'all 0.15s ease',
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.opacity = '1';
+                            e.currentTarget.style.background = 'rgba(255,45,85,0.08)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.opacity = '0.6';
+                            e.currentTarget.style.background = 'transparent';
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+            </div>
+          </>
+        ) : (
+          <ContentPoolPanel authFetch={authFetch} />
+        )}
       </main>
 
       {/* ── Modals ── */}

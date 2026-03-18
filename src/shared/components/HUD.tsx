@@ -117,7 +117,7 @@ export function HUD() {
         onMouseLeave={() => setShowTooltip(false)}
       >
         <div className="text-[9px] mb-1" style={{ color: "var(--text-muted)" }}>
-          Score: {totalScore}/100
+          Score: {totalScore}/500
         </div>
         {/* Four category bars */}
         <div className="space-y-1">
@@ -125,7 +125,7 @@ export function HUD() {
             <div key={cat} className="h-[3px] rounded-full overflow-hidden" style={{ background: "var(--bg-window-sunken)" }}>
               <div
                 className={`h-full rounded-full transition-all duration-500 ${CATEGORY_BAR_COLORS[cat]}`}
-                style={{ width: `${(categoryScores[cat] / 25) * 100}%` }}
+                style={{ width: `${(categoryScores[cat] / 125) * 100}%` }}
               />
             </div>
           ))}
@@ -136,19 +136,19 @@ export function HUD() {
           <div className="absolute top-full left-0 mt-1 rounded p-2 text-[9px] whitespace-nowrap z-50 shadow-lg" style={{ background: "#e2e8f0", border: "1px solid var(--border)", color: "#1e293b" }}>
             <div className="flex justify-between gap-3">
               <span>Phishing IQ</span>
-              <span className="font-mono">{categoryScores.phishingIQ}/25</span>
+              <span className="font-mono">{categoryScores.phishingIQ}/125</span>
             </div>
             <div className="flex justify-between gap-3">
               <span>Password Hygiene</span>
-              <span className="font-mono">{categoryScores.passwordHygiene}/25</span>
+              <span className="font-mono">{categoryScores.passwordHygiene}/125</span>
             </div>
             <div className="flex justify-between gap-3">
               <span>Network Security</span>
-              <span className="font-mono">{categoryScores.networkSecurity}/25</span>
+              <span className="font-mono">{categoryScores.networkSecurity}/125</span>
             </div>
             <div className="flex justify-between gap-3">
               <span>Forensic Skill</span>
-              <span className="font-mono">{categoryScores.forensicSkill}/25</span>
+              <span className="font-mono">{categoryScores.forensicSkill}/125</span>
             </div>
           </div>
         )}

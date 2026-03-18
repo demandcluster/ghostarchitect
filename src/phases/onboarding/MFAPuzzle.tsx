@@ -67,120 +67,122 @@ export function MFAPuzzle({ onComplete }: MFAPuzzleProps) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ background: "var(--bg-secondary)" }}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md rounded-lg shadow-lg p-8"
-        style={{ background: "var(--bg-window)", border: "1px solid var(--border)" }}
-      >
-        <div className="text-center mb-6">
-          <div className="w-14 h-14 mx-auto rounded-full flex items-center justify-center mb-3" style={{ background: "rgba(59,110,248,0.1)" }}>
-            <ShieldIcon />
-          </div>
-          <h2 className="text-lg font-bold" style={{ color: "var(--text-primary)" }}>
-            Set Up Multi-Factor Authentication
-          </h2>
-          <p className="text-sm mt-2" style={{ color: "var(--text-secondary)" }}>
-            {teamName} requires MFA on all accounts. Choose your second factor:
-          </p>
-        </div>
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-6 py-12 overflow-hidden bg-[var(--bg-primary)]">
+      {/* Background elements */}
+      <div className="absolute inset-0 pointer-events-none opacity-20">
+        <div 
+          className="absolute inset-0"
+          style={{
+            backgroundImage: 'linear-gradient(rgba(0,229,51,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,51,0.05) 1px, transparent 1px)',
+            backgroundSize: '40px 40px',
+          }}
+        />
+      </div>
 
-        {!showResult ? (
-          <div className="space-y-3">
-            <button
-              onClick={() => handleChoice("authenticator")}
-              className="w-full p-4 border rounded-lg text-left hover:border-accent transition-colors flex items-start gap-3 group"
-              style={{ background: "#f8fafc", borderColor: "var(--border)" }}
-            >
-              <span className="mt-0.5 w-5 h-5 rounded-full border-2 group-hover:border-accent flex-shrink-0 flex items-center justify-center transition-colors" style={{ borderColor: "#d1d5db" }}>
-                <span className="w-2 h-2 rounded-full bg-transparent group-hover:bg-accent transition-colors" />
-              </span>
-              <div className="flex-1">
-                <div className="font-medium text-sm flex items-center gap-2" style={{ color: "#0f172a" }}>
-                  Authenticator App (TOTP)
-                  <span className="text-[10px] font-medium bg-[var(--success-subtle)] text-[var(--success)] px-1.5 py-0.5 rounded">
-                    RECOMMENDED
-                  </span>
-                </div>
-                <p className="text-xs mt-1" style={{ color: "#334155" }}>
-                  Time-based codes from Google Authenticator, Authy, or similar.
-                  Codes rotate every 30 seconds.
-                </p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleChoice("sms")}
-              className="w-full p-4 border rounded-lg text-left hover:border-accent transition-colors flex items-start gap-3 group"
-              style={{ background: "#f8fafc", borderColor: "var(--border)" }}
-            >
-              <span className="mt-0.5 w-5 h-5 rounded-full border-2 group-hover:border-accent flex-shrink-0 flex items-center justify-center transition-colors" style={{ borderColor: "#d1d5db" }}>
-                <span className="w-2 h-2 rounded-full bg-transparent group-hover:bg-accent transition-colors" />
-              </span>
-              <div className="flex-1">
-                <div className="font-medium text-sm flex items-center gap-2" style={{ color: "#0f172a" }}>
-                  SMS Text Message
-                  <span className="text-[10px] font-medium bg-[var(--warning-subtle)] text-[var(--warning)] px-1.5 py-0.5 rounded">
-                    LESS SECURE
-                  </span>
-                </div>
-                <p className="text-xs mt-1" style={{ color: "#334155" }}>
-                  Receive a 6-digit code via text message to your phone number.
-                </p>
-              </div>
-            </button>
-          </div>
-        ) : (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="space-y-4"
-          >
-            <div
-              className={`p-4 rounded-lg border ${
-                selected === "authenticator"
-                  ? "bg-[var(--success-subtle)] border-[var(--success)]/35"
-                  : "bg-[var(--warning-subtle)] border-[var(--warning)]/35"
-              }`}
-              style={{ background: selected === "authenticator" ? "rgba(22,163,74,0.08)" : "rgba(217,119,6,0).08)" }}
-            >
-              {selected === "authenticator" ? (
-                <>
-                  <p className="text-sm font-medium" style={{ color: "#16a34a" }}>
-                    Excellent choice!
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: "#475569" }}>
-                    Authenticator apps generate codes locally on your device.
-                    They are resistant to SIM swap attacks, SS7 network
-                    exploits, and phone number porting fraud.
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm font-medium" style={{ color: "#dc2626" }}>
-                    SMS works, but has known vulnerabilities.
-                  </p>
-                  <p className="text-xs mt-1" style={{ color: "#475569" }}>
-                    SMS codes can be intercepted via SIM swap attacks, SS7
-                    network exploits, or phone number porting. NIST deprecated
-                    SMS as a second factor. An authenticator app is the
-                    recommended choice.
-                  </p>
-                </>
-              )}
+      <div className="relative z-10 w-full max-w-md flex flex-col gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full rounded-3xl border border-[rgba(0,229,51,0.15)] bg-[rgba(0,1,12,0.7)] backdrop-blur-2xl p-8 shadow-[0_0_60px_rgba(0,0,0,0.6)]"
+        >
+          <div className="text-center mb-10">
+            <div className="w-16 h-16 mx-auto rounded-full flex items-center justify-center mb-4 bg-[rgba(0,229,51,0.05)] border border-[rgba(0,229,51,0.15)] shadow-[0_0_20px_rgba(0,229,51,0.1)]">
+              <ShieldIcon />
             </div>
+            <div className="inline-block px-3 py-1 rounded-full bg-[rgba(0,229,51,0.1)] border border-[rgba(0,229,51,0.2)] text-[10px] text-[var(--accent)] tracking-[0.3em] font-bold mb-3 uppercase">
+              Security Protocol
+            </div>
+            <h2 className="text-xl font-bold tracking-tight text-white uppercase">
+              Set Up Multi-Factor
+            </h2>
+            <p className="text-[11px] mt-2 font-mono text-white/40 tracking-wider">
+              {teamName.toUpperCase()} REQUIRES SECOND FACTOR AUTH
+            </p>
+          </div>
 
-            <button
-              onClick={onComplete}
-              className="w-full py-2 bg-accent text-white rounded text-sm font-medium hover:bg-accent-hover transition-colors"
+          {!showResult ? (
+            <div className="space-y-4">
+              <button
+                onClick={() => handleChoice("authenticator")}
+                className="w-full p-5 border rounded-2xl text-left transition-all flex items-start gap-4 group relative overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(0,229,51,0.15)" }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-[rgba(0,229,51,0.05)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="mt-1 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all group-hover:border-[var(--accent)]" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
+                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="relative z-10">
+                  <div className="font-bold text-sm text-white flex items-center gap-3">
+                    Authenticator App
+                    <span className="text-[9px] font-bold bg-[rgba(0,229,51,0.1)] text-[var(--accent)] px-2 py-0.5 rounded-full border border-[rgba(0,229,51,0.2)] tracking-tighter">
+                      RECOMMENDED
+                    </span>
+                  </div>
+                  <p className="text-[11px] mt-1 text-white/50 leading-relaxed">
+                    Time-based OTP codes. High resistance to SS7 exploits and SIM-swaps.
+                  </p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleChoice("sms")}
+                className="w-full p-5 border rounded-2xl text-left transition-all flex items-start gap-4 group relative overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.02)", borderColor: "rgba(255,184,0,0.15)" }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-[rgba(255,184,0,0.05)] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="mt-1 w-5 h-5 rounded-full border-2 flex-shrink-0 flex items-center justify-center transition-all group-hover:border-[var(--warning)]" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
+                  <div className="w-2.5 h-2.5 rounded-full bg-[var(--warning)] opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="relative z-10">
+                  <div className="font-bold text-sm text-white flex items-center gap-3">
+                    SMS Text Message
+                    <span className="text-[9px] font-bold bg-[rgba(255,184,0,0.1)] text-[var(--warning)] px-2 py-0.5 rounded-full border border-[rgba(255,184,0,0.2)] tracking-tighter uppercase">
+                      Legacy
+                    </span>
+                  </div>
+                  <p className="text-[11px] mt-1 text-white/50 leading-relaxed">
+                    Receive codes via mobile network. Vulnerable to interception.
+                  </p>
+                </div>
+              </button>
+            </div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+              className="space-y-6"
             >
-              Continue to Portal
-            </button>
-          </motion.div>
-        )}
-      </motion.div>
+              <div
+                className="p-5 rounded-2xl border"
+                style={{ 
+                  background: selected === "authenticator" ? "rgba(0,229,51,0.05)" : "rgba(255,45,85,0.05)",
+                  borderColor: selected === "authenticator" ? "rgba(0,229,51,0.2)" : "rgba(255,45,85,0.2)"
+                }}
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className={`w-2 h-2 rounded-full ${selected === "authenticator" ? "bg-[var(--accent)] shadow-[0_0_8px_var(--accent)]" : "bg-[var(--danger)] shadow-[0_0_8px_var(--danger)]"}`} />
+                  <p className="text-xs font-bold uppercase tracking-widest text-white">
+                    {selected === "authenticator" ? "Optimal Security Configured" : "Sub-optimal Configured"}
+                  </p>
+                </div>
+                <p className="text-[11px] text-white/60 leading-relaxed font-mono">
+                  {selected === "authenticator" 
+                    ? "TOTP-based auth provides local cryptographic verification. This mitigates most SS7-level interception attacks."
+                    : "SMS-based auth is deprecated by NIST due to SIM-swapping risks. You have been granted temporary access with reduced trust."}
+                </p>
+              </div>
+
+              <button
+                onClick={onComplete}
+                className="w-full bg-[var(--accent)] text-black font-bold py-4 rounded-xl text-xs tracking-[0.2em] hover:brightness-110 active:scale-[0.98] transition-all hover:shadow-[0_0_25px_rgba(0,229,51,0.4)] uppercase"
+              >
+                Access Portal
+              </button>
+            </motion.div>
+          )}
+        </motion.div>
+      </div>
     </div>
   );
 }

@@ -97,10 +97,10 @@ export default function Home() {
   const [wikiTab, setWikiTab] = useState<
     | "social-engineering"
     | "network-security"
-    | "log-analysis"
     | "incident-response"
   >("social-engineering");
-  const [dmReveal, setDmReveal] = useState(0);
+  const [revealedDmIds, setRevealedDmIds] = useState<string[]>([]);
+  const [dmInteractionsDone, setDmInteractionsDone] = useState(0);
   const [dmDone, setDmDone] = useState(false);
   const [flaggedLogs, setFlaggedLogs] = useState<LogEntry[]>([]);
   const [npcDmReveal, setNpcDmReveal] = useState(0);
@@ -110,6 +110,7 @@ export default function Home() {
 
   // Content generation state
   const [isGenerating, setIsGenerating] = useState(false);
+  const [fakeProgress, setFakeProgress] = useState(0);
   const [generationProgress, setGenerationProgress] = useState({
     current: "",
     total: 0
@@ -131,10 +132,10 @@ export default function Home() {
     contentStoreRef.current = contentStore;
   }, [contentStore]);
 
-  // Initialize content generation (only after user login/MFA completion)
+  // Initialize content generation (start during Login/MFA to save time)
   useEffect(() => {
-    // Don't generate content on start, login or mfa steps
-    if (step === "start" || step === "login" || step === "mfa") {
+    // Don't generate content on start step
+    if (step === "start") {
       return;
     }
 
@@ -186,39 +187,86 @@ export default function Home() {
         return;
       }
 
+      // Stage 1: Initial Content (Emails and DMs)
       // Set flag to prevent duplicate requests
       generationInProgressRef.current = true;
       generationAttemptCountRef.current++;
       setIsGenerating(true);
+      setFakeProgress(0);
       setGenerationProgress({ current: "Pre-breach emails", total: 0 });
 
+      // Start simulating step transitions for UI feedback (Initial Section)
+      const initialSteps = [
+        'Pre-breach emails',
+        'Breach phishing emails',
+        'Social engineering DMs',
+      ];
+      let stepIdx = 0;
+      const progressInterval = setInterval(() => {
+        if (stepIdx < initialSteps.length - 1) {
+          stepIdx++;
+          setGenerationProgress({ current: initialSteps[stepIdx], total: stepIdx + 1 });
+        }
+      }, 2500); 
+
+      // Start the progress bar timer (accumulates even during Login/MFA)
+      const barInterval = setInterval(() => {
+        setFakeProgress((prev) => {
+          if (prev >= 98) return prev;
+          const increment = Math.random() * 2 + 0.2;
+          return Math.min(98, prev + increment);
+        });
+      }, 300);
+
       try {
-        const contentLocale = useGameStore.getState().contentLocale;
-        console.log(`Starting content generation (attempt ${generationAttemptCountRef.current}) with generator:`, !!generator);
-        const result = await generator.generateAll({
+        const { contentLocale, teamName, fakeDomain } = useGameStore.getState();
+        console.log(`Starting INITIAL content generation (attempt ${generationAttemptCountRef.current})`);
+        
+        const initialResult = await generator.generateAll({
           sessionId,
           locale: contentLocale,
-          temperature: 0.9
+          temperature: 0.9,
+          section: 'initial',
+          teamName,
+          fakeDomain
         });
 
-        // Server has already parsed the JSON strings into arrays
-        contentStoreRef.current.setPreBreachEmails(result.preBreachEmails);
-        contentStoreRef.current.setBreachEmails(result.breachEmails);
-        contentStoreRef.current.setLogEntries(result.logEntries);
-        contentStoreRef.current.setSocialEngineeringDMs(result.socialEngineeringDMs);
-        contentStoreRef.current.setNPCBadAdvice(result.npcBadAdvice);
-        contentStoreRef.current.setLOLBins(result.lolbins);
-        contentStoreRef.current.setWiFi(result.wifi);
-        contentStoreRef.current.setIsOfflineContent(result.isOfflineContent);
-
-        contentStoreRef.current.persistToStorage();
-        setGenerationError(null); // Clear any previous error
+        contentStoreRef.current.setPreBreachEmails(initialResult.preBreachEmails);
+        contentStoreRef.current.setBreachEmails(initialResult.breachEmails);
+        contentStoreRef.current.setSocialEngineeringDMs(initialResult.socialEngineeringDMs);
+        
+        // Clear blocking UI once initial content is ready
+        clearInterval(progressInterval);
+        clearInterval(barInterval);
         setIsGenerating(false);
-        generationInProgressRef.current = false;
+        setGenerationError(null);
+
+        // Stage 2: Secondary Content (Background)
+        console.log('Starting SECONDARY content generation in background...');
+        generator.generateAll({
+          sessionId,
+          locale: contentLocale,
+          temperature: 0.8,
+          section: 'secondary',
+          teamName,
+          fakeDomain
+        }).then(secondaryResult => {
+          contentStoreRef.current.setLogEntries(secondaryResult.logEntries);
+          contentStoreRef.current.setNPCBadAdvice(secondaryResult.npcBadAdvice);
+          contentStoreRef.current.setLOLBins(secondaryResult.lolbins);
+          contentStoreRef.current.setWiFi(secondaryResult.wifi);
+          contentStoreRef.current.persistToStorage();
+          console.log('Secondary content generation complete.');
+        }).catch(err => {
+          console.error('Secondary content generation failed (background):', err);
+          // Don't block the user, store will just use fallback/empty arrays for these fields
+        });
+
       } catch (error: any) {
         console.error("Content generation failed:", error);
-        generationAttemptCountRef.current++;
-
+        clearInterval(progressInterval);
+        clearInterval(barInterval);
+        
         // Check for rate limit errors and disable further generation
         if (error.message && (
           error.message.includes('Rate limit') ||
@@ -227,19 +275,20 @@ export default function Home() {
           error.message.includes('Too many errors')
         )) {
           setGenerationError(error.message);
-          setGenerationDisabled(true); // Disable generation to prevent hammering
+          setGenerationDisabled(true); 
           console.warn('Rate limit hit, disabling content generation for this session');
         }
 
         // Fallback to offline content on error
         contentStoreRef.current.setIsOfflineContent(true);
+      } finally {
         setIsGenerating(false);
         generationInProgressRef.current = false;
       }
     };
 
     initContent();
-  }, [step, generator, gameStore, generationDisabled]);
+  }, [step, generator, generationDisabled]);
 
   // Dev shortcut: set breach visual mode when ?step= targets a post-breach phase
   useEffect(() => {
@@ -255,8 +304,34 @@ export default function Home() {
     }
   }, [setVisualMode]);
 
+  // Auto-reveal informational DMs in a chain
+  useEffect(() => {
+    if (step !== "onboarding-portal") return;
+    if (revealedDmIds.length === 0) return;
+
+    const lastId = revealedDmIds[revealedDmIds.length - 1];
+    const dms = isContentReady() ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
+    const currentMsg = dms.find(m => m.id === lastId);
+
+    // If it's an informational message (no choices) and points to another message
+    if (currentMsg && (!currentMsg.choices || currentMsg.choices.length === 0) && (currentMsg as any).nextMessageId) {
+      const nextId = (currentMsg as any).nextMessageId;
+      if (!revealedDmIds.includes(nextId)) {
+        const timer = setTimeout(() => {
+          setRevealedDmIds(prev => [...prev, nextId]);
+        }, 2500); // Delay for reading
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [revealedDmIds, step, isContentReady, socialEngineeringDMs]);
+
   const handleDMChoice = useCallback(
     (messageId: string, choice: DMChoice) => {
+      const dms = isContentReady() ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
+      const currentMsg = dms.find(m => m.id === messageId);
+      const complexity = currentMsg?.complexity || 5;
+      const complexityMultiplier = complexity / 5;
+
       // Game logic: correct choice = +10 trust, wrong choice = -10 trust
       const trustAdjustment = choice.isCorrect ? 10 : -10;
       adjustTrust(trustAdjustment);
@@ -264,7 +339,9 @@ export default function Home() {
       if (choice.scoreEffect) {
         addAction({
           id: `dm-${messageId}-${choice.id}`,
-          ...choice.scoreEffect,
+          category: choice.scoreEffect.category,
+          points: Math.round(choice.scoreEffect.points * complexityMultiplier),
+          maxPoints: Math.round(choice.scoreEffect.maxPoints * complexityMultiplier),
           label: choice.label
         });
       }
@@ -277,42 +354,39 @@ export default function Home() {
         decisionKey: messageId
       });
 
-      const dmMessages = isContentReady()
-        ? socialEngineeringDMs
-        : SOCIAL_ENGINEERING_DM;
-      const nextIdx = dmMessages.findIndex(
-        (m) => m.id === choice.nextMessageId
-      );
-      if (nextIdx >= 0) {
-        setTimeout(() => {
-          setDmReveal(nextIdx + 1);
-        }, 1000);
+      // Threading fix: Add the reply ID to revealed IDs immediately.
+      // This preserves chronological discovery order.
+      if (choice.nextMessageId) {
+        setRevealedDmIds((prev) => prev.includes(choice.nextMessageId!) ? prev : [...prev, choice.nextMessageId!]);
       }
 
-      // Check if all messages are now revealed
-      const totalMessages = dmMessages.length;
-      setTimeout(() => {
-        setDmReveal((current) => {
-          if (current >= totalMessages) {
-            setDmDone(true);
-          }
-          return current;
-        });
-      }, 1100);
+      // Track completion
+      setDmInteractionsDone((prev) => {
+        const nextCount = prev + 1;
+        // Phase ends after 4 scenarios
+        if (nextCount >= 4) {
+          setDmDone(true);
+        }
+        return nextCount;
+      });
     },
     [
       adjustTrust,
       addAction,
       addFlag,
       addTimelineEntry,
-      isContentReady,
-      socialEngineeringDMs,
+      setRevealedDmIds,
       setDmDone
     ]
   );
 
   const handleNpcChoice = useCallback(
     (messageId: string, choice: DMChoice) => {
+      const npcDms = isContentReady() ? npcBadAdvice : NPC_BAD_ADVICE;
+      const currentMsg = npcDms.find(m => m.id === messageId);
+      const complexity = currentMsg?.complexity || 5;
+      const complexityMultiplier = complexity / 5;
+
       // Game logic: correct choice = +10 trust, wrong choice = -10 trust
       const trustAdjustment = choice.isCorrect ? 10 : -10;
       adjustTrust(trustAdjustment);
@@ -320,7 +394,9 @@ export default function Home() {
       if (choice.scoreEffect) {
         addAction({
           id: `npc-${messageId}-${choice.id}`,
-          ...choice.scoreEffect,
+          category: choice.scoreEffect.category,
+          points: Math.round(choice.scoreEffect.points * complexityMultiplier),
+          maxPoints: Math.round(choice.scoreEffect.maxPoints * complexityMultiplier),
           label: choice.label
         });
       }
@@ -371,7 +447,14 @@ export default function Home() {
       const total = correctPhishing + correctSafe;
       const max = emails.length;
       const wrongCount = max - total;
-      const points = Math.max(0, total * 12 - wrongCount * 8);
+      
+      // Calculate average complexity
+      const avgComplexity = emails.length > 0 
+        ? emails.reduce((sum, e) => sum + (e.complexity || 5), 0) / emails.length 
+        : 5;
+      const complexityMultiplier = avgComplexity / 5;
+
+      const points = Math.max(0, Math.round((total * 12 - wrongCount * 8) * complexityMultiplier));
 
       addAction({
         id: "email-triage",
@@ -412,10 +495,14 @@ export default function Home() {
         onComplete={() => {
           userInteractedRef.current = true; // Mark user as having interacted
           changeStep("onboarding-portal");
-          setTimeout(() => setDmReveal(1), 2000); // James informational
-          setTimeout(() => setDmReveal(2), 4000); // David Park choice
-          setTimeout(() => setDmReveal(3), 7000); // Sarah first message
-          setTimeout(() => setDmReveal(4), 10000); // Sarah API key request
+          
+          // Initial DM reveal sequence: Show the first message (intro) after a delay
+          setTimeout(() => {
+            const dms = isContentReady() ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
+            if (dms.length > 0) {
+              setRevealedDmIds([dms[0].id]);
+            }
+          }, 2000);
         }}
       />
     );
@@ -789,7 +876,7 @@ export default function Home() {
           isContentReady() ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM
         }
         onChoice={handleDMChoice}
-        revealUpTo={dmReveal}
+        revealedIds={revealedDmIds}
       />
     ) : isInvestigation ? (
       <DMSidebar
@@ -822,9 +909,10 @@ export default function Home() {
 
   return (
     <>
-      {isGenerating && (
+      {isGenerating && step === "onboarding-portal" && (
         <ContentLoadingScreen
           progress={generationProgress}
+          fakeProgress={fakeProgress}
           retryState={retryState}
           error={generationError}
           onCancel={() => {

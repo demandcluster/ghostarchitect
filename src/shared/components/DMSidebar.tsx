@@ -7,24 +7,35 @@ import type { DMMessage, DMChoice } from "@/content/types";
 interface DMSidebarProps {
   messages: DMMessage[];
   onChoice: (messageId: string, choice: DMChoice) => void;
-  revealUpTo: number;
+  revealUpTo?: number;
+  revealedIds?: string[];
 }
 
-export function DMSidebar({ messages, onChoice, revealUpTo }: DMSidebarProps) {
+export function DMSidebar({
+  messages,
+  onChoice,
+  revealUpTo = 0,
+  revealedIds
+}: DMSidebarProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
-  const visibleMessages = messages.slice(0, revealUpTo);
+
+  // If revealedIds is provided, we use those IDs to show messages in discovery order.
+  // This ensures replies appear correctly threaded underneath their triggers.
+  const visibleMessages = revealedIds
+    ? revealedIds.map(id => messages.find(m => m.id === id)).filter((m): m is DMMessage => !!m)
+    : messages.slice(0, revealUpTo);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [revealUpTo]);
+  }, [revealUpTo, revealedIds]);
 
   return (
     <div className="flex flex-col h-full" style={{ background: "#f8fafc" }}>
       <div className="flex-1 overflow-auto p-3 space-y-3">
         <AnimatePresence>
-          {visibleMessages.map((msg) => (
+          {visibleMessages.map((msg, idx) => (
             <motion.div
-              key={msg.id}
+              key={msg.id || `msg-${idx}`}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
@@ -58,7 +69,7 @@ function DMBubble({
     <div>
       {/* Avatar + name */}
       <div className="flex items-center gap-2 mb-1">
-        {message.avatar.startsWith('http://') || message.avatar.startsWith('https://') || message.avatar.startsWith('/') ? (
+        {message.avatar && (message.avatar.startsWith('http://') || message.avatar.startsWith('https://') || message.avatar.startsWith('/')) ? (
           <img
             src={message.avatar}
             alt={message.sender}
@@ -67,7 +78,7 @@ function DMBubble({
           />
         ) : (
           <div className="w-6 h-6 rounded-full text-accent text-[10px] font-bold flex items-center justify-center" style={{ background: "rgba(59,110,248,0.08)" }}>
-            {message.avatar}
+            {message.avatar || message.sender?.charAt(0) || '?'}
           </div>
         )}
       </div>
@@ -90,9 +101,9 @@ function DMBubble({
       {/* Choices */}
       {message.choices && (
         <div className="ml-8 mt-2 space-y-1">
-          {message.choices.map((choice) => (
+          {message.choices.map((choice, idx) => (
             <button
-              key={choice.id}
+              key={choice.id || `choice-${idx}`}
               onClick={() => handleChoice(choice)}
               disabled={chosen !== null}
               className="w-full text-left px-3 py-2 rounded text-xs transition-colors border"
@@ -109,7 +120,7 @@ function DMBubble({
                     ? "rgba(22,163,74,0.08)"
                     : "rgba(220,38,38,0.08)"
                   : "rgba(59,110,248,0.06)",
-                opacity: chosen !== null ? 1 : 0.5
+                opacity: chosen === null || chosen === choice.id ? 1 : 0.4
               }}
             >
               {choice.label}
