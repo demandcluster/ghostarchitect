@@ -14,6 +14,7 @@ interface AuthState {
   accessToken: string | null;
   trainerId: string | null;
   username: string | null;
+  mustChangePassword: boolean;
 }
 
 interface AuthContextValue extends AuthState {
@@ -22,6 +23,7 @@ interface AuthContextValue extends AuthState {
   /** Fetch wrapper that injects Authorization header and handles token refresh. */
   authFetch: (url: string, init?: RequestInit) => Promise<Response>;
   isLoading: boolean;
+  setMustChangePassword: (val: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -39,6 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessToken: null,
     trainerId: null,
     username: null,
+    mustChangePassword: false,
   });
   const [isLoading, setIsLoading] = useState(true);
 
@@ -47,7 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await fetch('/api/v1/auth/refresh', { method: 'POST', credentials: 'include' });
       if (!res.ok) return null;
       const data = await res.json();
-      setAuth((prev) => ({ ...prev, accessToken: data.accessToken }));
+      setAuth((prev) => ({ 
+        ...prev, 
+        accessToken: data.accessToken,
+        mustChangePassword: !!data.mustChangePassword 
+      }));
       return data.accessToken as string;
     } catch {
       return null;
@@ -83,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         accessToken: data.accessToken,
         trainerId: data.id,
         username: data.username,
+        mustChangePassword: !!data.mustChangePassword,
       });
       router.push('/trainer/dashboard');
     },
@@ -91,9 +99,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
-    setAuth({ accessToken: null, trainerId: null, username: null });
+    setAuth({ accessToken: null, trainerId: null, username: null, mustChangePassword: false });
     router.replace('/trainer');
   }, [router]);
+
+  const setMustChangePassword = useCallback((val: boolean) => {
+    setAuth(prev => ({ ...prev, mustChangePassword: val }));
+  }, []);
 
   const authFetch = useCallback(
     async (url: string, init?: RequestInit): Promise<Response> => {
@@ -124,7 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <AuthContext.Provider value={{ ...auth, login, logout, authFetch, isLoading }}>
+    <AuthContext.Provider value={{ ...auth, login, logout, authFetch, isLoading, setMustChangePassword }}>
       {children}
     </AuthContext.Provider>
   );

@@ -18,6 +18,7 @@ model Trainer {
   username        String    @unique
   passwordHash    String
   role            String    @default("trainer")
+  mustChangePassword Boolean  @default(false)
   createdAt       DateTime  @default(now())
   acceptedTermsAt DateTime?
   teams           Team[]

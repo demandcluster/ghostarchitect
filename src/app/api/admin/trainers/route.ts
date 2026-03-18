@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
         username,
         passwordHash,
         acceptedTermsAt: new Date(),
+        mustChangePassword: true,
       },
       select: { id: true, username: true, createdAt: true },
     });

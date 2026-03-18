@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyRefreshToken, signAccessToken, signRefreshToken } from '@/lib/jwt';
 import { setRefreshCookie } from '@/lib/auth';
+import { requirePrisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
   const refreshToken = request.cookies.get('refreshToken')?.value;
@@ -10,10 +11,23 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = await verifyRefreshToken(refreshToken);
-    const accessToken = await signAccessToken(payload.sub as string, payload.email as string);
-    const newRefreshToken = await signRefreshToken(payload.sub as string, payload.email as string);
+    const prisma = requirePrisma();
+    const trainer = await prisma.trainer.findUnique({
+      where: { id: payload.sub as string },
+      select: { id: true, username: true, mustChangePassword: true }
+    });
 
-    const response = NextResponse.json({ accessToken });
+    if (!trainer) {
+      return NextResponse.json({ error: 'User not found' }, { status: 401 });
+    }
+
+    const accessToken = await signAccessToken(trainer.id, trainer.username);
+    const newRefreshToken = await signRefreshToken(trainer.id, trainer.username);
+
+    const response = NextResponse.json({ 
+      accessToken,
+      mustChangePassword: trainer.mustChangePassword 
+    });
     setRefreshCookie(response, newRefreshToken);
     return response;
   } catch {

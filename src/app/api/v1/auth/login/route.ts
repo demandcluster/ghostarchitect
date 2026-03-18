@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       id: trainer.id,
       username: trainer.username,
+      mustChangePassword: trainer.mustChangePassword,
       accessToken,
     });
     setRefreshCookie(response, refreshToken);

@@ -49,7 +49,7 @@ function logError(message: string, error: any) {
 export async function initAdminOnStartup() {
   try {
     const prisma = requirePrisma();
-    const CURRENT_DB_VERSION = '2';
+    const CURRENT_DB_VERSION = '3';
 
     log('--- GHOST ARCHITECT INITIALIZATION STARTED ---');
 
