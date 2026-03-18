@@ -248,18 +248,17 @@ Type: ${type}
 Content: ${JSON.stringify(content)}
 
 CRITICAL COMPLIANCE & STANDARDS CHECK:
-1. TECHNICAL ACCURACY: Are the "correct" answers actually correct according to industry best practices (NIST, ISO 27001)? 
-   - MANDATORY: Sharing ANY credentials, keys, or secrets over chat is ALWAYS INCORRECT, even with "verification".
-   - MANDATORY: The ONLY correct response to a secret request is redirecting the user to a secure official channel (e.g., "Use the secrets manager", "I'll grant you IAM access").
-2. CHAIN INTEGRITY (FOR DMs): If this is a scenario, ensure 'setup', 'onPass', and 'onFail' are technicaly consistent and logically linked.
-3. COMPLIANCE: Does the content align with GDPR and technical security controls?
-4. SECURITY PEDAGOGY: Ensure the game NEVER teaches "shadow IT" or "trust-based" shortcuts.
-5. QUALITY: Is the roleplay immersive? (e.g., no "NameManager" style names).
+1. PEDAGOGICAL INTEGRITY: Evaluate the "Possible Choices" provided in the content.
+   - MANDATORY: If a choice marked 'isCorrect: true' involves sharing secrets or bypasses technical controls, REJECT IMMEDIATELY.
+   - MANDATORY: If a choice marked 'isCorrect: true' involves redirecting to official secure protocol, APPROVE.
+2. ROLEPLAY CONTEXT (NPC_ADVICE): For this type, the NPC character text SHOULD be technically incorrect or urgent/misleading. Do NOT reject the item because the character is wrong. ONLY reject if the 'isCorrect: true' metadata is assigned to an unwise or dangerous response to that character.
+3. CHAIN INTEGRITY: For DM_SCENARIO, verify that 'onPass' logic matches the safe choice and 'onFail' logic matches the dangerous choices.
+4. QUALITY: Is the roleplay immersive and conversational? (No "Alice.SmithManager" style names).
 
 SCORING (1-10):
-- 1-3: Dangerous teaching or logical errors. REJECT IMMEDIATELY.
+- 1-3: CRITICAL FAIL (e.g., isCorrect flag assigned to a dangerous action, or broken scenario logic). REJECT.
 - 4-6: Accurate but simple.
-- 7-10: High-fidelity technical reinforcement.
+- 7-10: High-fidelity technical reinforcement with realistic professional dialogue.
 
 Return ONLY a JSON object: { "score": number, "feedback": "string" }`;
 
