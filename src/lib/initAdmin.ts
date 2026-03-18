@@ -92,6 +92,8 @@ export async function initAdminOnStartup() {
 
     // 2. Check if admin user already exists
     let existingAdmin = await prisma.admin.findFirst().catch(() => null);
+    let adminName = existingAdmin?.username || process.env.ADMIN_USERNAME || 'admin';
+
     if (!existingAdmin) {
       // Get admin credentials from environment
       const username = process.env.ADMIN_USERNAME;
@@ -125,7 +127,7 @@ export async function initAdminOnStartup() {
     }
 
     log('--- GHOST ARCHITECT INITIALIZATION COMPLETED ---');
-    return { success: true };
+    return { success: true, username: adminName, admin: adminName };
   } catch (error) {
     if (error instanceof NoDatabaseError) {
       log('Database not available, skipping admin initialization');
