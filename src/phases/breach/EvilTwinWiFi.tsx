@@ -117,11 +117,11 @@ export function EvilTwinWiFi({ onComplete }: EvilTwinWiFiProps) {
               <p className="text-sm font-medium text-[var(--danger)]">
                 You connected to an Evil Twin!
               </p>
-              <p className="text-xs text-text-secondary mt-2">
+              <p className="text-xs text-[var(--text-secondary)] mt-2">
                 The packet capture showed your credentials being intercepted via
                 sslstrip. Key indicators you missed:
               </p>
-              <ul className="text-xs text-text-secondary mt-1 list-disc list-inside space-y-0.5">
+              <ul className="text-xs text-[var(--text-secondary)] mt-1 list-disc list-inside space-y-0.5">
                 <li>
                   Signal strength -38 dBm is unusually strong (legitimate AP was
                   -72 dBm)
@@ -139,7 +139,7 @@ export function EvilTwinWiFi({ onComplete }: EvilTwinWiFiProps) {
               <p className="text-sm font-medium text-accent">
                 Correct! You identified the legitimate access point.
               </p>
-              <p className="text-xs text-text-secondary mt-2">
+              <p className="text-xs text-[var(--text-secondary)] mt-2">
                 Key indicators: WPA2-Enterprise (802.1X) authentication,
                 expected BSSID, and normal signal strength (-72 dBm). The Evil
                 Twin had unusually strong signal and used WPA2-PSK — corporate
@@ -151,7 +151,7 @@ export function EvilTwinWiFi({ onComplete }: EvilTwinWiFiProps) {
 
         <button
           onClick={onComplete}
-          className="mt-4 w-full py-2 bg-accent text-white rounded text-sm font-medium hover:bg-accent-hover transition-colors"
+          className="mt-4 w-full py-2 bg-[var(--accent)] text-white rounded text-sm font-medium hover:bg-[var(--accent)]-hover transition-colors"
         >
           Continue
         </button>
@@ -166,7 +166,7 @@ export function EvilTwinWiFi({ onComplete }: EvilTwinWiFiProps) {
       <h2 className="text-lg font-bold text-text-primary mb-2">
         Connect to Wi-Fi
       </h2>
-      <p className="text-sm text-text-secondary mb-6">
+      <p className="text-sm text-[var(--text-secondary)] mb-6">
         Your workstation needs a Wi-Fi connection. Two networks match the
         company SSID. Choose carefully.
       </p>
@@ -184,7 +184,7 @@ export function EvilTwinWiFi({ onComplete }: EvilTwinWiFiProps) {
               </span>
               <SignalBars strength={ap.signal} />
             </div>
-            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-text-secondary">
+            <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-[var(--text-secondary)]">
               <div>
                 <span className="text-text-muted">BSSID:</span>{" "}
                 <span className="font-mono">{ap.bssid}</span>
@@ -214,7 +214,7 @@ function SignalBars({ strength }: { strength: number }) {
         <div
           key={i}
           className={`w-1 rounded-sm ${
-            i <= bars ? "bg-accent" : "bg-gray-300"
+            i <= bars ? "bg-[var(--accent)]" : "bg-gray-300"
           }`}
           style={{ height: `${i * 25}%` }}
         />
@@ -275,7 +275,7 @@ function PacketCaptureView({
 
       <button
         onClick={onContinue}
-        className="mt-4 w-full py-2 bg-accent text-white rounded text-sm font-medium hover:bg-accent-hover transition-colors"
+        className="mt-4 w-full py-2 bg-[var(--accent)] text-white rounded text-sm font-medium hover:bg-[var(--accent)]-hover transition-colors"
       >
         Continue
       </button>

@@ -67,7 +67,7 @@ export function TaskManagerView({
   if (showResults) {
     return (
       <div className="p-6 overflow-auto h-full">
-        <h2 className="text-lg font-bold text-primary mb-4">
+        <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">
           Malware Cleanup Results
         </h2>
         <div className="space-y-3">
@@ -87,7 +87,7 @@ export function TaskManagerView({
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-mono text-sm text-primary">
+                  <span className="font-mono text-sm text-[var(--text-primary)]">
                     {proc.processName} (PID {proc.pid})
                   </span>
                   <span
@@ -100,7 +100,7 @@ export function TaskManagerView({
                     {correct ? "Correct" : "Incorrect"}
                   </span>
                 </div>
-                <p className="text-xs text-text-secondary mt-1">
+                <p className="text-xs text-[var(--text-secondary)] mt-1">
                   {proc.description}
                 </p>
                 {proc.mitreId && (
@@ -114,7 +114,7 @@ export function TaskManagerView({
         </div>
         <button
           onClick={onComplete}
-          className="mt-4 px-6 py-2 bg-accent text-white rounded text-sm hover:bg-accent-hover transition-colors"
+          className="mt-4 px-6 py-2.5 bg-[var(--accent)] text-white rounded-xl text-sm font-medium hover:bg-[var(--accent-hover)] transition-all duration-200 active:scale-[0.98]"
         >
           Continue
         </button>
@@ -126,7 +126,7 @@ export function TaskManagerView({
     <div className="flex h-full">
       {/* Process list */}
       <div className="w-[45%] border-r border overflow-auto">
-        <div className="grid grid-cols-[1fr_60px_auto] text-[10px] font-medium text-muted px-3 py-2 border-b border bg-window-sunken">
+        <div className="grid grid-cols-[1fr_60px_auto] text-[11px] font-semibold text-[var(--text-muted)] px-4 py-2.5 border-b border-[var(--border)] bg-[var(--bg-window-sunken)] uppercase tracking-wide">
           <span>Process Name</span>
           <span>PID</span>
           <span>Action</span>
@@ -135,15 +135,24 @@ export function TaskManagerView({
           <div
             key={proc.id}
             onClick={() => setSelectedPid(proc.pid)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setSelectedPid(proc.pid);
+              }
+            }}
+            tabIndex={0}
+            role="button"
             className={`
-              grid grid-cols-[1fr_60px_auto] items-center px-3 py-2 text-xs border-b border cursor-pointer
-              ${selectedPid === proc.pid ? "bg-accent/10" : "hover:bg-window-sunken"}
+              grid grid-cols-[1fr_60px_auto] items-center px-3 py-2.5 text-sm border-b border cursor-pointer
+              ${selectedPid === proc.pid ? "bg-[var(--accent-subtle)]" : "hover:bg-[var(--bg-window-sunken)]"}
+              transition-colors duration-150
             `}
           >
-            <span className="font-mono text-primary">
+            <span className="font-mono text-[var(--text-primary)]">
               {proc.processName}
             </span>
-            <span className="font-mono text-muted">{proc.pid}</span>
+            <span className="font-mono text-muted tabular-nums">{proc.pid}</span>
             <div className="flex gap-1">
               {(["quarantine", "ignore"] as Action[]).map((act) => (
                 <button
@@ -153,13 +162,13 @@ export function TaskManagerView({
                     handleAction(proc, act);
                   }}
                   className={`
-                    px-2 py-0.5 rounded text-[10px] border transition-colors
+                    px-2 py-1 rounded text-[11px] font-medium border transition-all
                     ${
                       actions[proc.id] === act
                         ? act === "quarantine"
                           ? "bg-red-600 text-white border-red-600"
                           : "bg-green-600 text-white border-green-600"
-                        : "border text-text-secondary hover:border-accent"
+                        : "border border-[var(--border)] text-[var(--text-secondary)] hover:border-[var(--accent)]"
                     }
                   `}
                 >
@@ -174,7 +183,7 @@ export function TaskManagerView({
           <div className="p-3">
             <button
               onClick={handleSubmit}
-              className="w-full py-2 bg-accent text-white rounded text-xs font-medium hover:bg-accent-hover"
+              className="w-full py-2.5 bg-[var(--accent)] text-white rounded-xl text-xs font-medium hover:bg-[var(--accent-hover)] transition-all duration-200 active:scale-[0.98]"
             >
               Submit Decisions
             </button>
@@ -183,24 +192,24 @@ export function TaskManagerView({
       </div>
 
       {/* Detail panel */}
-      <div className="w-[55%] overflow-auto p-4">
+      <div className="w-[55%] overflow-auto p-5">
         {selected ? (
           <div>
-            <h3 className="text-sm font-bold text-primary mb-2">
+            <h3 className="text-base font-bold text-[var(--text-primary)] mb-2">
               {selected.processName}
             </h3>
-            <div className="text-xs text-muted mb-3">
-              PID: {selected.pid}
+            <div className="text-sm text-muted mb-4">
+              PID: <span className="font-mono tabular-nums">{selected.pid}</span>
             </div>
-            <div className="mb-4">
-              <div className="text-[10px] font-medium text-text-secondary mb-1">
+            <div className="mb-5">
+              <div className="text-xs font-semibold text-[var(--text-secondary)] mb-2 uppercase tracking-wide">
                 Command Line:
               </div>
-              <div className="p-3 bg-[#0d1117] rounded font-mono text-xs text-[#c9d1d9] break-all leading-relaxed">
+              <div className="p-3 bg-[#0d1117] rounded-lg font-mono text-xs text-[#c9d1d9] break-all leading-relaxed border border-[#30363d]">
                 {selected.commandLine}
               </div>
             </div>
-            <p className="text-xs text-muted italic">
+            <p className="text-sm text-muted italic leading-relaxed">
               Examine the command line carefully. Legitimate system tools can be
               abused by attackers (Living-off-the-Land Binaries).
             </p>

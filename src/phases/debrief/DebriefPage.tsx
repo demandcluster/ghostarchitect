@@ -70,15 +70,15 @@ export function DebriefPage() {
 
   return (
     <div className="p-6 overflow-auto h-full">
-      <div className="flex items-center gap-3 mb-1">
-        <h2 className="text-xl font-bold text-[var(--text-primary)]">
+      <div className="flex items-center gap-3 mb-2">
+        <h2 className="text-2xl font-bold text-[var(--text-primary)] leading-tight">
           Incident Debrief
         </h2>
-        <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${endingMeta.classes}`}>
+        <span className={`px-3 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${endingMeta.classes}`}>
           {endingMeta.label}
         </span>
       </div>
-      <p className="text-xs text-[var(--text-muted)] mb-6">
+      <p className="text-sm text-[var(--text-muted)] mb-7">
         Trust Score: {trustScore}/100
       </p>
 
@@ -115,17 +115,17 @@ export function DebriefPage() {
             <RadarChart />
 
             {/* Decision Breakdown */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold text-[var(--text-primary)]">
+            <div className="space-y-5">
+              <h3 className="text-base font-semibold text-[var(--text-primary)]">
                 Decision Breakdown
               </h3>
               {(Object.keys(CATEGORY_LABELS) as ScoreCategory[]).map((cat) => (
                 <div key={cat} className="rounded-xl border border-[var(--border)] bg-[var(--bg-window-raised)] overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+                  <div className="flex items-center justify-between px-4.5 py-3.5 border-b border-[var(--border)]">
                     <span className="text-sm font-medium text-[var(--text-primary)]">
                       {CATEGORY_LABELS[cat]}
                     </span>
-                    <span className="text-sm font-bold text-[var(--text-primary)]">
+                    <span className="text-base font-bold text-[var(--text-primary)]">
                       {categoryScores[cat]}/25
                     </span>
                   </div>
@@ -133,16 +133,16 @@ export function DebriefPage() {
                     {(actionsByCategory[cat] || []).map((action) => (
                       <div
                         key={action.id}
-                        className="flex items-center justify-between px-4 py-2 text-xs"
+                        className="flex items-center justify-between px-4.5 py-2.5 text-sm"
                       >
                         <span className="text-[var(--text-muted)]">{action.label}</span>
-                        <span className="text-[var(--text-muted)] font-mono">
+                        <span className="text-[var(--text-secondary)] font-mono">
                           {action.points}/{action.maxPoints}
                         </span>
                       </div>
                     ))}
                     {(actionsByCategory[cat] || []).length === 0 && (
-                      <div className="px-4 py-2 text-xs text-[var(--text-muted)] italic">No actions recorded.</div>
+                      <div className="px-4.5 py-3 text-sm text-[var(--text-muted)] italic">No actions recorded.</div>
                     )}
                   </div>
                 </div>

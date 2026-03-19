@@ -102,18 +102,19 @@ export function LogTerminal({ entries, onFlaggedChange }: LogTerminalProps) {
   return (
     <div className="flex flex-col h-full bg-[var(--bg-window)]">
       {/* Filter bar */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-[var(--border)] bg-[var(--bg-window-raised)]">
-        <span className="text-[var(--accent-cyan,var(--accent))] font-mono text-xs">filter&gt;</span>
+      <div className="flex items-center gap-2 px-3 py-2.5 border-b border-[var(--border)] bg-[var(--bg-window-raised)]">
+        <span className="text-[var(--accent-cyan,var(--accent))] font-mono text-xs" aria-hidden="true">filter&gt;</span>
         <input
           ref={filterRef}
           type="text"
           value={filterText}
           onChange={(e) => setFilterText(e.target.value)}
           placeholder="Type to filter (regex supported)... Ctrl+F"
-          className="flex-1 bg-transparent text-xs font-mono text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+          className="flex-1 bg-transparent text-sm font-mono text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] py-1"
+          aria-label="Filter log entries"
         />
         {filterText && (
-          <span className="bg-[var(--accent-subtle)] text-[var(--accent)] rounded-full px-2 text-[10px] font-mono">
+          <span className="bg-[var(--accent-subtle)] text-[var(--accent)] rounded-full px-2.5 py-0.5 text-[11px] font-mono tabular-nums">
             {matchCount} match{matchCount !== 1 ? "es" : ""}
           </span>
         )}
@@ -122,7 +123,7 @@ export function LogTerminal({ entries, onFlaggedChange }: LogTerminalProps) {
       {/* Log lines */}
       <div
         ref={scrollRef}
-        className="flex-1 min-h-0 overflow-auto px-1 py-2 font-mono text-[13px] leading-[1.4]"
+        className="flex-1 min-h-0 overflow-auto px-2 py-3 font-mono text-[13px] leading-[1.5]"
       >
         {filteredEntries.map((entry) => {
           const lineNum = entries.indexOf(entry) + 1;
@@ -133,12 +134,21 @@ export function LogTerminal({ entries, onFlaggedChange }: LogTerminalProps) {
               key={entry.id}
               onClick={() => toggleFlag(entry)}
               className={`
-                flex items-start gap-2 px-2 py-0.5 cursor-pointer rounded-sm
+                flex items-start gap-2 px-2.5 py-1 cursor-pointer rounded-sm
                 hover:bg-[var(--bg-window-raised)]
+                transition-colors duration-150
                 ${isFlagged ? "border-l-2 border-[var(--danger)] bg-[var(--danger-subtle)]" : ""}
               `}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleFlag(entry);
+                }
+              }}
             >
-              <span className="text-[var(--text-muted)] select-none w-6 text-right shrink-0">
+              <span className="text-[var(--text-muted)] select-none w-6 text-right shrink-0 tabular-nums">
                 {lineNum}
               </span>
               <span className="text-[var(--text-secondary)] shrink-0 w-[150px]">
@@ -153,7 +163,7 @@ export function LogTerminal({ entries, onFlaggedChange }: LogTerminalProps) {
               <span className="text-[var(--accent-blue,var(--info))] shrink-0 w-[120px]">
                 {entry.source}
               </span>
-              <span style={{ color: LEVEL_COLORS[entry.level] }}>
+              <span style={{ color: LEVEL_COLORS[entry.level] }} className="break-all">
                 {entry.message}
               </span>
               {isFlagged && (

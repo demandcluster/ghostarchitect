@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useGameStore } from "@/stores/gameStore";
 import React from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const IconEmail = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -103,41 +103,74 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
     : baseApps;
 
   return (
-    <div
+    <motion.div
+      initial={{ y: 50 }}
+      animate={{ y: 0 }}
+      transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
       className="fixed bottom-0 left-0 right-0 h-11 flex items-center px-3 z-50 select-none border-t border-[var(--taskbar-border)]"
       style={{ background: "var(--taskbar-bg)" }}
     >
       {/* Left area: alert dot (breach) + company/incident label + team name */}
       <div className="flex items-center gap-2 mr-4">
-        {isBreach && (
-          <span className="w-2 h-2 rounded-full bg-[var(--accent-red)] animate-pulse" />
-        )}
+        <AnimatePresence>
+          {isBreach && (
+            <motion.span
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0 }}
+              className="w-2 h-2 rounded-full bg-[var(--accent-red)]"
+              animate={{ opacity: [1, 0.3, 1] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            />
+          )}
+        </AnimatePresence>
         {logoUrl && !isBreach && (
-          <img src={logoUrl} alt={teamName} className="h-5 w-5 rounded object-contain" />
+          <motion.img
+            src={logoUrl}
+            alt={teamName}
+            className="h-5 w-5 rounded object-contain"
+            whileHover={{ scale: 1.1, rotate: 5 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          />
         )}
-        <span
+        <motion.span
           className="font-bold text-sm tracking-wide"
           style={{ color: "var(--taskbar-text-active)" }}
+          layoutId="taskbar-label"
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
         >
           {isBreach ? "INCIDENT RESPONSE" : teamName}
-        </span>
-        {isBreach && phase !== "debrief" && (
-          <span className="text-[10px] font-mono text-[var(--accent-red)] animate-pulse">
-            [BREACH DETECTED]
-          </span>
-        )}
+        </motion.span>
+        <AnimatePresence>
+          {isBreach && phase !== "debrief" && (
+            <motion.span
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              className="text-[10px] font-mono text-[var(--accent-red)]"
+              animate={{ opacity: [1, 0.5, 1] }}
+              transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
+            >
+              [BREACH DETECTED]
+            </motion.span>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* App icons */}
       <div className="flex gap-1 flex-1">
-        {apps.map((app) => (
+        {apps.map((app, index) => (
           <motion.button
             key={app.id}
             onClick={() => onAppClick(app.id)}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05, duration: 0.3 }}
             animate={{
-              scale: activeApp === app.id ? 1.1 : 1
+              scale: activeApp === app.id ? 1.1 : 1,
+              y: activeApp === app.id ? -2 : 0,
             }}
-            whileHover={{ scale: 1.1 }}
+            whileHover={{ scale: 1.1, y: -2 }}
             whileTap={{ scale: 0.95 }}
             transition={{ type: "spring", stiffness: 300, damping: 25 }}
             className={`
@@ -153,9 +186,13 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
             }
             title={app.label}
           >
-            <span className="inline-flex items-center justify-center w-4 h-4 text-center mr-1">
+            <motion.span
+              className="inline-flex items-center justify-center w-4 h-4 text-center mr-1"
+              animate={activeApp === app.id ? { rotate: [0, 360] } : {}}
+              transition={{ duration: 0.5 }}
+            >
               {app.icon}
-            </span>
+            </motion.span>
             <span className="hidden sm:inline">{app.label}</span>
           </motion.button>
         ))}
@@ -163,15 +200,23 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
 
       {/* Right tray */}
       <div className="flex items-center gap-3 text-xs text-[var(--taskbar-text)]">
-        <span title="Wi-Fi" className="opacity-70">
+        <motion.span
+          title="Wi-Fi"
+          className="opacity-70 cursor-pointer"
+          whileHover={{ scale: 1.1, opacity: 1 }}
+          whileTap={{ scale: 0.95 }}
+        >
           <IconWiFi />
-        </span>
-        <span
+        </motion.span>
+        <motion.span
           className={`opacity-70 ${isBreach ? "font-mono text-[var(--accent)]" : "font-sans"}`}
+          key={time}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
         >
           {time}
-        </span>
+        </motion.span>
       </div>
-    </div>
+    </motion.div>
   );
 }

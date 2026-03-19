@@ -50,10 +50,10 @@ export function ContainmentDecision({ onComplete }: ContainmentDecisionProps) {
   return (
     <div ref={containerRef} className="overflow-auto h-full">
     <div className="p-6 max-w-lg mx-auto">
-      <h2 className="text-lg font-bold text-text-primary mb-2">
+      <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">
         Containment Decision
       </h2>
-      <p className="text-sm text-text-secondary mb-6">
+      <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
         The attacker has compromised svc_backup and is actively exfiltrating
         data. You need to decide now:
       </p>
@@ -62,26 +62,26 @@ export function ContainmentDecision({ onComplete }: ContainmentDecisionProps) {
         <div className="space-y-3">
           <button
             onClick={() => handleChoice("isolate")}
-            className="w-full p-4 border border-border rounded-lg text-left hover:border-accent transition-colors"
+            className="w-full p-4 border border-[var(--border)] rounded-xl text-left hover:border-[var(--accent)] hover:bg-[var(--accent-subtle)] transition-all duration-200"
           >
-            <div className="font-medium text-sm text-text-primary">
+            <div className="font-medium text-sm text-[var(--text-primary)]">
               Isolate Immediately
             </div>
-            <p className="text-xs text-text-muted mt-1">
-              Disconnect affected systems from the network. Stops exfiltration
-              but may lose volatile memory evidence and alert the attacker.
+            <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
+              Disconnect affected systems from network. Stops exfiltration
+              but may lose volatile memory evidence and alert attacker.
             </p>
           </button>
 
           <button
             onClick={() => handleChoice("monitor")}
-            className="w-full p-4 border border-border rounded-lg text-left hover:border-accent transition-colors"
+            className="w-full p-4 border border-[var(--border)] rounded-xl text-left hover:border-[var(--accent)] hover:bg-[var(--accent-subtle)] transition-all duration-200"
           >
-            <div className="font-medium text-sm text-text-primary">
+            <div className="font-medium text-sm text-[var(--text-primary)]">
               Keep Connected to Monitor
             </div>
-            <p className="text-xs text-text-muted mt-1">
-              Continue monitoring to gather more intelligence on the attacker.
+            <p className="text-xs text-[var(--text-muted)] mt-1 leading-relaxed">
+              Continue monitoring to gather more intelligence on attacker.
               Risk: deeper compromise, more data exfiltrated.
             </p>
           </button>
@@ -93,7 +93,7 @@ export function ContainmentDecision({ onComplete }: ContainmentDecisionProps) {
           className="space-y-4"
         >
           <div
-            className={`p-4 rounded-lg border ${
+            className={`p-4 rounded-xl border ${
               choice === "isolate"
                 ? "bg-[var(--success-subtle)] border-[var(--success)]/35"
                 : "bg-[var(--warning-subtle)] border-[var(--warning)]/35"
@@ -104,7 +104,7 @@ export function ContainmentDecision({ onComplete }: ContainmentDecisionProps) {
                 <p className="text-sm font-medium text-[var(--success)]">
                   Correct — isolate first.
                 </p>
-                <p className="text-xs text-text-secondary mt-1">
+                <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
                   With active exfiltration confirmed, containment takes priority.
                   Volatile memory can be captured during isolation. NIST SP
                   800-61r2 recommends immediate containment when data loss is
@@ -114,12 +114,12 @@ export function ContainmentDecision({ onComplete }: ContainmentDecisionProps) {
             ) : (
               <>
                 <p className="text-sm font-medium text-[var(--warning)]">
-                  Risky choice — the attacker is actively exfiltrating data.
+                  Risky choice — attacker is actively exfiltrating data.
                 </p>
-                <p className="text-xs text-text-secondary mt-1">
+                <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
                   While monitoring can provide intelligence, every minute of
-                  delay means more data leaving the network. With confirmed
-                  exfiltration, the priority is stopping data loss. The
+                  delay means more data leaving network. With confirmed
+                  exfiltration, priority is stopping data loss. The
                   attacker may also detect your monitoring and pivot to
                   destructive actions.
                 </p>
@@ -129,7 +129,7 @@ export function ContainmentDecision({ onComplete }: ContainmentDecisionProps) {
 
           <button
             onClick={onComplete}
-            className="w-full py-2 bg-accent text-white rounded text-sm font-medium hover:bg-accent-hover transition-colors"
+            className="w-full py-3 bg-[var(--accent)] text-white rounded-xl text-sm font-medium hover:bg-[var(--accent-hover)] transition-all duration-200 active:scale-[0.98]"
           >
             Continue
           </button>

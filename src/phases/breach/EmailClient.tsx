@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { useGameStore } from "@/stores/gameStore";
 import { useScoreStore } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
@@ -32,13 +32,13 @@ function brandEmail(email: Email, fakeDomain: string, teamName: string): Email {
   const subOpt = (s?: string) => (s ? sub(s) : s);
 
   // Ensure headers exist and are properly structured
-  const headers = email.headers || {
+  const headers = email.headers ?? {
     returnPath: '',
     spf: '',
     dkim: '',
     dmarc: '',
-    xMailer: '',
-    replyTo: '',
+    xMailer: undefined,
+    replyTo: undefined,
   };
 
   return {
@@ -55,7 +55,7 @@ function brandEmail(email: Email, fakeDomain: string, teamName: string): Email {
       xMailer: headers.xMailer ? subOpt(headers.xMailer) : '',
       replyTo: headers.replyTo ? subOpt(headers.replyTo) : '',
     },
-    indicators: email.indicators?.map((i) => i || '') || [],
+    indicators: email.indicators?.filter((i) => i) || [],
   };
 }
 
@@ -131,74 +131,104 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
         <div className="p-2 border-b text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
           Inbox ({brandedEmails.length})
         </div>
-        {brandedEmails.map((email) => (
-          <button
-            key={email.id}
-            onClick={() => setSelectedId(email.id)}
-            className={`
-              w-full text-left px-3 py-3.5 border-b text-xs transition-colors
-              ${verdicts[email.id] ? "opacity-70" : ""}
-            `}
-            style={{
-              borderColor: "var(--border)",
-              background: selectedId === email.id ? "var(--accent-subtle)" : "transparent",
-              borderLeft: selectedId === email.id ? "2px solid var(--accent)" : "none"
-            }}
-          >
-            <div className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>
-              {email.from}
-            </div>
-            <div className="truncate mt-0.5" style={{ color: "var(--text-secondary)" }}>
-              {email.subject}
-            </div>
-            <div className="flex items-center justify-between mt-1">
-              <span style={{ color: "var(--text-muted)" }}>{email.date.split(" ")[1]}</span>
-              {verdicts[email.id] && (
-                <span
-                  className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                    verdicts[email.id] === "phishing"
-                      ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30"
-                      : verdicts[email.id] === "suspicious"
-                        ? "bg-[var(--warning-subtle)] text-[var(--warning)] ring-1 ring-[var(--warning)]/30"
-                        : "bg-[var(--success-subtle)] text-[var(--success)] ring-1 ring-[var(--success)]/30"
-                  }`}
-                >
-                  {verdicts[email.id]}
-                </span>
-              )}
-            </div>
-          </button>
-        ))}
-
-        {allJudged && (
-          <div className="p-3">
-            <button
-              onClick={() => setShowReview(true)}
-              className="w-full py-2 bg-[var(--accent)] text-white rounded text-xs font-medium hover:bg-[var(--accent-hover)] transition-colors"
+        <LayoutGroup>
+          {brandedEmails.map((email, index) => (
+            <motion.button
+              key={email.id}
+              onClick={() => setSelectedId(email.id)}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: verdicts[email.id] ? 0.7 : 1, x: 0 }}
+              transition={{ delay: index * 0.03, duration: 0.2 }}
+              whileHover={{ scale: 1.01, x: 2 }}
+              whileTap={{ scale: 0.99 }}
+              className="w-full text-left px-3 py-3.5 border-b text-xs transition-colors relative overflow-hidden"
+              style={{
+                borderColor: "var(--border)",
+                background: selectedId === email.id ? "var(--accent-subtle)" : "transparent",
+                borderLeft: selectedId === email.id ? "2px solid var(--accent)" : "none"
+              }}
             >
-              Submit &amp; Review
-            </button>
-          </div>
-        )}
+              {/* Selection indicator glow */}
+              <AnimatePresence>
+                {selectedId === email.id && (
+                  <motion.div
+                    className="absolute inset-0 -z-10"
+                    style={{ background: "var(--accent-subtle)" }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    layoutId={`selected-${email.id}`}
+                  />
+                )}
+              </AnimatePresence>
+              <div className="text-[13px] font-semibold truncate relative z-10" style={{ color: "var(--text-primary)" }}>
+                {email.from}
+              </div>
+              <div className="truncate mt-0.5 relative z-10" style={{ color: "var(--text-secondary)" }}>
+                {email.subject}
+              </div>
+              <div className="flex items-center justify-between mt-1 relative z-10">
+                <span style={{ color: "var(--text-muted)" }}>{email.date?.split(" ")?.[1] ?? "--:--"}</span>
+                <AnimatePresence>
+                  {verdicts[email.id] && (
+                    <motion.span
+                      initial={{ scale: 0, rotate: -10 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        verdicts[email.id] === "phishing"
+                          ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30"
+                          : verdicts[email.id] === "suspicious"
+                            ? "bg-[var(--warning-subtle)] text-[var(--warning)] ring-1 ring-[var(--warning)]/30"
+                            : "bg-[var(--success-subtle)] text-[var(--success)] ring-1 ring-[var(--success)]/30"
+                      }`}
+                    >
+                      {verdicts[email.id]}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.button>
+          ))}
+        </LayoutGroup>
+
+        <AnimatePresence>
+          {allJudged && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="p-3"
+            >
+              <motion.button
+                onClick={() => setShowReview(true)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-2 bg-[var(--accent)] text-white rounded text-xs font-medium hover:bg-[var(--accent-hover)] transition-colors"
+              >
+                Submit &amp; Review
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Reading pane — 70% */}
       <div className="w-[70%] overflow-auto">
         {selectedEmail ? (
-          <div className="p-4">
+          <div className="p-5">
             {/* Email header */}
-            <div className="mb-4">
-              <h2 className="text-base font-bold text-[var(--text-primary)]">
+            <div className="mb-5">
+              <h2 className="text-[17px] font-bold text-[var(--text-primary)] leading-snug">
                 {selectedEmail.subject}
               </h2>
-              <div className="text-xs text-[var(--text-secondary)] mt-1">
+              <div className="text-sm text-[var(--text-secondary)] mt-2">
                 <span className="font-medium">From:</span>{" "}
-                {selectedEmail.from}
+                <span className="break-all">{selectedEmail.from}</span>
               </div>
-              <div className="text-xs text-[var(--text-muted)]">
+              <div className="text-sm text-[var(--text-muted)]">
                 <span className="font-medium">To:</span> {selectedEmail.to}
               </div>
-              <div className="text-xs text-[var(--text-muted)]">
+              <div className="text-sm text-[var(--text-muted)]">
                 <span className="font-medium">Date:</span>{" "}
                 {selectedEmail.date}
               </div>
@@ -206,7 +236,7 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
               {/* Expand headers button */}
               <button
                 onClick={() => toggleHeaders(selectedEmail.id)}
-                className="mt-2 text-[10px] text-[var(--accent)] hover:underline"
+                className="mt-3 text-xs text-[var(--accent)] hover:underline focus:outline-none focus:underline underline-offset-2"
               >
                 {expandedHeaders.has(selectedEmail.id)
                   ? "Collapse Headers"
@@ -223,63 +253,63 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
                     className="overflow-hidden"
                   >
                     <div className="mt-2 p-3 bg-[var(--bg-window-raised)] rounded border border-[var(--border)] font-mono text-[11px] leading-relaxed">
-                      <div>
+                      <div className="py-1">
                         <span className="text-[var(--text-muted)]">Return-Path:</span>{" "}
                         <span
                           className={
-                            selectedEmail.headers.returnPath !==
+                            selectedEmail.headers.returnPath?.trim() !==
                             `<${selectedEmail.from}>`
-                              ? "bg-[var(--warning-subtle)] ring-1 ring-[var(--warning)] px-1 rounded"
-                              : ""
+                              ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 px-1 rounded"
+                              : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"
                           }
                         >
                           {selectedEmail.headers.returnPath}
                         </span>
                       </div>
-                      <div>
+                      <div className="py-1">
                         <span className="text-[var(--text-muted)]">SPF:</span>{" "}
                         <span
                           className={
-                            selectedEmail.headers.spf.includes("fail")
-                              ? "bg-[var(--warning-subtle)] ring-1 ring-[var(--warning)] px-1 rounded"
-                              : ""
+                            selectedEmail.headers.spf?.includes?.("fail")
+                              ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 px-1 rounded"
+                              : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"
                           }
                         >
                           {selectedEmail.headers.spf}
                         </span>
                       </div>
-                      <div>
+                      <div className="py-1">
                         <span className="text-[var(--text-muted)]">DKIM:</span>{" "}
                         <span
                           className={
-                            selectedEmail.headers.dkim.includes("fail")
-                              ? "bg-[var(--warning-subtle)] ring-1 ring-[var(--warning)] px-1 rounded"
-                              : ""
+                            selectedEmail.headers.dkim?.includes?.("fail")
+                              ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 px-1 rounded"
+                              : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"
                           }
                         >
                           {selectedEmail.headers.dkim}
                         </span>
                       </div>
-                      <div>
+                      <div className="py-1">
                         <span className="text-[var(--text-muted)]">DMARC:</span>{" "}
                         <span
                           className={
-                            selectedEmail.headers.dmarc.includes("fail")
-                              ? "bg-[var(--warning-subtle)] ring-1 ring-[var(--warning)] px-1 rounded"
-                              : ""
+                            selectedEmail.headers.dmarc?.includes?.("fail")
+                              ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 px-1 rounded"
+                              : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"
                           }
                         >
                           {selectedEmail.headers.dmarc}
                         </span>
                       </div>
                       {selectedEmail.headers.xMailer && (
-                        <div>
+                        <div className="py-1">
                           <span className="text-[var(--text-muted)]">X-Mailer:</span>{" "}
                           <span
                             className={
-                              selectedEmail.headers.xMailer.includes("PHP")
-                                ? "bg-[var(--warning-subtle)] ring-1 ring-[var(--warning)] px-1 rounded"
-                                : ""
+                              selectedEmail.headers.xMailer?.includes?.("PHP")
+                                ? "bg-[var(--warning-subtle)] text-[var(--warning)] ring-1 ring-[var(--warning)]/30 px-1 rounded"
+                                : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"
                             }
                           >
                             {selectedEmail.headers.xMailer}
@@ -287,9 +317,9 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
                         </div>
                       )}
                       {selectedEmail.headers.replyTo && (
-                        <div>
+                        <div className="py-1">
                           <span className="text-[var(--text-muted)]">Reply-To:</span>{" "}
-                          <span className="bg-[var(--warning-subtle)] ring-1 ring-[var(--warning)] px-1 rounded">
+                          <span className="bg-[var(--warning-subtle)] text-[var(--warning)] ring-1 ring-[var(--warning)]/30 px-1 rounded">
                             {selectedEmail.headers.replyTo}
                           </span>
                         </div>
@@ -301,7 +331,7 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
             </div>
 
             {/* Email body */}
-            <div className="text-sm text-[var(--text-primary)] leading-relaxed border-t border-[var(--border)] pt-4">
+            <div className="text-[15px] text-[var(--text-primary)] leading-relaxed border-t border-[var(--border)] pt-5 max-w-[65ch]">
               <EmailBody
                 body={selectedEmail.body}
                 isPhishing={emails.find((e) => e.id === selectedEmail.id)?.isPhishing ?? false}
@@ -353,7 +383,7 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
             </AnimatePresence>
 
             {/* Verdict buttons */}
-            <div className="flex gap-2 mt-6 pt-4 border-t border-[var(--border)]">
+            <div className="flex gap-2 mt-6 pt-5 border-t border-[var(--border)]">
               {(["safe", "suspicious", "phishing"] as Verdict[]).map((v) => {
                 const isSelected = verdicts[selectedEmail.id] === v;
                 let cls = "";
@@ -367,13 +397,28 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
                   else cls = "bg-[var(--bg-window-sunken)] text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--danger)] hover:text-[var(--danger)]";
                 }
                 return (
-                  <button
+                  <motion.button
                     key={v}
                     onClick={() => handleVerdict(selectedEmail.id, v)}
-                    className={`flex-1 py-2 rounded text-xs font-medium transition-colors active:scale-[0.97] ${cls}`}
+                    whileHover={{ scale: 1.03, y: -2 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                    className={`flex-1 py-2.5 px-3 rounded-sm text-xs font-semibold transition-all min-h-[2.5rem] relative overflow-hidden ${cls}`}
                   >
-                    {v.charAt(0).toUpperCase() + v.slice(1)}
-                  </button>
+                    <AnimatePresence>
+                      {isSelected && (
+                        <motion.span
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          exit={{ scale: 0 }}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px]"
+                        >
+                          ✓
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
+                    <span className={isSelected ? "ml-4" : ""}>{v.charAt(0).toUpperCase() + v.slice(1)}</span>
+                  </motion.button>
                 );
               })}
             </div>

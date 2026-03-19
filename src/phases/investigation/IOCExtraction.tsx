@@ -80,33 +80,43 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
 
   return (
     <div className="p-6 max-w-lg mx-auto overflow-y-auto h-full">
-      <h2 className="text-lg font-bold text-primary mb-2">
+      <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
         IOC Extraction
       </h2>
-      <p className="text-sm text-secondary mb-6">
-        Document the Indicators of Compromise you identified from the logs.
-        These will be shared with the SOC team and submitted to threat
+      <p className="text-sm text-[var(--text-secondary)] mb-7 leading-relaxed max-w-[60ch]">
+        Document Indicators of Compromise you identified from logs.
+        These will be shared with SOC team and submitted to threat
         intelligence feeds.
       </p>
 
       {/* Reference Logs Panel */}
-      <div className="mb-6 border border rounded-lg overflow-hidden">
+      <div className="mb-6 border border-[var(--border)] rounded-xl overflow-hidden">
         <button
           onClick={() => setLogsOpen((v) => !v)}
-          className="w-full flex items-center justify-between px-3 py-2 bg-window-sunken text-xs font-medium text-secondary hover:text-primary transition-colors"
+          className="w-full flex items-center justify-between px-4 py-3 bg-[var(--bg-window-sunken)] text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/30"
         >
           <span>Reference Logs</span>
-          <span>{logsOpen ? "\u25B4" : "\u25BE"}</span>
+          <motion.span
+            animate={{ rotate: logsOpen ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            ▼
+          </motion.span>
         </button>
-        {logsOpen && (
-          <div className="max-h-48 overflow-auto bg-[var(--bg-window)] p-2">
+        <motion.div
+          initial={false}
+          animate={{ height: logsOpen ? "auto" : 0 }}
+          transition={{ duration: 0.2 }}
+          className="overflow-hidden"
+        >
+          <div className="max-h-48 overflow-auto bg-[var(--bg-window)] p-4">
             {LOG_ENTRIES.map((entry) => (
               <div
                 key={entry.id}
-                className="font-mono text-[11px] leading-relaxed"
+                className="font-mono text-xs leading-relaxed mb-3 last:mb-0"
               >
-                <span className="text-muted">{entry.timestamp}</span>{" "}
-                <span className={LEVEL_COLORS[entry.level] || "text-muted"}>
+                <span className="text-[var(--text-muted)]">{entry.timestamp}</span>{" "}
+                <span className={LEVEL_COLORS[entry.level] || "text-[var(--text-muted)]"}>
                   [{entry.level}]
                 </span>{" "}
                 <span className="text-[var(--accent-cyan,var(--info))]">{entry.source}</span>{" "}
@@ -114,31 +124,36 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
               </div>
             ))}
           </div>
-        )}
+        </motion.div>
       </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {EXPECTED_IOCS.map((ioc) => (
           <div key={ioc.type}>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-medium text-secondary">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-[var(--text-secondary)]" htmlFor={`ioc-${ioc.type}`}>
                 {ioc.type}
               </label>
               {!submitted && !shownHints.has(ioc.type) && (
                 <button
                   onClick={() => showHint(ioc.type)}
-                  className="text-[10px] text-amber-500 hover:text-amber-400 transition-colors"
+                  className="text-xs text-[var(--warning)] hover:text-[var(--warning)] transition-colors focus:outline-none focus:underline"
                 >
                   Show Hint (-3pt)
                 </button>
               )}
             </div>
             {shownHints.has(ioc.type) && (
-              <p className="text-[11px] text-muted mb-1 italic">
+              <motion.p
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                className="text-xs text-[var(--text-muted)] mb-2 italic"
+              >
                 Hint: {ioc.hint}
-              </p>
+              </motion.p>
             )}
             <input
+              id={`ioc-${ioc.type}`}
               type="text"
               value={inputs[ioc.type] || ""}
               onChange={(e) =>
@@ -148,20 +163,27 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
                 }))
               }
               disabled={submitted}
-              className="w-full px-3 py-2 bg-window-sunken border border rounded text-sm font-mono text-primary focus:outline-none focus:border-accent"
+              className="w-full px-4 py-2.5 bg-[var(--bg-window-sunken)] border border-[var(--border)] rounded-xl text-sm font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[rgba(59,110,248,0.2)] focus:bg-[var(--bg-window)] transition-all disabled:opacity-60"
               placeholder={`Enter ${ioc.type.toLowerCase()}`}
             />
             {submitted && (
-              <div className="mt-1 text-[11px]">
+              <div className="mt-2 text-xs">
                 {(inputs[ioc.type] || "")
                   .trim()
                   .toLowerCase()
                   .includes(ioc.value.toLowerCase()) ? (
-                  <span className="text-[var(--success)]">
+                  <span className="text-[var(--success)] flex items-center gap-1">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M2 7l3 3 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                     Correct
                   </span>
                 ) : (
-                  <span className="text-[var(--danger)]">
+                  <span className="text-[var(--danger)] flex items-center gap-1">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M11 3l-9 9" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M11 12l-9-9" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
                     Expected: <span className="font-mono">{ioc.value}</span>
                   </span>
                 )}
@@ -173,7 +195,7 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
 
       <button
         onClick={submitted ? onComplete : handleSubmit}
-        className="mt-6 w-full py-2 bg-accent text-white rounded text-sm font-medium hover:bg-accent-hover transition-colors"
+        className="mt-6 w-full py-3 bg-[var(--accent)] text-white rounded-xl text-sm font-medium hover:bg-[var(--accent-hover)] transition-all duration-200 active:scale-[0.98]"
       >
         {submitted ? "Continue" : "Submit IOCs"}
       </button>

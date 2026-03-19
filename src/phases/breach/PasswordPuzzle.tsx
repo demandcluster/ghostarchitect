@@ -88,17 +88,17 @@ export function PasswordPuzzle({ onComplete }: PasswordPuzzleProps) {
   return (
     <div className="overflow-auto h-full">
     <div className="p-6 max-w-lg mx-auto">
-      <h2 className="text-lg font-bold text-primary mb-2">
+      <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
         Create Your {teamName} Password
       </h2>
-      <p className="text-sm text-secondary mb-6">
+      <p className="text-sm text-[var(--text-secondary)] mb-7 leading-relaxed max-w-[55ch]">
         Your password must meet {teamName} security policy. Use the entropy meter
         to gauge strength.
       </p>
 
       <div className="space-y-4">
         <div>
-          <label className="block text-xs font-medium text-secondary mb-1">
+          <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">
             New Password
           </label>
           <input
@@ -106,7 +106,7 @@ export function PasswordPuzzle({ onComplete }: PasswordPuzzleProps) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             disabled={submitted}
-            className="w-full px-3 py-2 bg-window-sunken border border rounded text-sm font-mono text-primary focus:outline-none focus:border-accent"
+            className="w-full px-3.5 py-2.5 bg-[var(--bg-window-sunken)] border border-[var(--border)] rounded-xl text-base font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-ring)]"
             placeholder="Enter a strong password or passphrase"
             autoComplete="new-password"
           />
@@ -118,35 +118,34 @@ export function PasswordPuzzle({ onComplete }: PasswordPuzzleProps) {
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
           >
-            <div className="p-4 bg-window-sunken rounded-lg border border">
-              <div className="flex justify-between text-xs mb-2">
-                <span className="text-secondary">
+            <div className="p-4 bg-[var(--bg-window-sunken)] rounded-xl border border-[var(--border)]">
+              <div className="flex justify-between text-sm mb-3">
+                <span className="text-[var(--text-secondary)] font-medium">
                   Entropy: {entropy} bits
                 </span>
-                <span style={{ color: strength.color }} className="font-medium">
+                <span style={{ color: strength.color }} className="font-semibold">
                   {strength.label}
                 </span>
               </div>
 
               {/* Bar */}
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden mb-3">
+              <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden mb-4">
                 <div
-                  className="h-full rounded-full"
+                  className="h-full rounded-full transition-all duration-300 ease-out"
                   style={{
                     backgroundColor: strength.color,
                     width: `${Math.min(100, (entropy / 100) * 100)}%`,
-                    transition: "width 300ms cubic-bezier(0.4,0,0.2,1)",
                   }}
                 />
               </div>
 
               {/* Crack time */}
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between text-sm mb-4">
                 <span className="text-muted">
                   Brute-force time (10B guesses/sec):
                 </span>
                 <span
-                  className="font-mono font-medium"
+                  className="font-mono font-semibold"
                   style={{ color: strength.color }}
                 >
                   {crack}
@@ -154,7 +153,7 @@ export function PasswordPuzzle({ onComplete }: PasswordPuzzleProps) {
               </div>
 
               {/* Tip */}
-              <div className="mt-3 text-[11px] text-muted">
+              <div className="mt-4 text-sm text-muted leading-relaxed">
                 {entropy < 40
                   ? 'Tip: Try a passphrase like "correct-horse-battery-staple" — long passphrases are stronger and easier to remember.'
                   : entropy < 60

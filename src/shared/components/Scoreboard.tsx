@@ -73,10 +73,10 @@ export function Scoreboard() {
     return (
       <div className="p-6 flex flex-col items-center justify-center h-full text-center">
         <div className="text-3xl mb-3">T</div>
-        <h3 className="text-sm font-bold text-primary mb-2">
+        <h3 className="text-sm font-bold text-[var(--text-primary)] mb-2">
           Leaderboard
         </h3>
-        <p className="text-xs text-muted max-w-xs">
+        <p className="text-xs text-[var(--text-muted)] max-w-xs">
           Leaderboard is available in team mode. Ask your trainer for an invite
           code to join a team and compete on the live scoreboard.
         </p>
@@ -87,7 +87,7 @@ export function Scoreboard() {
   if (!teamId) {
     return (
       <div className="p-6 text-center">
-        <p className="text-xs text-muted">
+        <p className="text-xs text-[var(--text-muted)]">
           Join a team with an invite code to see the leaderboard.
         </p>
       </div>
@@ -96,7 +96,7 @@ export function Scoreboard() {
 
   if (loading) {
     return (
-      <div className="p-6 text-center text-xs text-muted">
+      <div className="p-6 text-center text-xs text-[var(--text-muted)]">
         Loading leaderboard...
       </div>
     );
@@ -115,7 +115,7 @@ export function Scoreboard() {
 
   return (
     <div className="p-4 h-full overflow-auto">
-      <h3 className="text-sm font-bold text-primary mb-3">
+      <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3">
         {teamName ? `${teamName} — Scoreboard` : "Team Scoreboard"}
       </h3>
 
@@ -124,7 +124,7 @@ export function Scoreboard() {
         <div className="mb-4">
           <table className="w-full text-xs">
             <thead>
-              <tr className="text-muted border-b border">
+              <tr className="text-[var(--text-muted)] border-b border">
                 <th className="text-left py-1 w-8">#</th>
                 <th className="text-left py-1">Player</th>
                 <th className="text-right py-1">Score</th>
@@ -154,10 +154,10 @@ export function Scoreboard() {
                     <td className="py-2 font-bold text-accent">
                       {entry.rank}
                     </td>
-                    <td className="py-2 text-primary font-medium">
+                    <td className="py-2 text-[var(--text-primary)] font-medium">
                       {entry.playerHandle || "Anonymous"}
                     </td>
-                    <td className="py-2 text-right font-mono text-primary">
+                    <td className="py-2 text-right font-mono text-[var(--text-primary)]">
                       {entry.totalScore}
                     </td>
                     <td className="py-2 text-center" title={entry.endingReached}>
@@ -165,7 +165,7 @@ export function Scoreboard() {
                         ? ENDING_ICONS[entry.endingReached] || "?"
                         : ""}
                     </td>
-                    <td className="py-2 text-right text-muted">
+                    <td className="py-2 text-right text-[var(--text-muted)]">
                       {entry.completedAt
                         ? new Date(entry.completedAt).toLocaleTimeString([], {
                             hour: "2-digit",
@@ -216,7 +216,7 @@ export function Scoreboard() {
                         )
                       )}
                     </div>
-                    <span className="text-muted">
+                    <span className="text-[var(--text-muted)]">
                       {completedPhases}/4
                     </span>
                   </div>
@@ -228,7 +228,7 @@ export function Scoreboard() {
       )}
 
       {rankings.length === 0 && (
-        <p className="text-xs text-muted text-center py-8">
+        <p className="text-xs text-[var(--text-muted)] text-center py-8">
           No players yet. Be the first to complete the simulation!
         </p>
       )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type WikiTab =
   | "social-engineering"
@@ -27,27 +28,50 @@ export function WikiPanel({ initialTab }: { initialTab?: WikiTab } = {}) {
     <div className="flex flex-col h-full" style={{ background: "#ffffff", color: "#0f172a" }}>
       {/* Tab navigation */}
       <div className="flex border-b border overflow-x-auto shrink-0" style={{ borderColor: "var(--border)" }}>
-        {TABS.map((tab) => (
-          <button
+        {TABS.map((tab, index) => (
+          <motion.button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className="px-4 py-2 text-xs font-medium whitespace-nowrap transition-colors border-b-2 -mb-px"
+            className="px-4 py-2 text-xs font-medium whitespace-nowrap transition-colors border-b-2 -mb-px relative"
             style={{
-              backgroundColor: activeTab === tab.id ? "var(--accent)" : "transparent",
+              borderColor: activeTab === tab.id ? "var(--accent)" : "transparent",
               color: activeTab === tab.id ? "#ffffff" : "#334155"
             }}
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05, duration: 0.3 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
-            {tab.label}
-          </button>
+            {activeTab === tab.id && (
+              <motion.div
+                className="absolute inset-0 -z-10 rounded-t-lg"
+                style={{ background: "var(--accent)" }}
+                layoutId="activeTab"
+                transition={{ type: "spring", stiffness: 500, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10">{tab.label}</span>
+          </motion.button>
         ))}
       </div>
 
       {/* Scrollable content */}
       <div className="flex-1 overflow-auto p-4">
-        {activeTab === "social-engineering" && <SocialEngineeringContent />}
-        {activeTab === "network-security" && <NetworkSecurityContent />}
-        {activeTab === "log-analysis" && <LogAnalysisContent />}
-        {activeTab === "incident-response" && <IncidentResponseContent />}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {activeTab === "social-engineering" && <SocialEngineeringContent />}
+            {activeTab === "network-security" && <NetworkSecurityContent />}
+            {activeTab === "log-analysis" && <LogAnalysisContent />}
+            {activeTab === "incident-response" && <IncidentResponseContent />}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -55,19 +79,40 @@ export function WikiPanel({ initialTab }: { initialTab?: WikiTab } = {}) {
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-sm font-semibold mb-2 mt-4 first:mt-0" style={{ color: "#0f172a" }}>
+    <motion.h3
+      className="text-sm font-semibold mb-2.5 mt-5 first:mt-0 leading-snug"
+      style={{ color: "#0f172a" }}
+      initial={{ opacity: 0, x: -5 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       {children}
-    </h3>
+    </motion.h3>
   );
 }
 
 function BulletList({ items }: { items: string[] }) {
   return (
-    <ul className="space-y-1.5 text-xs list-disc list-inside leading-relaxed" style={{ color: "#334155" }}>
+    <motion.ul
+      className="space-y-2 text-sm list-disc list-inside leading-relaxed max-w-[65ch]"
+      style={{ color: "#1e293b" }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, delay: 0.1 }}
+    >
       {items.map((item, i) => (
-        <li key={i}>{item}</li>
+        <motion.li
+          key={i}
+          initial={{ opacity: 0, x: -5 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 + (i * 0.03), duration: 0.2 }}
+          whileHover={{ x: 3, color: "#0f172a" }}
+          className="pl-1 transition-colors"
+        >
+          {item}
+        </motion.li>
       ))}
-    </ul>
+    </motion.ul>
   );
 }
 
@@ -80,12 +125,18 @@ function Callout({
 }) {
   const styles =
     variant === "warning"
-      ? "bg-[rgba(220,38,38,0.08)] border-[rgba(220,38,38,0.35)] text-[#ef4444]"
-      : "bg-[rgba(37,99,235,0.08)] border-[rgba(37,99,235,0.35)] text-[#3b82f6]";
+      ? "bg-[rgba(220,38,38,0.08)] border-[rgba(220,38,38,0.35)] text-[#dc2626]"
+      : "bg-[rgba(37,99,235,0.08)] border-[rgba(37,99,235,0.35)] text-[#2563eb]";
   return (
-    <div className={`border rounded p-3 text-xs mt-3 ${styles}`}>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={{ scale: 1.01 }}
+      transition={{ duration: 0.3 }}
+      className={`border rounded-lg p-3.5 text-sm mt-4 leading-relaxed max-w-[65ch] ${styles}`}
+    >
       {children}
-    </div>
+    </motion.div>
   );
 }
 
