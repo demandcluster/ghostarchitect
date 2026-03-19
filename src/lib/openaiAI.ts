@@ -60,17 +60,22 @@ export class OpenAIClient {
     const section = config.section ?? "all";
     
     // For pool generation, we use placeholders instead of specific team data
-    const teamName = "{{teamName}}";
-    const fakeDomain = "{{fakeDomain}}";
+    const teamName = "[teamName]";
+    const fakeDomain = "[fakeDomain]";
+    const playerHandle = "[playerHandle]";
 
     let sectionPrompt = "";
     let requiredFields: string[] = [];
 
     if (section === "initial") {
-      requiredFields = ["preBreachEmails", "dmIntro", "dmScenarios"];
+      requiredFields = ["preBreachEmails", "breachEmails", "dmIntro", "dmScenarios"];
       sectionPrompt = `ACT AS A PROFESSIONAL CORPORATE ROLEPLAY SCRIPTWRITER.
 The target audience is CYBERSECURITY PROFESSIONALS.
-IMPORTANT: Use the placeholder "${teamName}" for the company name and "${fakeDomain}" for the domain.
+IMPORTANT: Use these EXACT placeholders for dynamic content:
+- "[teamName]" for the company name
+- "[fakeDomain]" for the corporate domain
+- "[playerHandle]" for the user's name
+- "[phishing-link]" for any malicious links in emails
 
 CRITICAL ROLEPLAY RULES:
 1. DIALOGUE MUST BE CONVERSATIONAL. Characters use technical terms NATURALLY.
@@ -78,10 +83,16 @@ CRITICAL ROLEPLAY RULES:
 3. "CORRECT" ANSWERS MUST ALWAYS REDIRECT TO SECURE PROTOCOL (Vault, IAM, Ticket).
 4. "INCORRECT" ANSWERS: Should include reckless sharing and passive/unhelpful actions.
 
-INITIAL CONTENT FOCUS (ONBOARDING PHASE):
-- preBreachEmails (EXACTLY 4-6 high-fidelity legitimate internal emails. MUST use ${fakeDomain}).
+INITIAL CONTENT FOCUS (ONBOARDING & BREACH EMAILS):
+- preBreachEmails (EXACTLY 4-6 high-fidelity legitimate internal emails. MUST use [fakeDomain]).
+- breachEmails (EXACTLY 6-8 emails for the second phase. MANDATORY: 50% MUST be LEGITIMATE corporate alerts, 50% MUST be sophisticated phishing).
+
+PEDAGOGICAL EMAIL RULES (MANDATORY):
+- LEGITIMATE EMAILS (isPhishing: false): MUST NOT contain malicious links, MUST NOT use "[phishing-link]", MUST NOT have suspicious urgency, and MUST have passing SPF/DKIM/DMARC.
+- PHISHING EMAILS (isPhishing: true): MUST contain at least 2 indicators (e.g., [phishing-link], suspicious sender, sense of threat/urgency) and MUST have at least one header failure (SPF/DKIM/DMARC).
+
 - dmIntro (EXACTLY 1 welcome message from a technical director).
-- dmScenarios (EXACTLY 6-8 INDEPENDENT scenarios. 50% MUST be LEGITIMATE technical peer requests, 50% MUST be SOCIAL ENGINEERING threats).
+- dmScenarios (EXACTLY 6-8 INDEPENDENT scenarios. MANDATORY: 50% MUST be LEGITIMATE technical peer requests, 50% MUST be SOCIAL ENGINEERING threats).
 
 SCENARIO STRUCTURE:
 Each scenario in 'dmScenarios' MUST be an object:
@@ -92,20 +103,19 @@ Each scenario in 'dmScenarios' MUST be an object:
   "onFail": { "id": "s-fail", "sender": "Name", "senderRole": "Role", "avatar": "URL", "text": "Technical feedback for incorrect choice" }
 }`;
     } else if (section === "secondary") {
-      requiredFields = ["breachEmails", "logEntries", "npcBadAdvice", "lolbins", "wifi"];
+      requiredFields = ["logEntries", "npcBadAdvice", "lolbins", "wifi"];
       sectionPrompt = `ACT AS A SENIOR SYSTEM ADMINISTRATOR AND NARRATOR.
 The target audience is CYBERSECURITY PROFESSIONALS.
 Use placeholders "${teamName}" and "${fakeDomain}".
 
-SECONDARY CONTENT FOCUS (BREACH & INVESTIGATION):
-- breachEmails (EXACTLY 6-8 emails. Mix of real alerts and sophisticated phishing).
-- logEntries (EXACTLY 25-30 system logs. Technical and realistic).
+SECONDARY CONTENT FOCUS (INVESTIGATION):
+- logEntries (EXACTLY 25-30 system logs. MANDATORY: 70% LEGITIMATE traffic, 30% MALICIOUS attack indicators).
 - npcBadAdvice (EXACTLY 4-6 dialogues from technical peers giving urgent but wrong advice).
-- lolbins (EXACTLY 8-12 realistic processes).
-- wifi (EXACTLY 5-8 networks).
+- lolbins (EXACTLY 8-12 processes. MANDATORY: 50% LEGITIMATE usage, 50% MALICIOUS exploitation).
+- wifi (EXACTLY 5-8 networks. MANDATORY: 60% CORPORATE/HOME, 40% EVIL TWIN/SUSPICIOUS).
 
 TECHNICAL LOG DEPTH:
-Logs must show a multi-stage attack chain: Recon -> Exploit -> Persistence -> Lateral Movement.`;
+Logs must show a multi-stage attack chain hidden among noise: Recon -> Exploit -> Persistence -> Lateral Movement.`;
     } else {
       requiredFields = [
         "preBreachEmails",
@@ -133,6 +143,27 @@ MANDATORY DATA RULES:
 1. Every object in EVERY array (emails, logEntries, lolbins, wifi, etc.) MUST have a unique "id" field.
 2. For emails, use IDs like "gen-email-1", "gen-email-2", etc.
 3. For logs, use IDs like "gen-log-1", "gen-log-2", etc.
+
+EMAIL JSON STRUCTURE (MANDATORY):
+Each email MUST have:
+{
+  "id": "...",
+  "from": "...",
+  "to": "...",
+  "subject": "...",
+  "date": "YYYY-MM-DD HH:mm",
+  "body": "...",
+  "isPhishing": true/false,
+  "indicators": ["indicator 1", ...],
+  "difficulty": "easy/medium/hard",
+  "headers": {
+    "returnPath": "<sender@domain.com>",
+    "spf": "pass" or "fail",
+    "dkim": "pass" or "fail",
+    "dmarc": "pass" or "fail"
+  }
+}
+* IMPORTANT: Headers MUST NOT be empty strings. Use "pass" or "fail" explicitly.
 
 DM CHOICE JSON STRUCTURE (MANDATORY):
 "choices": [
@@ -253,12 +284,15 @@ Type: ${type}
 Content: ${JSON.stringify(content)}
 
 CRITICAL COMPLIANCE & STANDARDS CHECK:
-1. PEDAGOGICAL INTEGRITY: Evaluate the "Possible Choices" provided in the content.
+1. PEDAGOGICAL INTEGRITY (EMAILS):
+   - IF isPhishing is FALSE: Content MUST NOT have suspicious links, MUST NOT use "[phishing-link]", and headers MUST pass. Any "safe" email with phishing traits is a CRITICAL FAIL.
+   - IF isPhishing is TRUE: Content MUST have visible indicators (e.g. suspicious sender, sense of urgency, or "[phishing-link]") AND at least one failing header (SPF/DKIM/DMARC).
+2. PEDAGOGICAL INTEGRITY (DMs): Evaluate the "Possible Choices" provided in the content.
    - MANDATORY: If a choice marked 'isCorrect: true' involves sharing secrets or bypasses technical controls, REJECT IMMEDIATELY.
    - MANDATORY: If a choice marked 'isCorrect: true' involves redirecting to official secure protocol, APPROVE.
-2. ROLEPLAY CONTEXT (NPC_ADVICE): For this type, the NPC character text SHOULD be technically incorrect or urgent/misleading. Do NOT reject the item because the character is wrong. ONLY reject if the 'isCorrect: true' metadata is assigned to an unwise or dangerous response to that character.
-3. CHAIN INTEGRITY: For DM_SCENARIO, verify that 'onPass' logic matches the safe choice and 'onFail' logic matches the dangerous choices.
-4. QUALITY: Is the roleplay immersive and conversational? (No "Alice.SmithManager" style names).
+3. ROLEPLAY CONTEXT (NPC_ADVICE): For this type, the NPC character text SHOULD be technically incorrect or urgent/misleading. Do NOT reject the item because the character is wrong. ONLY reject if the 'isCorrect: true' metadata is assigned to an unwise or dangerous response to that character.
+4. CHAIN INTEGRITY: For DM_SCENARIO, verify that 'onPass' logic matches the safe choice and 'onFail' logic matches the dangerous choices.
+5. QUALITY: Is the roleplay immersive and conversational? (No "Alice.SmithManager" style names).
 
 SCORING (1-10):
 - 1-3: CRITICAL FAIL (e.g., isCorrect flag assigned to a dangerous action, or broken scenario logic). REJECT.

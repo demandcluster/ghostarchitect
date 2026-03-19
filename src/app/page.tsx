@@ -77,8 +77,7 @@ export default function Home() {
     socialEngineeringDMs,
     npcBadAdvice,
     lolbins,
-    wifi,
-    isContentReady
+    wifi
   } = useContentStore(useShallow((s) => ({
     preBreachEmails: s.preBreachEmails,
     breachEmails: s.breachEmails,
@@ -86,9 +85,12 @@ export default function Home() {
     socialEngineeringDMs: s.socialEngineeringDMs,
     npcBadAdvice: s.npcBadAdvice,
     lolbins: s.lolbins,
-    wifi: s.wifi,
-    isContentReady: s.isContentReady
+    wifi: s.wifi
   })));
+  const isContentReady = useContentStore(s => s.isContentReady);
+  
+  console.log("[DEBUG] isContentReady:", isContentReady(), "breachEmails count:", breachEmails.length);
+
   const adjustTrust = useScoreStore((s) => s.adjustTrust);
   const addAction = useScoreStore((s) => s.addAction);
   const addFlag = useNarrativeStore((s) => s.addFlag);
@@ -230,6 +232,8 @@ export default function Home() {
           teamName,
           fakeDomain
         });
+
+        console.log("[DEBUG] initialResult:", initialResult.preBreachEmails.length, "pre,", initialResult.breachEmails.length, "breach");
 
         contentStoreRef.current.setPreBreachEmails(initialResult.preBreachEmails);
         contentStoreRef.current.setBreachEmails(initialResult.breachEmails);
@@ -435,6 +439,7 @@ export default function Home() {
   const handleEmailComplete = useCallback(
     async (results: Record<string, string>) => {
       const emails = isContentReady() ? breachEmails : BREACH_EMAILS;
+      console.log("[handleEmailComplete] emails count:", emails.length);
       const phishingEmails = emails.filter((e) => e.isPhishing);
       const correctPhishing = phishingEmails.filter(
         (e) => results[e.id] === "phishing"

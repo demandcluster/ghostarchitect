@@ -70,29 +70,129 @@ export class ContentPoolManager {
     const pool = available.length > 0 ? available : poolItems;
 
     // 3. Select items for each type
-    const findItems = (type: ContentPoolType) => pool.filter(i => i.type === type);
-    
-    const preEmails = this.pickRandom(findItems('EMAIL_PRE'), 1);
-    const breachEmails = this.pickRandom(findItems('EMAIL_BREACH'), 1);
-    const logs = this.pickRandom(findItems('LOG_BATCH'), 1);
-    const advice = this.pickRandom(findItems('NPC_ADVICE'), 1);
-    const bins = this.pickRandom(findItems('LOLBIN_BATCH'), 1);
-    const wifi = this.pickRandom(findItems('WIFI_BATCH'), 1);
+    // 3. Select and balance items
+    const getBalancedItems = (type: ContentPoolType, count: number, maliciousKey: string) => {
+      const items = pool.filter(i => i.type === type);
+      const allFlat = items.flatMap(i => i.data.map((d: any) => ({ data: d, qualityScore: i.qualityScore, id: i.id })));
+      if (allFlat.length === 0) return [];
 
-    // DM Special Handling: Intro + 4 Scenarios
-    const dmIntroPool = findItems('DM_INTRO');
-    const dmScenarioPool = findItems('DM_SCENARIO');
-    
+      // For pre-breach emails, we don't necessarily need a balance of malicious items
+      if (type === 'EMAIL_PRE') {
+        return this.shuffle(allFlat).slice(0, count);
+      }
+
+      const malicious = allFlat.filter(i => i.data[maliciousKey] === true);
+      const legitimate = allFlat.filter(i => i.data[maliciousKey] === false);
+
+      // Target a specific mix if possible
+      const targetMalicious = Math.ceil(count * 0.5); // 50% malicious for breach
+      const targetLegit = count - targetMalicious;
+
+      const selected = [
+        ...this.pickRandom(malicious, targetMalicious),
+        ...this.pickRandom(legitimate, targetLegit)
+      ];
+
+      // If we don't have enough balanced items, fill with whatever is left
+      if (selected.length < count) {
+        const remaining = allFlat.filter(i => !selected.includes(i));
+        selected.push(...this.pickRandom(remaining, count - selected.length));
+      }
+
+      return this.shuffle(selected);
+    };
+
+    // For logs and DMs, we keep the batch/chain logic
+    const findBatches = (type: ContentPoolType) => pool.filter(i => i.type === type);
+
+    const preEmails = getBalancedItems('EMAIL_PRE', 5, 'isPhishing');
+    const breachEmails = getBalancedItems('EMAIL_BREACH', 8, 'isPhishing');
+    const logs = this.pickRandom(findBatches('LOG_BATCH'), 1);
+    const advice = this.pickRandom(findBatches('NPC_ADVICE'), 1);
+    const bins = getBalancedItems('LOLBIN_BATCH', 10, 'isMalicious');
+    const wifi = getBalancedItems('WIFI_BATCH', 6, 'isEvilTwin');
+
+    const dmIntroPool = findBatches('DM_INTRO');
+    const dmScenarioPool = findBatches('DM_SCENARIO');
+
     const intro = this.pickRandom(dmIntroPool, 1)[0];
-    const scenarios = this.pickRandom(dmScenarioPool, 4);
+    // For DMs, we pick 2 social engineering and 2 legitimate scenarios for balance
+    const sPool = dmScenarioPool.map(s => ({ ...s, isSE: s.data.setup?.text?.toLowerCase().includes('password') || s.data.setup?.text?.toLowerCase().includes('link') }));
+    const scenarios = [
+      ...this.pickRandom(sPool.filter(s => s.isSE), 2),
+      ...this.pickRandom(sPool.filter(s => !s.isSE), 2)
+    ];
 
     // 4. Branding and Chaining
     const brand = (item: any, complexity: number) => {
       let str = JSON.stringify(item);
-      str = str.replace(/{{teamName}}/g, options.teamName);
-      str = str.replace(/{{fakeDomain}}/g, options.fakeDomain);
-      str = str.replace(/{{playerHandle}}/g, options.playerHandle);
+      // Support both {{tag}} and [tag] formats, case-insensitive
+      const replacements = [
+        { regex: /{{teamName}}|\[teamName\]/gi, value: options.teamName },
+        { regex: /{{fakeDomain}}|\[fakeDomain\]/gi, value: options.fakeDomain },
+        { regex: /{{playerHandle}}|\[playerHandle\]/gi, value: options.playerHandle },
+      ];
+
+      replacements.forEach(({ regex, value }) => {
+        str = str.replace(regex, value);
+      });
+      
       const branded = JSON.parse(str);
+
+      // Handle phishing link placeholder conditionally
+      const fakeBase = options.fakeDomain.split('.')[0];
+      const phishingUrl = `https://${fakeBase}-secure-auth.net/login/verify`;
+      const safeUrl = `https://kb.${options.fakeDomain}/security/verify-identity`;
+      
+      const replaceLinks = (obj: any) => {
+        if (!obj) return;
+        if (typeof obj === 'string') {
+          return obj.replace(/{{phishing-link}}|\[phishing-link\]/gi, branded.isPhishing ? phishingUrl : safeUrl);
+        }
+        if (typeof obj === 'object') {
+          for (const key in obj) {
+            obj[key] = replaceLinks(obj[key]);
+          }
+        }
+        return obj;
+      };
+
+      // Heal missing email fields if this item looks like an email
+      if (branded.from && branded.body) {
+        // Ensure isPhishing exists
+        if (branded.isPhishing === undefined) {
+          branded.isPhishing = false; 
+        }
+
+        // Apply link replacement to body and subject
+        if (branded.body) branded.body = replaceLinks(branded.body);
+        if (branded.subject) branded.subject = replaceLinks(branded.subject);
+        if (branded.text) branded.text = replaceLinks(branded.text); // For DMs
+
+        // Ensure date exists and is in a splitable format
+        if (!branded.date) {
+          const now = new Date();
+          const dateStr = now.toISOString().split('T')[0];
+          const timeStr = now.toTimeString().split(' ')[0].slice(0, 5);
+          branded.date = `${dateStr} ${timeStr}`;
+        }
+
+        if (!branded.headers) {
+          branded.headers = {
+            returnPath: `<${branded.from}>`,
+            spf: branded.isPhishing ? 'fail' : 'pass',
+            dkim: branded.isPhishing ? 'fail' : 'pass',
+            dmarc: branded.isPhishing ? 'fail' : 'pass'
+          };
+        } else {
+          // Ensure sub-fields exist
+          branded.headers.spf = branded.headers.spf || (branded.isPhishing ? 'fail' : 'pass');
+          branded.headers.dkim = branded.headers.dkim || (branded.isPhishing ? 'fail' : 'pass');
+          branded.headers.dmarc = branded.headers.dmarc || (branded.isPhishing ? 'fail' : 'pass');
+          branded.headers.returnPath = branded.headers.returnPath || `<${branded.from}>`;
+        }
+      }
+
       return { ...branded, complexity };
     };
 
@@ -120,6 +220,12 @@ export class ContentPoolManager {
 
       const setup = brand(sData.setup, complexity);
       setup.id = setupId;
+      
+      // Randomize choice order to prevent predictable correct answers
+      if (setup.choices && Array.isArray(setup.choices)) {
+        setup.choices = this.shuffle([...setup.choices]);
+      }
+
       setup.choices.forEach((c: any) => {
         c.nextMessageId = c.nextMessageId === 'ON_PASS_ID' ? passId : failId;
       });
@@ -148,21 +254,28 @@ export class ContentPoolManager {
       });
     }
 
-    return {
-      preBreachEmails: preEmails.flatMap(i => i.data.map((e: any) => brand(e, i.qualityScore))),
+    const result = {
+      preBreachEmails: preEmails.map(i => brand(i.data, i.qualityScore)),
       socialEngineeringDMs,
-      breachEmails: breachEmails.flatMap(i => i.data.map((e: any) => brand(e, i.qualityScore))),
+      breachEmails: breachEmails.map(i => brand(i.data, i.qualityScore)),
       logEntries: logs.flatMap(i => i.data.map((e: any) => brand(e, i.qualityScore))),
       npcBadAdvice: advice.flatMap(i => i.data.map((e: any) => brand(e, i.qualityScore))),
-      lolbins: bins.flatMap(i => i.data.map((e: any) => brand(e, i.qualityScore))),
-      wifi: wifi.flatMap(i => i.data.map((e: any) => brand(e, i.qualityScore))),
+      lolbins: bins.map(i => brand(i.data, i.qualityScore)),
+      wifi: wifi.map(i => brand(i.data, i.qualityScore)),
       isOfflineContent: poolItems.length === 0
     };
+
+    console.log(`[ContentPool] Fetched content for ${options.playerHandle}: ${result.preBreachEmails.length} pre, ${result.breachEmails.length} breach emails`);
+    return result;
   }
 
   private pickRandom(arr: any[], count: number) {
-    const shuffled = [...arr].sort(() => Math.random() - 0.5);
+    const shuffled = this.shuffle([...arr]);
     return shuffled.slice(0, count);
+  }
+
+  private shuffle<T>(arr: T[]): T[] {
+    return [...arr].sort(() => Math.random() - 0.5);
   }
 
   /**

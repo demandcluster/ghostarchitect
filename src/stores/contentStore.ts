@@ -69,11 +69,19 @@ export const useContentStore = create<ContentStore>((set, get) => ({
 
   isContentReady: () => {
     const state = get();
-    // Stage 1 content optimization: Only require onboarding content to start
-    return (
+    const ready = (
       state.preBreachEmails.length > 0 &&
+      state.breachEmails.length > 0 &&
       state.socialEngineeringDMs.length > 0
     );
+    if (!ready) {
+      console.log("[ContentStore] Not ready:", 
+        "pre:", state.preBreachEmails.length, 
+        "breach:", state.breachEmails.length, 
+        "dms:", state.socialEngineeringDMs.length
+      );
+    }
+    return ready;
   },
 
   persistToStorage: () => {

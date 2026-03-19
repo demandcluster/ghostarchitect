@@ -656,6 +656,24 @@ function ContentPoolPanel({ authFetch }: { authFetch: (url: string, options?: Re
     }
   };
 
+  const clearPool = async () => {
+    if (!confirm('Are you sure you want to clear the entire content pool? This will delete all generated content.')) {
+      return;
+    }
+    
+    setActionLoading('clear');
+    try {
+      await authFetch('/api/admin/content', {
+        method: 'DELETE'
+      });
+      fetchCounts();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   if (loading && !data) return null;
 
   return (
@@ -691,9 +709,16 @@ function ContentPoolPanel({ authFetch }: { authFetch: (url: string, options?: Re
             <button
               onClick={() => triggerRefill('all')}
               disabled={!!actionLoading}
-              style={{ ...primaryBtnStyle(!!actionLoading), padding: '6px 0', fontSize: 10 }}
+              style={{ ...primaryBtnStyle(!!actionLoading), padding: '6px 0', fontSize: 10, flex: 1 }}
             >
               {actionLoading === 'all' ? 'REFILLING...' : 'REFILL ALL'}
+            </button>
+            <button
+              onClick={clearPool}
+              disabled={!!actionLoading}
+              style={{ ...dangerBtnStyle(!!actionLoading), padding: '6px 0', fontSize: 10, flex: 1 }}
+            >
+              {actionLoading === 'clear' ? 'CLEARING...' : 'CLEAR POOL'}
             </button>
           </div>
         </div>

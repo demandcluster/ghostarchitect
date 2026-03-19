@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { useGameStore } from "@/stores/gameStore";
 import { useScoreStore } from "@/stores/scoreStore";
@@ -14,60 +14,88 @@ interface EmailClientProps {
   onComplete: (results: Record<string, Verdict>) => void;
 }
 
-function applyDomain(text: string, fakeDomain: string, teamName: string): string {
-  // Handle undefined/null text values from OpenAI-generated content
+function applyDomain(text: string, fakeDomain: string, teamName: string, playerHandle: string): string {
   if (!text) return '';
-  // Derive the base name from the fake domain (e.g. "acme.com" → "acme")
   const fakeBase = fakeDomain.split(".")[0];
-  return text
+  
+  // Standard branding replacements
+  let branded = text
     .replace(/nexuscorp\.com/gi, fakeDomain)
     .replace(/nexuscorp-servicedesk\.com/gi, `${fakeBase}-servicedesk.com`)
     .replace(/nexuscorp-security\.com/gi, `${fakeBase}-security.com`)
     .replace(/nexuscorp-it\.com/gi, `${fakeBase}-it.com`)
     .replace(/NexusCorp/g, teamName);
+
+  // Placeholder replacements supporting both {{tag}} and [tag]
+  const replacements = [
+    { regex: /{{teamName}}|\[teamName\]/gi, value: teamName },
+    { regex: /{{fakeDomain}}|\[fakeDomain\]/gi, value: fakeDomain },
+    { regex: /{{playerHandle}}|\[playerHandle\]/gi, value: playerHandle },
+  ];
+
+  replacements.forEach(({ regex, value }) => {
+    branded = branded.replace(regex, value);
+  });
+
+  return branded;
 }
 
-function brandEmail(email: Email, fakeDomain: string, teamName: string): Email {
-  const sub = (s: string) => applyDomain(s, fakeDomain, teamName);
+function brandEmail(email: Email, index: number, fakeDomain: string, teamName: string, playerHandle: string): Email {
+  const sub = (s: string) => applyDomain(s, fakeDomain, teamName, playerHandle);
   const subOpt = (s?: string) => (s ? sub(s) : s);
 
-  // Ensure headers exist and are properly structured
-  const headers = email.headers ?? {
-    returnPath: '',
-    spf: '',
-    dkim: '',
-    dmarc: '',
-    xMailer: undefined,
-    replyTo: undefined,
+  // Heal missing headers logic
+  const rawHeaders = email.headers || {} as any;
+  const isPhish = email.isPhishing;
+
+  const headers = {
+    returnPath: sub(rawHeaders.returnPath || `<${email.from}>`),
+    spf: sub(rawHeaders.spf || (isPhish ? 'fail' : 'pass')),
+    dkim: sub(rawHeaders.dkim || (isPhish ? 'fail' : 'pass')),
+    dmarc: sub(rawHeaders.dmarc || (isPhish ? 'fail' : 'pass')),
+    xMailer: rawHeaders.xMailer ? subOpt(rawHeaders.xMailer) : undefined,
+    replyTo: rawHeaders.replyTo ? subOpt(rawHeaders.replyTo) : undefined,
   };
+
+  if (index === 0) {
+    console.log("[EmailClient] First email headers:", headers);
+  }
+
+  // Generate a strictly unique ID for this instance to avoid selection glitches
+  const id = `${email.id || 'gen'}-${index}`;
 
   return {
     ...email,
+    id,
     from: sub(email.from ?? ''),
     to: sub(email.to ?? ''),
     subject: sub(email.subject ?? ''),
     body: sub(email.body ?? ''),
-    headers: {
-      returnPath: headers.returnPath ? sub(headers.returnPath) : '',
-      spf: headers.spf ? sub(headers.spf) : '',
-      dkim: headers.dkim ? sub(headers.dkim) : '',
-      dmarc: headers.dmarc ? sub(headers.dmarc) : '',
-      xMailer: headers.xMailer ? subOpt(headers.xMailer) : '',
-      replyTo: headers.replyTo ? subOpt(headers.replyTo) : '',
-    },
+    headers,
     indicators: email.indicators?.filter((i) => i) || [],
   };
 }
 
-// Split body text into plain text and URL segments
-function parseBodySegments(body: string): Array<{ type: "text" | "url"; value: string }> {
-  const urlPattern = /https?:\/\/[^\s)>\]]+/g;
+function parseBodySegments(body: string, fakeDomain: string, isPhish: boolean): Array<{ type: "text" | "url"; value: string }> {
+  // Support both real URLs and the [phishing-link] placeholder (case-insensitive, optional brackets)
+  const urlPattern = /https?:\/\/[^\s)>\]]+|\[?phishing-link\]?/gi;
   const segments: Array<{ type: "text" | "url"; value: string }> = [];
   let last = 0;
   let m: RegExpExecArray | null;
   while ((m = urlPattern.exec(body)) !== null) {
     if (m.index > last) segments.push({ type: "text", value: body.slice(last, m.index) });
-    segments.push({ type: "url", value: m[0] });
+    
+    let urlValue = m[0];
+    const isPhishTag = urlValue.toLowerCase().includes("phishing-link");
+    
+    if (isPhishTag) {
+      const fakeBase = fakeDomain.split(".")[0];
+      urlValue = isPhish 
+        ? `https://${fakeBase}-secure-auth.net/login/verify`
+        : `https://kb.${fakeDomain}/security/verify-identity`;
+    }
+    
+    segments.push({ type: "url", value: urlValue });
     last = m.index + m[0].length;
   }
   if (last < body.length) segments.push({ type: "text", value: body.slice(last) });
@@ -77,18 +105,29 @@ function parseBodySegments(body: string): Array<{ type: "text" | "url"; value: s
 export function EmailClient({ emails, onComplete }: EmailClientProps) {
   const fakeDomain = useGameStore((s) => s.fakeDomain);
   const teamName = useGameStore((s) => s.teamName);
+  const playerHandle = useGameStore((s) => s.playerHandle) || "User";
   const adjustTrust = useScoreStore((s) => s.adjustTrust);
   const addFlag = useNarrativeStore((s) => s.addFlag);
   const [linkAlert, setLinkAlert] = useState<{ url: string; isPhishing: boolean } | null>(null);
+  
   const brandedEmails = useMemo(
-    () => emails.map((e) => brandEmail(e, fakeDomain, teamName)),
-    [emails, fakeDomain, teamName]
+    () => emails.map((e, idx) => brandEmail(e, idx, fakeDomain, teamName, playerHandle)),
+    [emails, fakeDomain, teamName, playerHandle]
   );
-  const [selectedId, setSelectedId] = useState(emails[0]?.id ?? "");
+
+  const [selectedId, setSelectedId] = useState("");
+
+  useEffect(() => {
+    if (brandedEmails.length > 0) {
+      const exists = brandedEmails.some(e => e.id === selectedId);
+      if (!exists) {
+        setSelectedId(brandedEmails[0].id);
+      }
+    }
+  }, [brandedEmails, selectedId]);
+
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({});
-  const [expandedHeaders, setExpandedHeaders] = useState<Set<string>>(
-    new Set()
-  );
+  const [expandedHeaders, setExpandedHeaders] = useState<Set<string>>(new Set());
   const [showReview, setShowReview] = useState(false);
 
   const selectedEmail = useMemo(
@@ -126,7 +165,6 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
 
   return (
     <div className="flex h-full">
-      {/* Inbox list — 30% */}
       <div className="w-[30%] border-r overflow-auto" style={{ borderColor: "var(--border)" }}>
         <div className="p-2 border-b text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
           Inbox ({brandedEmails.length})
@@ -134,8 +172,11 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
         <LayoutGroup id="email-inbox-list">
           {brandedEmails.map((email, index) => (
             <motion.button
-              key={email.id || `gen-email-${index}`}
-              onClick={() => setSelectedId(email.id)}
+              key={email.id}
+              onClick={() => {
+                console.log("[EmailClient] Selected email ID:", email.id);
+                setSelectedId(email.id);
+              }}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: verdicts[email.id] ? 0.7 : 1, x: 0 }}
               transition={{ delay: index * 0.03, duration: 0.2 }}
@@ -144,11 +185,10 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
               className="w-full text-left px-3 py-3.5 border-b text-xs transition-colors relative overflow-hidden"
               style={{
                 borderColor: "var(--border)",
-                background: selectedId === email.id ? "var(--accent-subtle)" : "transparent",
+                background: selectedId === email.id ? "var(--accent-subtle)" : "rgba(0,0,0,0)",
                 borderLeft: selectedId === email.id ? "2px solid var(--accent)" : "none"
               }}
             >
-              {/* Selection indicator glow */}
               <AnimatePresence mode="wait">
                 {selectedId === email.id && (
                   <motion.div
@@ -157,7 +197,7 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    layoutId={`selected-${email.id || 'current'}`}
+                    layoutId={`selected-bg-${email.id}`}
                   />
                 )}
               </AnimatePresence>
@@ -172,7 +212,7 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
                 <AnimatePresence mode="wait">
                   {verdicts[email.id] && (
                     <motion.span
-                      key={`verdict-${email.id || index}`}
+                      key={`verdict-${email.id}`}
                       initial={{ scale: 0, rotate: -10 }}
                       animate={{ scale: 1, rotate: 0 }}
                       className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
@@ -207,344 +247,224 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
                 whileTap={{ scale: 0.98 }}
                 className="w-full py-2 bg-[var(--accent)] text-white rounded text-xs font-medium hover:bg-[var(--accent-hover)] transition-colors"
               >
-                Submit &amp; Review
+                Submit & Review
               </motion.button>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Reading pane — 70% */}
       <div className="w-[70%] overflow-auto">
         <AnimatePresence mode="wait">
           {selectedEmail ? (
             <motion.div
-              key={selectedEmail.id || 'empty'}
+              key={selectedEmail.id}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.2 }}
               className="p-5"
             >
-            {/* Email header */}
-            <div className="mb-5">
-              <h2 className="text-[17px] font-bold text-[var(--text-primary)] leading-snug">
-                {selectedEmail.subject}
-              </h2>
-              <div className="text-sm text-[var(--text-secondary)] mt-2">
-                <span className="font-medium">From:</span>{" "}
-                <span className="break-all">{selectedEmail.from}</span>
-              </div>
-              <div className="text-sm text-[var(--text-muted)]">
-                <span className="font-medium">To:</span> {selectedEmail.to}
-              </div>
-              <div className="text-sm text-[var(--text-muted)]">
-                <span className="font-medium">Date:</span>{" "}
-                {selectedEmail.date}
+              <div className="mb-5">
+                <h2 className="text-[17px] font-bold text-[var(--text-primary)] leading-snug">
+                  {selectedEmail.subject}
+                </h2>
+                <div className="text-sm text-[var(--text-secondary)] mt-2">
+                  <span className="font-medium">From:</span>{" "}
+                  <span className="break-all">{selectedEmail.from}</span>
+                </div>
+                <div className="text-sm text-[var(--text-muted)]">
+                  <span className="font-medium">To:</span> {selectedEmail.to}
+                </div>
+                <div className="text-sm text-[var(--text-muted)]">
+                  <span className="font-medium">Date:</span>{" "}
+                  {selectedEmail.date}
+                </div>
+
+                <button
+                  onClick={() => toggleHeaders(selectedEmail.id)}
+                  className="mt-3 text-xs text-[var(--accent)] hover:underline focus:outline-none focus:underline underline-offset-2"
+                >
+                  {expandedHeaders.has(selectedEmail.id) ? "Collapse Headers" : "Expand Headers"}
+                </button>
+
+                <AnimatePresence>
+                  {expandedHeaders.has(selectedEmail.id) && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-2 p-3 bg-[var(--bg-window-raised)] rounded border border-[var(--border)] font-mono text-[11px] leading-relaxed">
+                        <div className="py-1">
+                          <span className="text-[var(--text-muted)]">Return-Path:</span>{" "}
+                          <span className={selectedEmail.headers.returnPath?.trim() !== `<${selectedEmail.from}>` ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 px-1 rounded" : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"}>
+                            {selectedEmail.headers.returnPath}
+                          </span>
+                        </div>
+                        <div className="py-1">
+                          <span className="text-[var(--text-muted)]">SPF:</span>{" "}
+                          <span className={selectedEmail.headers.spf?.includes?.("fail") ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 px-1 rounded" : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"}>
+                            {selectedEmail.headers.spf}
+                          </span>
+                        </div>
+                        <div className="py-1">
+                          <span className="text-[var(--text-muted)]">DKIM:</span>{" "}
+                          <span className={selectedEmail.headers.dkim?.includes?.("fail") ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 px-1 rounded" : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"}>
+                            {selectedEmail.headers.dkim}
+                          </span>
+                        </div>
+                        <div className="py-1">
+                          <span className="text-[var(--text-muted)]">DMARC:</span>{" "}
+                          <span className={selectedEmail.headers.dmarc?.includes?.("fail") ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 px-1 rounded" : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"}>
+                            {selectedEmail.headers.dmarc}
+                          </span>
+                        </div>
+                        {selectedEmail.headers.xMailer && (
+                          <div className="py-1">
+                            <span className="text-[var(--text-muted)]">X-Mailer:</span>{" "}
+                            <span className={selectedEmail.headers.xMailer?.includes?.("PHP") ? "bg-[var(--warning-subtle)] text-[var(--warning)] ring-1 ring-[var(--warning)]/30 px-1 rounded" : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"}>
+                              {selectedEmail.headers.xMailer}
+                            </span>
+                          </div>
+                        )}
+                        {selectedEmail.headers.replyTo && (
+                          <div className="py-1">
+                            <span className="text-[var(--text-muted)]">Reply-To:</span>{" "}
+                            <span className="bg-[var(--warning-subtle)] text-[var(--warning)] ring-1 ring-[var(--warning)]/30 px-1 rounded">
+                              {selectedEmail.headers.replyTo}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
-              {/* Expand headers button */}
-              <button
-                onClick={() => toggleHeaders(selectedEmail.id)}
-                className="mt-3 text-xs text-[var(--accent)] hover:underline focus:outline-none focus:underline underline-offset-2"
-              >
-                {expandedHeaders.has(selectedEmail.id)
-                  ? "Collapse Headers"
-                  : "Expand Headers"}
-              </button>
+              <div className="text-[15px] text-[var(--text-primary)] leading-relaxed border-t border-[var(--border)] pt-5 max-w-[65ch]">
+                <EmailBody
+                  body={selectedEmail.body}
+                  isPhishing={emails.find((e) => e.id === selectedEmail.id)?.isPhishing ?? false}
+                  onLinkClick={(url, isPhish) => {
+                    if (isPhish) {
+                      adjustTrust(-8);
+                      addFlag("clicked_phishing_link");
+                    }
+                    setLinkAlert({ url, isPhishing: isPhish });
+                  }}
+                  fakeDomain={fakeDomain}
+                />
+              </div>
 
-              {/* Expanded headers */}
               <AnimatePresence>
-                {expandedHeaders.has(selectedEmail.id) && (
+                {linkAlert && (
                   <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    className="overflow-hidden"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    className={`mt-3 p-3 rounded border text-xs ${linkAlert.isPhishing ? "bg-[var(--danger-subtle)] border-[var(--danger)] border-l-4 border-l-[var(--danger)] text-[var(--danger)]" : "bg-[var(--bg-window-raised)] border-[var(--border-strong)] border-l-4 border-l-[var(--border-strong)] text-[var(--text-secondary)]"}`}
                   >
-                    <div className="mt-2 p-3 bg-[var(--bg-window-raised)] rounded border border-[var(--border)] font-mono text-[11px] leading-relaxed">
-                      <div className="py-1">
-                        <span className="text-[var(--text-muted)]">Return-Path:</span>{" "}
-                        <span
-                          className={
-                            selectedEmail.headers.returnPath?.trim() !==
-                            `<${selectedEmail.from}>`
-                              ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 px-1 rounded"
-                              : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"
-                          }
-                        >
-                          {selectedEmail.headers.returnPath}
-                        </span>
-                      </div>
-                      <div className="py-1">
-                        <span className="text-[var(--text-muted)]">SPF:</span>{" "}
-                        <span
-                          className={
-                            selectedEmail.headers.spf?.includes?.("fail")
-                              ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 px-1 rounded"
-                              : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"
-                          }
-                        >
-                          {selectedEmail.headers.spf}
-                        </span>
-                      </div>
-                      <div className="py-1">
-                        <span className="text-[var(--text-muted)]">DKIM:</span>{" "}
-                        <span
-                          className={
-                            selectedEmail.headers.dkim?.includes?.("fail")
-                              ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 px-1 rounded"
-                              : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"
-                          }
-                        >
-                          {selectedEmail.headers.dkim}
-                        </span>
-                      </div>
-                      <div className="py-1">
-                        <span className="text-[var(--text-muted)]">DMARC:</span>{" "}
-                        <span
-                          className={
-                            selectedEmail.headers.dmarc?.includes?.("fail")
-                              ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30 px-1 rounded"
-                              : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"
-                          }
-                        >
-                          {selectedEmail.headers.dmarc}
-                        </span>
-                      </div>
-                      {selectedEmail.headers.xMailer && (
-                        <div className="py-1">
-                          <span className="text-[var(--text-muted)]">X-Mailer:</span>{" "}
-                          <span
-                            className={
-                              selectedEmail.headers.xMailer?.includes?.("PHP")
-                                ? "bg-[var(--warning-subtle)] text-[var(--warning)] ring-1 ring-[var(--warning)]/30 px-1 rounded"
-                                : "bg-[var(--success-subtle)] text-[var(--success)] px-1 rounded"
-                            }
-                          >
-                            {selectedEmail.headers.xMailer}
-                          </span>
-                        </div>
-                      )}
-                      {selectedEmail.headers.replyTo && (
-                        <div className="py-1">
-                          <span className="text-[var(--text-muted)]">Reply-To:</span>{" "}
-                          <span className="bg-[var(--warning-subtle)] text-[var(--warning)] ring-1 ring-[var(--warning)]/30 px-1 rounded">
-                            {selectedEmail.headers.replyTo}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                    {linkAlert.isPhishing ? (
+                      <>
+                        <span className="font-bold">⚠ PHISHING LINK CLICKED!</span>
+                        <span className="ml-2 font-mono opacity-70">{linkAlert.url}</span>
+                        <p className="mt-1 text-[var(--text-secondary)]">You clicked a malicious link. Your credentials may have been harvested. −8 trust.</p>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-medium">External link blocked by simulation.</span>
+                        <span className="ml-2 font-mono opacity-70">{linkAlert.url}</span>
+                      </>
+                    )}
+                    <button onClick={() => setLinkAlert(null)} className="ml-3 underline opacity-60 hover:opacity-100">dismiss</button>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
 
-            {/* Email body */}
-            <div className="text-[15px] text-[var(--text-primary)] leading-relaxed border-t border-[var(--border)] pt-5 max-w-[65ch]">
-              <EmailBody
-                body={selectedEmail.body}
-                isPhishing={emails.find((e) => e.id === selectedEmail.id)?.isPhishing ?? false}
-                onLinkClick={(url, isPhish) => {
-                  if (isPhish) {
-                    adjustTrust(-8);
-                    addFlag("clicked_phishing_link");
+              <div className="flex gap-2 mt-6 pt-5 border-t border-[var(--border)]">
+                {(["safe", "suspicious", "phishing"] as Verdict[]).map((v) => {
+                  const isSelected = verdicts[selectedEmail.id] === v;
+                  let cls = "";
+                  if (isSelected) {
+                    if (v === "safe") cls = "bg-[var(--success)] text-white";
+                    else if (v === "suspicious") cls = "bg-[var(--warning)] text-white";
+                    else cls = "bg-[var(--danger)] text-white";
+                  } else {
+                    if (v === "safe") cls = "bg-[var(--bg-window-sunken)] text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--success)] hover:text-[var(--success)]";
+                    else if (v === "suspicious") cls = "bg-[var(--bg-window-sunken)] text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--warning)] hover:text-[var(--warning)]";
+                    else cls = "bg-[var(--bg-window-sunken)] text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--danger)] hover:text-[var(--danger)]";
                   }
-                  setLinkAlert({ url, isPhishing: isPhish });
-                }}
-              />
-            </div>
-
-            {/* Link click alert */}
-            <AnimatePresence>
-              {linkAlert && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className={`mt-3 p-3 rounded border text-xs ${
-                    linkAlert.isPhishing
-                      ? "bg-[var(--danger-subtle)] border-[var(--danger)] border-l-4 border-l-[var(--danger)] text-[var(--danger)]"
-                      : "bg-[var(--bg-window-raised)] border-[var(--border-strong)] border-l-4 border-l-[var(--border-strong)] text-[var(--text-secondary)]"
-                  }`}
-                >
-                  {linkAlert.isPhishing ? (
-                    <>
-                      <span className="font-bold">⚠ PHISHING LINK CLICKED!</span>
-                      <span className="ml-2 font-mono opacity-70">{linkAlert.url}</span>
-                      <p className="mt-1 text-[var(--text-secondary)]">
-                        You clicked a malicious link. Your credentials may have been harvested. −8 trust.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-medium">External link blocked by simulation.</span>
-                      <span className="ml-2 font-mono opacity-70">{linkAlert.url}</span>
-                    </>
-                  )}
-                  <button
-                    onClick={() => setLinkAlert(null)}
-                    className="ml-3 underline opacity-60 hover:opacity-100"
-                  >
-                    dismiss
-                  </button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Verdict buttons */}
-            <div className="flex gap-2 mt-6 pt-5 border-t border-[var(--border)]">
-              {(["safe", "suspicious", "phishing"] as Verdict[]).map((v) => {
-                const isSelected = verdicts[selectedEmail.id] === v;
-                let cls = "";
-                if (isSelected) {
-                  if (v === "safe") cls = "bg-[var(--success)] text-white";
-                  else if (v === "suspicious") cls = "bg-[var(--warning)] text-white";
-                  else cls = "bg-[var(--danger)] text-white";
-                } else {
-                  if (v === "safe") cls = "bg-[var(--bg-window-sunken)] text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--success)] hover:text-[var(--success)]";
-                  else if (v === "suspicious") cls = "bg-[var(--bg-window-sunken)] text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--warning)] hover:text-[var(--warning)]";
-                  else cls = "bg-[var(--bg-window-sunken)] text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--danger)] hover:text-[var(--danger)]";
-                }
-                return (
-                  <motion.button
-                    key={v}
-                    onClick={() => handleVerdict(selectedEmail.id, v)}
-                    whileHover={{ scale: 1.03, y: -2 }}
-                    whileTap={{ scale: 0.97 }}
-                    transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                    className={`flex-1 py-2.5 px-3 rounded-sm text-xs font-semibold transition-all min-h-[2.5rem] relative overflow-hidden ${cls}`}
-                  >
-                    <AnimatePresence>
-                      {isSelected && (
-                        <motion.span
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          exit={{ scale: 0 }}
-                          className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px]"
-                        >
-                          ✓
-                        </motion.span>
-                      )}
-                    </AnimatePresence>
-                    <span className={isSelected ? "ml-4" : ""}>{v.charAt(0).toUpperCase() + v.slice(1)}</span>
-                  </motion.button>
-                );
-              })}
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="empty-state"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="p-4 text-sm text-[var(--text-muted)]"
-          >
-            Select an email to read.
-          </motion.div>
-        )}
+                  return (
+                    <motion.button
+                      key={v}
+                      onClick={() => handleVerdict(selectedEmail.id, v)}
+                      whileHover={{ scale: 1.03, y: -2 }}
+                      whileTap={{ scale: 0.97 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                      className={`flex-1 py-2.5 px-3 rounded-sm text-xs font-semibold transition-all min-h-[2.5rem] relative overflow-hidden ${cls}`}
+                    >
+                      <AnimatePresence>
+                        {isSelected && (
+                          <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px]">✓</motion.span>
+                        )}
+                      </AnimatePresence>
+                      <span className={isSelected ? "ml-4" : ""}>{v.charAt(0).toUpperCase() + v.slice(1)}</span>
+                    </motion.button>
+                  );
+                })}
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div key="empty-state" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex-1 flex items-center justify-center p-4 text-sm text-[var(--text-muted)]">
+              Select an email to read.
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
     </div>
   );
 }
 
-/* Renders email body with clickable URL detection */
-function EmailBody({
-  body,
-  isPhishing,
-  onLinkClick,
-}: {
-  body: string;
-  isPhishing: boolean;
-  onLinkClick: (url: string, isPhishing: boolean) => void;
-}) {
-  const segments = useMemo(() => parseBodySegments(body), [body]);
+function EmailBody({ body, isPhishing, onLinkClick, fakeDomain }: { body: string; isPhishing: boolean; onLinkClick: (url: string, isPhishing: boolean) => void; fakeDomain: string; }) {
+  const segments = useMemo(() => parseBodySegments(body, fakeDomain, isPhishing), [body, fakeDomain, isPhishing]);
   return (
     <span className="whitespace-pre-wrap">
-      {segments.map((seg, i) =>
-        seg.type === "url" ? (
-          <button
-            key={i}
-            onClick={() => onLinkClick(seg.value, isPhishing)}
-            className="underline font-mono text-xs break-all text-[var(--accent)] hover:text-[var(--accent-hover)]"
-          >
-            {seg.value}
-          </button>
-        ) : (
-          <span key={i}>{seg.value}</span>
-        )
-      )}
+      {segments.map((seg, i) => seg.type === "url" ? (
+        <button key={i} onClick={() => onLinkClick(seg.value, isPhishing)} className="underline font-mono text-xs break-all text-[var(--accent)] hover:text-[var(--accent-hover)]">{seg.value}</button>
+      ) : (
+        <span key={i}>{seg.value}</span>
+      ))}
     </span>
   );
 }
 
-/* Post-triage review overlay */
-function EmailReview({
-  emails,
-  verdicts,
-  onDone,
-}: {
-  emails: Email[];
-  verdicts: Record<string, Verdict>;
-  onDone: () => void;
-}) {
+function EmailReview({ emails, verdicts, onDone }: { emails: Email[]; verdicts: Record<string, Verdict>; onDone: () => void; }) {
   return (
     <div className="p-6 overflow-auto h-full">
-      <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">
-        Email Triage Review
-      </h2>
-
+      <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Email Triage Review</h2>
       <div className="space-y-4">
         {emails.map((email, index) => {
           const verdict = verdicts[email.id];
-          const correct = email.isPhishing
-            ? verdict === "phishing"
-            : verdict === "safe";
-
+          const correct = email.isPhishing ? verdict === "phishing" : verdict === "safe";
           return (
-            <div
-              key={email.id || `review-${index}`}
-              className={`p-4 rounded-xl border bg-[var(--bg-window-raised)] overflow-hidden ${
-                correct
-                  ? "border-[var(--success)]/35"
-                  : "border-[var(--danger)]/35"
-              }`}
-            >
+            <div key={email.id || `review-${index}`} className={`p-4 rounded-xl border bg-[var(--bg-window-raised)] overflow-hidden ${correct ? "border-[var(--success)]/35" : "border-[var(--danger)]/35"}`}>
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-sm font-medium text-[var(--text-primary)]">
-                    {email.subject}
-                  </div>
+                  <div className="text-sm font-medium text-[var(--text-primary)]">{email.subject}</div>
                   <div className="text-xs text-[var(--text-muted)]">{email.from}</div>
                 </div>
                 <div className="flex gap-2 text-[10px]">
-                  <span
-                    className={`px-2 py-0.5 rounded ${
-                      correct
-                        ? "bg-[var(--success-subtle)] text-[var(--success)] ring-1 ring-[var(--success)]/30"
-                        : "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30"
-                    }`}
-                  >
-                    Your verdict: {verdict}
-                  </span>
-                  {!correct && (
-                    <span className="px-2 py-0.5 rounded bg-[var(--info-subtle)] text-[var(--info)] ring-1 ring-[var(--info)]/30">
-                      Actual: {email.isPhishing ? "phishing" : "safe"}
-                    </span>
-                  )}
+                  <span className={`px-2 py-0.5 rounded ${correct ? "bg-[var(--success-subtle)] text-[var(--success)] ring-1 ring-[var(--success)]/30" : "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30"}`}>Your verdict: {verdict}</span>
+                  {!correct && <span className="px-2 py-0.5 rounded bg-[var(--info-subtle)] text-[var(--info)] ring-1 ring-[var(--info)]/30">Actual: {email.isPhishing ? "phishing" : "safe"}</span>}
                 </div>
               </div>
-
-              {/* Show missed indicators */}
               {email.indicators.length > 0 && !correct && (
                 <div className="mt-2 text-xs text-[var(--warning)]">
                   <span className="font-medium">Missed indicators:</span>
                   <ul className="list-disc list-inside mt-1 space-y-0.5">
-                    {email.indicators.map((ind, i) => (
-                      <li key={i}>{ind}</li>
-                    ))}
+                    {email.indicators.map((ind, i) => <li key={i}>{ind}</li>)}
                   </ul>
                 </div>
               )}
@@ -552,13 +472,7 @@ function EmailReview({
           );
         })}
       </div>
-
-      <button
-        onClick={onDone}
-        className="mt-6 px-6 py-2 bg-[var(--accent)] text-white rounded text-sm font-medium hover:bg-[var(--accent-hover)] transition-colors"
-      >
-        Continue
-      </button>
+      <button onClick={onDone} className="mt-6 px-6 py-2 bg-[var(--accent)] text-white rounded text-sm font-medium hover:bg-[var(--accent-hover)] transition-colors">Continue</button>
     </div>
   );
 }

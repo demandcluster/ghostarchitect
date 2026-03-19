@@ -71,3 +71,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
+/**
+ * DELETE /api/admin/content
+ * Clears the entire content pool.
+ */
+export async function DELETE(request: NextRequest) {
+  const admin = await requireAdmin(request);
+  if (admin instanceof NextResponse) return admin;
+
+  try {
+    const prisma = requirePrisma();
+    
+    // Clear the pool
+    await prisma.contentPool.deleteMany({});
+
+    return NextResponse.json({ 
+      status: 'success', 
+      message: 'Content pool cleared successfully.' 
+    });
+  } catch (error) {
+    console.error('[Admin Content API] DELETE error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
