@@ -116,10 +116,9 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
           {isBreach && (
             <motion.span
               initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
+              animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0 }}
               className="w-2 h-2 rounded-full bg-[var(--accent-red)]"
-              animate={{ opacity: 1 }}
               transition={{ duration: 1.5, repeat: Infinity }}
             />
           )}

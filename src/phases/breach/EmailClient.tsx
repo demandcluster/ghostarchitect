@@ -131,10 +131,10 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
         <div className="p-2 border-b text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
           Inbox ({brandedEmails.length})
         </div>
-        <LayoutGroup>
+        <LayoutGroup id="email-inbox-list">
           {brandedEmails.map((email, index) => (
             <motion.button
-              key={email.id}
+              key={email.id || `gen-email-${index}`}
               onClick={() => setSelectedId(email.id)}
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: verdicts[email.id] ? 0.7 : 1, x: 0 }}
@@ -149,7 +149,7 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
               }}
             >
               {/* Selection indicator glow */}
-              <AnimatePresence>
+              <AnimatePresence mode="wait">
                 {selectedId === email.id && (
                   <motion.div
                     className="absolute inset-0 -z-10"
@@ -157,7 +157,7 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    layoutId={`selected-${email.id}`}
+                    layoutId={`selected-${email.id || 'current'}`}
                   />
                 )}
               </AnimatePresence>
@@ -169,9 +169,10 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
               </div>
               <div className="flex items-center justify-between mt-1 relative z-10">
                 <span style={{ color: "var(--text-muted)" }}>{email.date?.split(" ")?.[1] ?? "--:--"}</span>
-                <AnimatePresence>
+                <AnimatePresence mode="wait">
                   {verdicts[email.id] && (
                     <motion.span
+                      key={`verdict-${email.id || index}`}
                       initial={{ scale: 0, rotate: -10 }}
                       animate={{ scale: 1, rotate: 0 }}
                       className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
@@ -191,9 +192,10 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
           ))}
         </LayoutGroup>
 
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {allJudged && (
             <motion.div
+              key="submit-review-btn"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -214,8 +216,16 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
 
       {/* Reading pane — 70% */}
       <div className="w-[70%] overflow-auto">
-        {selectedEmail ? (
-          <div className="p-5">
+        <AnimatePresence mode="wait">
+          {selectedEmail ? (
+            <motion.div
+              key={selectedEmail.id || 'empty'}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+              className="p-5"
+            >
             {/* Email header */}
             <div className="mb-5">
               <h2 className="text-[17px] font-bold text-[var(--text-primary)] leading-snug">
@@ -422,12 +432,19 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
                 );
               })}
             </div>
-          </div>
+          </motion.div>
         ) : (
-          <div className="p-4 text-sm text-[var(--text-muted)]">
+          <motion.div
+            key="empty-state"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="p-4 text-sm text-[var(--text-muted)]"
+          >
             Select an email to read.
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -480,7 +497,7 @@ function EmailReview({
       </h2>
 
       <div className="space-y-4">
-        {emails.map((email) => {
+        {emails.map((email, index) => {
           const verdict = verdicts[email.id];
           const correct = email.isPhishing
             ? verdict === "phishing"
@@ -488,7 +505,7 @@ function EmailReview({
 
           return (
             <div
-              key={email.id}
+              key={email.id || `review-${index}`}
               className={`p-4 rounded-xl border bg-[var(--bg-window-raised)] overflow-hidden ${
                 correct
                   ? "border-[var(--success)]/35"

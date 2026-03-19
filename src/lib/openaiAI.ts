@@ -129,6 +129,11 @@ Follow all SCENARIO STRUCTURE and COMPLIANCE rules for every section.`;
 IMPORTANT: Return ONLY a JSON object with THESE EXACT top-level keys:
 ${requiredFields.map((f) => `- ${f}`).join("\n")}
 
+MANDATORY DATA RULES:
+1. Every object in EVERY array (emails, logEntries, lolbins, wifi, etc.) MUST have a unique "id" field.
+2. For emails, use IDs like "gen-email-1", "gen-email-2", etc.
+3. For logs, use IDs like "gen-log-1", "gen-log-2", etc.
+
 DM CHOICE JSON STRUCTURE (MANDATORY):
 "choices": [
   { "id": "c1", "label": "Technical redirection to secure protocol (Vault/IAM/Ticket)", "isCorrect": true, "nextMessageId": "ON_PASS_ID" },

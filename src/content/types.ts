@@ -70,6 +70,7 @@ export interface LOLBin {
 }
 
 export interface WiFiNetwork {
+  id: string;
   ssid: string;
   bssid: string;
   signalStrength: number;
@@ -80,6 +81,7 @@ export interface WiFiNetwork {
 }
 
 export interface FileListing {
+  id: string;
   name: string;
   path: string;
   size: string;
