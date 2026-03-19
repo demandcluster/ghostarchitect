@@ -1,12 +1,13 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, HTMLMotionProps } from "framer-motion";
 
-interface AnimatedButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface AnimatedButtonProps extends HTMLMotionProps<"button"> {
   variant?: "primary" | "secondary" | "danger" | "success" | "warning" | "ghost";
   size?: "sm" | "md" | "lg";
   isLoading?: boolean;
   children: React.ReactNode;
+  [key: string]: any;
 }
 
 const variantStyles = {
@@ -28,21 +29,22 @@ export function AnimatedButton({
   variant = "primary",
   size = "md",
   isLoading = false,
-  disabled,
   children,
   className = "",
   ...props
 }: AnimatedButtonProps) {
+  const { disabled, ...restProps } = props;
+  const finalDisabled = disabled || isLoading;
   const baseStyles = "rounded font-medium transition-all focus:outline-none focus:ring-2 focus:ring-[var(--accent-ring)]";
   const combinedClassName = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`;
 
   return (
     <motion.button
-      {...props}
-      disabled={disabled || isLoading}
+      {...restProps}
+      disabled={finalDisabled}
       className={combinedClassName}
-      whileHover={!(disabled || isLoading) ? { scale: 1.02 } : undefined}
-      whileTap={!(disabled || isLoading) ? { scale: 0.98 } : undefined}
+      whileHover={!finalDisabled ? { scale: 1.02 } : undefined}
+      whileTap={!finalDisabled ? { scale: 0.98 } : undefined}
       transition={{ type: "spring", stiffness: 400, damping: 17 }}
     >
       {isLoading ? (

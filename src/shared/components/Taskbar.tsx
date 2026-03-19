@@ -119,7 +119,7 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
               className="w-2 h-2 rounded-full bg-[var(--accent-red)]"
-              animate={{ opacity: [1, 0.3, 1] }}
+              animate={{ opacity: 1 }}
               transition={{ duration: 1.5, repeat: Infinity }}
             />
           )}
@@ -145,11 +145,9 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
           {isBreach && phase !== "debrief" && (
             <motion.span
               initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0, x: 10 }}
               className="text-[10px] font-mono text-[var(--accent-red)]"
-              animate={{ opacity: [1, 0.5, 1] }}
-              transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
             >
               [BREACH DETECTED]
             </motion.span>
@@ -188,7 +186,7 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
           >
             <motion.span
               className="inline-flex items-center justify-center w-4 h-4 text-center mr-1"
-              animate={activeApp === app.id ? { rotate: [0, 360] } : {}}
+              animate={activeApp === app.id}
               transition={{ duration: 0.5 }}
             >
               {app.icon}
