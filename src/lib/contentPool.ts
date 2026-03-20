@@ -297,12 +297,17 @@ export class ContentPoolManager {
       });
     }
 
+    const safeFlatMap = (items: any[]) => items.flatMap(i => {
+      const arr = Array.isArray(i.data) ? i.data : (i.data ? [i.data] : []);
+      return arr.map((e: any) => brand(e, i.qualityScore));
+    });
+
     const result = {
       preBreachEmails: preEmails.map(i => brand(i.data, i.qualityScore)),
       socialEngineeringDMs,
       breachEmails: breachEmails.map(i => brand(i.data, i.qualityScore)),
-      logEntries: logs.flatMap(i => i.data.map((e: any) => brand(e, i.qualityScore))),
-      npcBadAdvice: advice.flatMap(i => i.data.map((e: any) => brand(e, i.qualityScore))),
+      logEntries: safeFlatMap(logs),
+      npcBadAdvice: safeFlatMap(advice),
       lolbins: bins.map(i => brand(i.data, i.qualityScore)),
       wifi: wifi.map(i => brand(i.data, i.qualityScore)),
       isOfflineContent: poolItems.length === 0

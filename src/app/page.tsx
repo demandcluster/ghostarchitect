@@ -423,7 +423,7 @@ export default function Home() {
 
       // Reveal next NPC after delay
       setTimeout(() => {
-        const npcDms = isContentReady() ? npcBadAdvice : NPC_BAD_ADVICE;
+        const npcDms = isContentReady() && npcBadAdvice.length > 0 ? npcBadAdvice : NPC_BAD_ADVICE;
         if (npcDmIndex < npcDms.length - 1) {
           setNpcDmIndex((i) => i + 1);
           setNpcDmReveal((r) => r + 1);
@@ -715,7 +715,7 @@ export default function Home() {
       title: "Log Analysis Terminal",
       content: (
         <LogTerminal
-          entries={isContentReady() ? logEntries : LOG_ENTRIES}
+          entries={isContentReady() && logEntries.length > 0 ? logEntries : LOG_ENTRIES}
           onFlaggedChange={setFlaggedLogs}
         />
       )
@@ -814,7 +814,7 @@ export default function Home() {
         <div className="h-full flex flex-col">
           <div className="flex-1 overflow-auto">
             <TaskManagerView
-              processes={isContentReady() ? lolbins : LOLBINS}
+              processes={isContentReady() && lolbins.length > 0 ? lolbins : LOLBINS}
               onComplete={() => {}}
             />
           </div>
@@ -893,7 +893,7 @@ export default function Home() {
       />
     ) : isInvestigation ? (
       <DMSidebar
-        messages={(isContentReady() ? npcBadAdvice : NPC_BAD_ADVICE).slice(
+        messages={(isContentReady() && npcBadAdvice.length > 0 ? npcBadAdvice : NPC_BAD_ADVICE).slice(
           0,
           npcDmIndex + 1
         )}

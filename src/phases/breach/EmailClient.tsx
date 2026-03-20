@@ -93,6 +93,14 @@ function brandEmail(email: Email, index: number, fakeDomain: string, teamName: s
     replyTo: clean(rawHeaders.replyTo) ? subOpt(String(rawHeaders.replyTo)) : undefined,
   };
 
+  // Enforce realistic phishing headers: if it's phishing, ensure at least some headers fail
+  // or the return path is mismatched.
+  if (isPhish) {
+    if (headers.spf.toLowerCase() === 'pass') headers.spf = 'fail (softfail)';
+    if (headers.dkim.toLowerCase() === 'pass') headers.dkim = 'fail (bad signature)';
+    if (headers.dmarc.toLowerCase() === 'pass') headers.dmarc = 'fail (p=none)';
+  }
+
   if (index === 0) {
     console.log("[EmailClient] First email headers:", headers);
   }
