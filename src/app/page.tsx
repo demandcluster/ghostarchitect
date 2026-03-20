@@ -89,7 +89,13 @@ export default function Home() {
   })));
   const isContentReady = useContentStore(s => s.isContentReady);
   
-  console.log("[DEBUG] isContentReady:", isContentReady(), "breachEmails count:", breachEmails.length);
+  console.log("[DEBUG] Content State:", {
+    ready: isContentReady(),
+    preCount: preBreachEmails.length,
+    breachCount: breachEmails.length,
+    dmCount: socialEngineeringDMs.length,
+    step
+  });
 
   const adjustTrust = useScoreStore((s) => s.adjustTrust);
   const addAction = useScoreStore((s) => s.addAction);

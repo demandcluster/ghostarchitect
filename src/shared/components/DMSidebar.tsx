@@ -22,7 +22,9 @@ export function DMSidebar({
   // If revealedIds is provided, we use those IDs to show messages in discovery order.
   // This ensures replies appear correctly threaded underneath their triggers.
   const visibleMessages = revealedIds
-    ? revealedIds.map(id => messages.find(m => m.id === id)).filter((m): m is DMMessage => !!m)
+    ? revealedIds
+        .map((id) => messages.find((m) => m.id === id))
+        .filter((m): m is DMMessage => !!m)
     : messages.slice(0, revealUpTo);
 
   useEffect(() => {
@@ -38,7 +40,12 @@ export function DMSidebar({
               key={msg.id ?? `msg-${idx}`}
               initial={{ opacity: 0, y: 15, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, height: 0, marginBottom: 0, overflow: "hidden" }}
+              exit={{
+                opacity: 0,
+                height: 0,
+                marginBottom: 0,
+                overflow: "hidden"
+              }}
               transition={{
                 duration: 0.3,
                 layout: { duration: 0.3 }
@@ -57,7 +64,7 @@ export function DMSidebar({
 
 function DMBubble({
   message,
-  onChoice,
+  onChoice
 }: {
   message: DMMessage;
   onChoice: (messageId: string, choice: DMChoice) => void;
@@ -79,12 +86,15 @@ function DMBubble({
     >
       {/* Avatar + name */}
       <div className="flex items-center gap-2 mb-1">
-        {message.avatar && (message.avatar.startsWith('http://') || message.avatar.startsWith('https://') || message.avatar.startsWith('/')) ? (
+        {message.avatar &&
+        (message.avatar.startsWith("http://") ||
+          message.avatar.startsWith("https://") ||
+          message.avatar.startsWith("/")) ? (
           <motion.img
             src={message.avatar}
             alt={message.sender}
             className="w-6 h-6 rounded-full object-cover"
-            style={{ border: '2px solid rgba(59,110,248,0.2)' }}
+            style={{ border: "2px solid rgba(59,110,248,0.2)" }}
             whileHover={{ scale: 1.1 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
           />
@@ -95,7 +105,7 @@ function DMBubble({
             whileHover={{ scale: 1.1 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
           >
-            {message.avatar || message.sender?.charAt(0) || '?'}
+            {message.avatar || message.sender?.charAt(0) || "?"}
           </motion.div>
         )}
       </div>
@@ -155,14 +165,20 @@ function DMBubble({
                       : "rgba(220,38,38,0.08)"
                     : "rgba(59,110,248,0.06)",
                   opacity: chosen === null || isSelected ? 1 : 0.4,
-                  boxShadow: isHovered && chosen === null ? "0 2px 8px rgba(59,110,248,0.15)" : "none",
+                  boxShadow:
+                    isHovered && chosen === null
+                      ? "0 2px 8px rgba(59,110,248,0.15)"
+                      : "none"
                 }}
               >
                 <motion.div
                   className="absolute inset-0"
                   initial={false}
                   animate={{
-                    background: isHovered && chosen === null ? "rgba(59,110,248,0.03)" : "transparent",
+                    background:
+                      isHovered && chosen === null
+                        ? "rgba(59,110,248,0.03)"
+                        : "rbga(0,0,0,0.0)"
                   }}
                   transition={{ duration: 0.2 }}
                 />
@@ -174,7 +190,7 @@ function DMBubble({
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 0.3, scale: 1 }}
                   >
-                  ✓
+                    ✓
                   </motion.span>
                 )}
               </motion.button>
@@ -185,39 +201,45 @@ function DMBubble({
 
       {/* Post-choice feedback */}
       <AnimatePresence>
-        {chosen && (() => {
-          const picked = message.choices!.find((c) => c.id === chosen)!;
-          const delta = picked.isCorrect ? 10 : -10;
-          return (
-            <motion.div
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-2 px-3.5 py-2 rounded-sm text-sm flex items-center gap-2"
-              style={{
-                background: picked.isCorrect
-                  ? "rgba(22,163,74,0.08)"
-                  : "rgba(220,38,38,0.08)",
-                color: picked.isCorrect ? "#22c55e" : "#ef4444"
-              }}
-            >
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17 }}
+        {chosen &&
+          (() => {
+            const picked = message.choices!.find((c) => c.id === chosen)!;
+            const delta = picked.isCorrect ? 10 : -10;
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-2 px-3.5 py-2 rounded-sm text-sm flex items-center gap-2"
+                style={{
+                  background: picked.isCorrect
+                    ? "rgba(22,163,74,0.08)"
+                    : "rgba(220,38,38,0.08)",
+                  color: picked.isCorrect ? "#22c55e" : "#ef4444"
+                }}
               >
-                {picked.isCorrect ? "✓ Good call." : "✗ Wrong call."}
-              </motion.span>
-              <motion.span
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 400, damping: 17, delay: 0.1 }}
-                style={{ color: delta > 0 ? "#22c55e" : "#ef4444" }}
-              >
-                {delta > 0 ? `+${delta}` : delta} trust
-              </motion.span>
-            </motion.div>
-          );
-        })()}
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
+                >
+                  {picked.isCorrect ? "✓ Good call." : "✗ Wrong call."}
+                </motion.span>
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{
+                    type: "spring",
+                    stiffness: 400,
+                    damping: 17,
+                    delay: 0.1
+                  }}
+                  style={{ color: delta > 0 ? "#22c55e" : "#ef4444" }}
+                >
+                  {delta > 0 ? `+${delta}` : delta} trust
+                </motion.span>
+              </motion.div>
+            );
+          })()}
       </AnimatePresence>
     </motion.div>
   );

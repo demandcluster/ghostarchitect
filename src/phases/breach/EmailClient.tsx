@@ -15,7 +15,7 @@ interface EmailClientProps {
 }
 
 function applyDomain(text: string, fakeDomain: string, teamName: string, playerHandle: string): string {
-  if (!text) return '';
+  if (!text || typeof text !== 'string') return text || '';
   const fakeBase = fakeDomain.split(".")[0];
   
   // Standard branding replacements
@@ -44,17 +44,53 @@ function brandEmail(email: Email, index: number, fakeDomain: string, teamName: s
   const sub = (s: string) => applyDomain(s, fakeDomain, teamName, playerHandle);
   const subOpt = (s?: string) => (s ? sub(s) : s);
 
+  // Helper to catch malformed AI strings
+  const clean = (val: any): string | undefined => {
+    if (val === null || val === undefined) return undefined;
+    const s = String(val).trim();
+    if (s.toLowerCase() === 'undefined' || s.toLowerCase() === 'null' || s === '') return undefined;
+    return s;
+  };
+
+  // Helper to get a valid email address from a string like "Name <email@domain.com>" or just "Name"
+  const extractEmail = (fromStr: string): string => {
+    const match = fromStr.match(/<(.+?)>/);
+    if (match) return match[1];
+    if (fromStr.includes('@')) return fromStr.trim();
+    // If it's just a name, slugify it
+    return fromStr.toLowerCase().replace(/\s+/g, '.') + '@' + fakeDomain;
+  };
+
+  // Heal missing fields locally as well
+  const from = sub(clean(email.from) || clean((email as any).sender) || 'system@' + fakeDomain);
+  const body = sub(clean(email.body) || clean((email as any).text) || clean((email as any).message) || '');
+  const subject = sub(clean(email.subject) || clean((email as any).title) || 'No Subject');
+  const to = sub(clean(email.to) || clean((email as any).recipient) || playerHandle + '@' + fakeDomain);
+  
+  // Ensure date is valid for splitting
+  let date = clean(email.date) || clean((email as any).timestamp) || clean((email as any).time) || '';
+  if (!date || !date.includes(' ')) {
+    const now = new Date();
+    const dateStr = now.toISOString().split('T')[0];
+    const timeStr = now.toTimeString().split(' ')[0].slice(0, 5);
+    date = `${dateStr} ${timeStr}`;
+  }
+
   // Heal missing headers logic
   const rawHeaders = email.headers || {} as any;
   const isPhish = email.isPhishing;
 
+  // Use extractEmail to ensure returnPath is a valid email, not a display name
+  const healedReturnPath = clean(rawHeaders.returnPath) || `<${extractEmail(from)}>`;
+  const returnPath = healedReturnPath.startsWith('<') ? healedReturnPath : `<${healedReturnPath}>`;
+
   const headers = {
-    returnPath: sub(rawHeaders.returnPath || `<${email.from}>`),
-    spf: sub(rawHeaders.spf || (isPhish ? 'fail' : 'pass')),
-    dkim: sub(rawHeaders.dkim || (isPhish ? 'fail' : 'pass')),
-    dmarc: sub(rawHeaders.dmarc || (isPhish ? 'fail' : 'pass')),
-    xMailer: rawHeaders.xMailer ? subOpt(rawHeaders.xMailer) : undefined,
-    replyTo: rawHeaders.replyTo ? subOpt(rawHeaders.replyTo) : undefined,
+    returnPath: sub(returnPath),
+    spf: sub(clean(rawHeaders.spf) || (isPhish ? 'fail' : 'pass')),
+    dkim: sub(clean(rawHeaders.dkim) || (isPhish ? 'fail' : 'pass')),
+    dmarc: sub(clean(rawHeaders.dmarc) || (isPhish ? 'fail' : 'pass')),
+    xMailer: clean(rawHeaders.xMailer) ? subOpt(String(rawHeaders.xMailer)) : undefined,
+    replyTo: clean(rawHeaders.replyTo) ? subOpt(String(rawHeaders.replyTo)) : undefined,
   };
 
   if (index === 0) {
@@ -67,10 +103,11 @@ function brandEmail(email: Email, index: number, fakeDomain: string, teamName: s
   return {
     ...email,
     id,
-    from: sub(email.from ?? ''),
-    to: sub(email.to ?? ''),
-    subject: sub(email.subject ?? ''),
-    body: sub(email.body ?? ''),
+    from,
+    to,
+    subject,
+    body,
+    date,
     headers,
     indicators: email.indicators?.filter((i) => i) || [],
   };
@@ -117,10 +154,20 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
 
   const [selectedId, setSelectedId] = useState("");
 
+  // Sync selectedId when emails are first loaded
   useEffect(() => {
-    if (brandedEmails.length > 0) {
+    if (brandedEmails.length > 0 && !selectedId) {
+      console.log("[EmailClient] Initializing selectedId with first email:", brandedEmails[0].id);
+      setSelectedId(brandedEmails[0].id);
+    }
+  }, [brandedEmails, selectedId]); // Depend on both to catch new lists or missing initial selection
+
+  // If selectedId becomes invalid (e.g. after a phase change), reset it
+  useEffect(() => {
+    if (selectedId && brandedEmails.length > 0) {
       const exists = brandedEmails.some(e => e.id === selectedId);
       if (!exists) {
+        console.log("[EmailClient] Selection invalid, resetting to first email");
         setSelectedId(brandedEmails[0].id);
       }
     }
@@ -131,7 +178,13 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
   const [showReview, setShowReview] = useState(false);
 
   const selectedEmail = useMemo(
-    () => brandedEmails.find((e) => e.id === selectedId),
+    () => {
+      const found = brandedEmails.find((e) => e.id === selectedId);
+      if (brandedEmails.length > 0) {
+        console.log("[EmailClient] Selection debug:", { selectedId, foundId: found?.id, hasBody: !!found?.body });
+      }
+      return found;
+    },
     [brandedEmails, selectedId]
   );
 
@@ -164,7 +217,7 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full min-h-[500px]">
       <div className="w-[30%] border-r overflow-auto" style={{ borderColor: "var(--border)" }}>
         <div className="p-2 border-b text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
           Inbox ({brandedEmails.length})

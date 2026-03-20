@@ -69,23 +69,55 @@ export class ContentPoolManager {
     // Fallback to all if pool is empty or everything seen
     const pool = available.length > 0 ? available : poolItems;
 
-    // 3. Select items for each type
+    // Helper to clean malformed AI strings
+    const clean = (val: any): string | undefined => {
+      if (val === null || val === undefined) return undefined;
+      const s = String(val).trim();
+      if (s.toLowerCase() === 'undefined' || s.toLowerCase() === 'null' || s === '') return undefined;
+      return s;
+    };
+
     // 3. Select and balance items
     const getBalancedItems = (type: ContentPoolType, count: number, maliciousKey: string) => {
       const items = pool.filter(i => i.type === type);
-      const allFlat = items.flatMap(i => i.data.map((d: any) => ({ data: d, qualityScore: i.qualityScore, id: i.id })));
-      if (allFlat.length === 0) return [];
+      const allFlat = items.flatMap(i => {
+        const rawData = i.data;
+        let dataArray: any[] = [];
+        
+        if (Array.isArray(rawData)) {
+          dataArray = rawData;
+        } else if (rawData && typeof rawData === 'object') {
+          dataArray = [rawData];
+        }
+        
+        if (dataArray.length === 0) return [];
+        return dataArray.map((d: any) => ({ 
+          data: d, 
+          qualityScore: i.qualityScore, 
+          id: i.id,
+          // Pre-normalization for filtering
+          isMalicious: d[maliciousKey] === true || 
+                       String(d[maliciousKey]) === 'true' ||
+                       String(d.type || '').toLowerCase().includes('phish') ||
+                       String(d.subject || d.title || '').toLowerCase().includes('urgent')
+        }));
+      });
+      
+      if (allFlat.length === 0) {
+        console.warn(`[ContentPool] No items found for type: ${type}`);
+        return [];
+      }
 
-      // For pre-breach emails, we don't necessarily need a balance of malicious items
       if (type === 'EMAIL_PRE') {
         return this.shuffle(allFlat).slice(0, count);
       }
 
-      const malicious = allFlat.filter(i => i.data[maliciousKey] === true);
-      const legitimate = allFlat.filter(i => i.data[maliciousKey] === false);
+      const malicious = allFlat.filter(i => i.isMalicious);
+      const legitimate = allFlat.filter(i => !i.isMalicious);
 
-      // Target a specific mix if possible
-      const targetMalicious = Math.ceil(count * 0.5); // 50% malicious for breach
+      console.log(`[ContentPool] ${type} candidates: ${malicious.length} mal, ${legitimate.length} legit (Target: ${count})`);
+
+      const targetMalicious = Math.ceil(count * 0.5); 
       const targetLegit = count - targetMalicious;
 
       const selected = [
@@ -93,7 +125,6 @@ export class ContentPoolManager {
         ...this.pickRandom(legitimate, targetLegit)
       ];
 
-      // If we don't have enough balanced items, fill with whatever is left
       if (selected.length < count) {
         const remaining = allFlat.filter(i => !selected.includes(i));
         selected.push(...this.pickRandom(remaining, count - selected.length));
@@ -102,7 +133,6 @@ export class ContentPoolManager {
       return this.shuffle(selected);
     };
 
-    // For logs and DMs, we keep the batch/chain logic
     const findBatches = (type: ContentPoolType) => pool.filter(i => i.type === type);
 
     const preEmails = getBalancedItems('EMAIL_PRE', 5, 'isPhishing');
@@ -116,8 +146,14 @@ export class ContentPoolManager {
     const dmScenarioPool = findBatches('DM_SCENARIO');
 
     const intro = this.pickRandom(dmIntroPool, 1)[0];
-    // For DMs, we pick 2 social engineering and 2 legitimate scenarios for balance
-    const sPool = dmScenarioPool.map(s => ({ ...s, isSE: s.data.setup?.text?.toLowerCase().includes('password') || s.data.setup?.text?.toLowerCase().includes('link') }));
+    const sPool = dmScenarioPool.map(s => {
+      const sData = s.data as any;
+      const text = (sData.setup?.text || '').toLowerCase();
+      return { 
+        ...s, 
+        isSE: text.includes('password') || text.includes('link') || text.includes('urgent') || text.includes('access')
+      };
+    });
     const scenarios = [
       ...this.pickRandom(sPool.filter(s => s.isSE), 2),
       ...this.pickRandom(sPool.filter(s => !s.isSE), 2)
@@ -125,8 +161,10 @@ export class ContentPoolManager {
 
     // 4. Branding and Chaining
     const brand = (item: any, complexity: number) => {
-      let str = JSON.stringify(item);
-      // Support both {{tag}} and [tag] formats, case-insensitive
+      if (!item) return item;
+      let branded = typeof item === 'string' ? JSON.parse(item) : { ...item };
+      let str = JSON.stringify(branded);
+
       const replacements = [
         { regex: /{{teamName}}|\[teamName\]/gi, value: options.teamName },
         { regex: /{{fakeDomain}}|\[fakeDomain\]/gi, value: options.fakeDomain },
@@ -137,95 +175,104 @@ export class ContentPoolManager {
         str = str.replace(regex, value);
       });
       
-      const branded = JSON.parse(str);
+      branded = JSON.parse(str);
 
-      // Handle phishing link placeholder conditionally
       const fakeBase = options.fakeDomain.split('.')[0];
       const phishingUrl = `https://${fakeBase}-secure-auth.net/login/verify`;
       const safeUrl = `https://kb.${options.fakeDomain}/security/verify-identity`;
       
-      const replaceLinks = (obj: any) => {
-        if (!obj) return;
-        if (typeof obj === 'string') {
-          return obj.replace(/{{phishing-link}}|\[phishing-link\]/gi, branded.isPhishing ? phishingUrl : safeUrl);
+      const replaceLinks = (val: any): any => {
+        if (!val) return val;
+        if (typeof val === 'string') {
+          return val.replace(/{{phishing-link}}|\[phishing-link\]/gi, branded.isPhishing ? phishingUrl : safeUrl);
         }
-        if (typeof obj === 'object') {
-          for (const key in obj) {
-            obj[key] = replaceLinks(obj[key]);
+        if (Array.isArray(val)) return val.map(replaceLinks);
+        if (typeof val === 'object') {
+          const newObj = { ...val };
+          for (const key in newObj) {
+            newObj[key] = replaceLinks(newObj[key]);
           }
+          return newObj;
         }
-        return obj;
+        return val;
       };
 
-      // Heal missing email fields if this item looks like an email
-      if (branded.from && branded.body) {
-        // Ensure isPhishing exists
+      if (branded.from || branded.sender || branded.body || branded.text || branded.subject || branded.title) {
+        branded.from = clean(branded.from) || clean(branded.sender) || clean(branded.author) || 'system@' + options.fakeDomain;
+        branded.to = clean(branded.to) || clean(branded.recipient) || clean(branded.receiver) || options.playerHandle + '@' + options.fakeDomain;
+        branded.subject = clean(branded.subject) || clean(branded.title) || 'No Subject';
+        branded.body = clean(branded.body) || clean(branded.text) || clean(branded.message) || clean(branded.content) || '';
+        
         if (branded.isPhishing === undefined) {
-          branded.isPhishing = false; 
+          branded.isPhishing = String(branded.type || '').toLowerCase().includes('phish') || 
+                               String(branded.subject).toLowerCase().includes('urgent') ||
+                               false; 
+        } else {
+          branded.isPhishing = branded.isPhishing === true || String(branded.isPhishing) === 'true';
         }
 
-        // Apply link replacement to body and subject
-        if (branded.body) branded.body = replaceLinks(branded.body);
-        if (branded.subject) branded.subject = replaceLinks(branded.subject);
-        if (branded.text) branded.text = replaceLinks(branded.text); // For DMs
+        branded = replaceLinks(branded);
 
-        // Ensure date exists and is in a splitable format
-        if (!branded.date) {
+        let dateVal = clean(branded.date) || clean(branded.timestamp) || clean(branded.time);
+        if (!dateVal || !dateVal.includes('-')) {
           const now = new Date();
           const dateStr = now.toISOString().split('T')[0];
           const timeStr = now.toTimeString().split(' ')[0].slice(0, 5);
           branded.date = `${dateStr} ${timeStr}`;
+        } else {
+          branded.date = dateVal;
         }
+
+        const extractEmail = (fromStr: string): string => {
+          const match = fromStr.match(/<(.+?)>/);
+          if (match) return match[1];
+          if (fromStr.includes('@')) return fromStr.trim();
+          return fromStr.toLowerCase().replace(/\s+/g, '.') + '@' + options.fakeDomain;
+        };
 
         if (!branded.headers) {
           branded.headers = {
-            returnPath: `<${branded.from}>`,
+            returnPath: `<${extractEmail(branded.from)}>`,
             spf: branded.isPhishing ? 'fail' : 'pass',
             dkim: branded.isPhishing ? 'fail' : 'pass',
             dmarc: branded.isPhishing ? 'fail' : 'pass'
           };
         } else {
-          // Ensure sub-fields exist
-          branded.headers.spf = branded.headers.spf || (branded.isPhishing ? 'fail' : 'pass');
-          branded.headers.dkim = branded.headers.dkim || (branded.isPhishing ? 'fail' : 'pass');
-          branded.headers.dmarc = branded.headers.dmarc || (branded.isPhishing ? 'fail' : 'pass');
-          branded.headers.returnPath = branded.headers.returnPath || `<${branded.from}>`;
+          branded.headers.spf = clean(branded.headers.spf) || (branded.isPhishing ? 'fail' : 'pass');
+          branded.headers.dkim = clean(branded.headers.dkim) || (branded.isPhishing ? 'fail' : 'pass');
+          branded.headers.dmarc = clean(branded.headers.dmarc) || (branded.isPhishing ? 'fail' : 'pass');
+          let rp = clean(branded.headers.returnPath) || `<${extractEmail(branded.from)}>`;
+          if (!rp.startsWith('<')) rp = `<${rp}>`;
+          branded.headers.returnPath = rp;
         }
+      }
+
+      // Automatically shuffle DM choices if they exist
+      if (branded.choices && Array.isArray(branded.choices)) {
+        branded.choices = this.shuffle([...branded.choices]);
       }
 
       return { ...branded, complexity };
     };
 
-    // Construct the DM Chain
     const socialEngineeringDMs: DMMessage[] = [];
     if (intro) {
       const brandedIntro = brand(intro.data, intro.qualityScore);
-      // Link intro to first scenario if scenarios exist
-      if (scenarios.length > 0) {
-        brandedIntro.nextMessageId = `s1-setup-${options.sessionId}`;
-      }
+      if (scenarios.length > 0) brandedIntro.nextMessageId = `s1-setup-${options.sessionId}`;
       socialEngineeringDMs.push(brandedIntro);
     }
 
     scenarios.forEach((s, idx) => {
       const complexity = s.qualityScore;
-      const sData = s.data as any; // { setup, onPass, onFail }
+      const sData = s.data as any;
       const sId = idx + 1;
       const nextSId = idx < scenarios.length - 1 ? `s${sId + 1}-setup-${options.sessionId}` : undefined;
-
-      // Setup unique IDs for this session chain
       const setupId = `s${sId}-setup-${options.sessionId}`;
       const passId = `s${sId}-pass-${options.sessionId}`;
       const failId = `s${sId}-fail-${options.sessionId}`;
 
       const setup = brand(sData.setup, complexity);
       setup.id = setupId;
-      
-      // Randomize choice order to prevent predictable correct answers
-      if (setup.choices && Array.isArray(setup.choices)) {
-        setup.choices = this.shuffle([...setup.choices]);
-      }
-
       setup.choices.forEach((c: any) => {
         c.nextMessageId = c.nextMessageId === 'ON_PASS_ID' ? passId : failId;
       });
@@ -241,15 +288,11 @@ export class ContentPoolManager {
       socialEngineeringDMs.push(setup, pass, fail);
     });
 
-    // 5. Track seen IDs (only if session exists in DB)
     const allSelectedItems = [...preEmails, ...breachEmails, ...logs, ...advice, ...bins, ...wifi, intro, ...scenarios].filter(Boolean);
     const allSelectedIds = allSelectedItems.map(i => i!.id);
     if (sessionExists && allSelectedIds.length > 0) {
       await prisma.sessionSeenContent.createMany({
-        data: allSelectedIds.map(id => ({
-          sessionId: options.sessionId,
-          contentId: id
-        })),
+        data: allSelectedIds.map(id => ({ sessionId: options.sessionId, contentId: id })),
         skipDuplicates: true
       });
     }
@@ -278,79 +321,43 @@ export class ContentPoolManager {
     return [...arr].sort(() => Math.random() - 0.5);
   }
 
-  /**
-   * Refill the pool in background
-   */
   async refillPool(section: 'initial' | 'secondary' | 'all' = 'all') {
     if (!this.generator) return;
     const prisma = requirePrisma();
-
     try {
       console.log(`[PoolManager] Refilling pool for section: ${section}`);
-      const batch = await this.generator.generateBatch({
-        sessionId: 'pool-gen',
-        locale: 'en',
-        section
-      });
-
+      const batch = await this.generator.generateBatch({ sessionId: 'pool-gen', locale: 'en', section });
       const entries: { type: ContentPoolType; data: any }[] = [];
-      
       if (batch.preBreachEmails.length > 0) entries.push({ type: 'EMAIL_PRE', data: batch.preBreachEmails });
       if (batch.breachEmails.length > 0) entries.push({ type: 'EMAIL_BREACH', data: batch.breachEmails });
       if (batch.logEntries.length > 0) entries.push({ type: 'LOG_BATCH', data: batch.logEntries });
       if (batch.npcBadAdvice.length > 0) entries.push({ type: 'NPC_ADVICE', data: batch.npcBadAdvice });
       if (batch.lolbins.length > 0) entries.push({ type: 'LOLBIN_BATCH', data: batch.lolbins });
       if (batch.wifi.length > 0) entries.push({ type: 'WIFI_BATCH', data: batch.wifi });
-
-      // Handle the new specialized DM types
-      // The AI returns these combined in socialEngineeringDMs for transport
       const dmItems = batch.socialEngineeringDMs;
       dmItems.forEach((item: any) => {
-        if (item.setup) {
-          entries.push({ type: 'DM_SCENARIO', data: item });
-        } else {
-          entries.push({ type: 'DM_INTRO', data: item });
-        }
+        if (item.setup) entries.push({ type: 'DM_SCENARIO', data: item });
+        else entries.push({ type: 'DM_INTRO', data: item });
       });
-
       for (const entry of entries) {
-        const item = await prisma.contentPool.create({
-          data: {
-            type: entry.type,
-            data: entry.data,
-            audited: false
-          }
-        });
-        
-        // Trigger background audit
+        const item = await prisma.contentPool.create({ data: { type: entry.type, data: entry.data, audited: false } });
         this.auditItem(item.id, entry.type, entry.data);
       }
-    } catch (e) {
-      console.error('[PoolManager] Refill error:', e);
-    }
+    } catch (e) { console.error('[PoolManager] Refill error:', e); }
   }
 
   private async auditItem(id: string, type: string, data: any) {
     if (!this.auditor) return;
     const prisma = requirePrisma();
-    
     try {
       const result = await this.auditor.auditContent(type, data);
       if (result.score < 4) {
         await prisma.contentPool.delete({ where: { id } });
         console.log(`[PoolManager] Item ${id} rejected (score ${result.score})`);
       } else {
-        await prisma.contentPool.update({
-          where: { id },
-          data: {
-            qualityScore: result.score,
-            audited: true
-          }
-        });
+        await prisma.contentPool.update({ where: { id }, data: { qualityScore: result.score, audited: true } });
         console.log(`[PoolManager] Item ${id} approved (score ${result.score})`);
       }
-    } catch (e) {
-      console.error('[PoolManager] Audit failed for item:', id, e);
-    }
+    } catch (e) { console.error('[PoolManager] Audit failed for item:', id, e); }
   }
 }

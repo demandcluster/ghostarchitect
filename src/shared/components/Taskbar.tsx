@@ -161,15 +161,20 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
             key={app.id}
             onClick={() => onAppClick(app.id)}
             initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05, duration: 0.3 }}
             animate={{
+              opacity: 1,
               scale: activeApp === app.id ? 1.1 : 1,
               y: activeApp === app.id ? -2 : 0,
             }}
             whileHover={{ scale: 1.1, y: -2 }}
             whileTap={{ scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            transition={{
+              delay: index * 0.05,
+              duration: 0.3,
+              type: "spring",
+              stiffness: 300,
+              damping: 25
+            }}
             className={`
               px-2.5 py-1.5 rounded-lg text-xs transition-colors ring-2 ring-transparent focus:ring-[var(--accent-ring)]
               ${isBreach ? "font-mono" : ""}
