@@ -145,7 +145,7 @@ The correct player choice in these scenarios must dismiss the Hacklore and redir
         "wifi"
       ];
 
-      initialPrompt = `ACT AS A SENIOR CYBERSECURITY GRC & THREAT INTELLIGENCE ARCHITECT.
+      const initialPrompt = `ACT AS A SENIOR CYBERSECURITY GRC & THREAT INTELLIGENCE ARCHITECT.
 The target audience consists of highly skilled CYBERSECURITY PROFESSIONALS.
 IMPORTANT: Use these EXACT placeholders:
 - "[teamName]" for the company name
@@ -178,7 +178,7 @@ SCENARIO STRUCTURE:
   "onFail": { "id": "s-fail", "sender": "Name", "senderRole": "Role", "avatar": "URL", "text": "Severe technical and regulatory consequence of the incorrect action." }
 }`;
 
-      secondaryPrompt = `ACT AS A SENIOR SOC ANALYST AND DIGITAL FORENSICS EXPERT.
+      const secondaryPrompt = `ACT AS A SENIOR SOC ANALYST AND DIGITAL FORENSICS EXPERT.
 The target audience is CYBERSECURITY PROFESSIONALS conducting advanced log analysis.
 Use placeholders "${teamName}" and "${fakeDomain}".
 
