@@ -42,6 +42,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const addAction = useScoreStore((s) => s.addAction);
   const adjustTrust = useScoreStore((s) => s.adjustTrust);
   const addFlag = useNarrativeStore((s) => s.addFlag);
+  const setPlayerHandle = useGameStore((s) => s.setPlayerHandle);
 
   const initials = teamName
     .split(/\s+/)
@@ -59,6 +60,9 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       setError("Please enter your credentials");
       return;
     }
+
+    const parsedHandle = username.includes("@") ? username.split("@")[0] : username;
+    setPlayerHandle(parsedHandle);
 
     const pointsMap: Record<StrengthLevel, number> = { empty: 0, weak: 0, fair: 3, strong: 5 };
     const points = pointsMap[strength];

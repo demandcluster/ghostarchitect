@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
       sessionId: body.sessionId,
       teamName: body.teamName || "NexusCorp",
       fakeDomain: body.fakeDomain || "nexuscorp.com",
-      playerHandle: "User" // Optional: could be passed from client
+      playerHandle: body.playerHandle || "User"
     });
 
     // 2. Trigger background refill/audit if necessary

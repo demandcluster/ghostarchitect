@@ -166,9 +166,9 @@ export class ContentPoolManager {
       let str = JSON.stringify(branded);
 
       const replacements = [
-        { regex: /{{teamName}}|\[teamName\]/gi, value: options.teamName },
-        { regex: /{{fakeDomain}}|\[fakeDomain\]/gi, value: options.fakeDomain },
-        { regex: /{{playerHandle}}|\[playerHandle\]/gi, value: options.playerHandle },
+        { regex: /{{teamName}}|\[teamName\]|\bteamName\b/gi, value: options.teamName },
+        { regex: /{{fakeDomain}}|\[fakeDomain\]|\bfakeDomain(?:\.com)?\b/gi, value: options.fakeDomain },
+        { regex: /{{playerHandle}}|\[playerHandle\]|\bplayerHandle\b/gi, value: options.playerHandle },
       ];
 
       replacements.forEach(({ regex, value }) => {

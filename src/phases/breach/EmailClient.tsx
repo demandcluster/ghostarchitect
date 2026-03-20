@@ -28,9 +28,9 @@ function applyDomain(text: string, fakeDomain: string, teamName: string, playerH
 
   // Placeholder replacements supporting both {{tag}} and [tag]
   const replacements = [
-    { regex: /{{teamName}}|\[teamName\]/gi, value: teamName },
-    { regex: /{{fakeDomain}}|\[fakeDomain\]/gi, value: fakeDomain },
-    { regex: /{{playerHandle}}|\[playerHandle\]/gi, value: playerHandle },
+    { regex: /{{teamName}}|\[teamName\]|\bteamName\b/gi, value: teamName },
+    { regex: /{{fakeDomain}}|\[fakeDomain\]|\bfakeDomain(?:\.com)?\b/gi, value: fakeDomain },
+    { regex: /{{playerHandle}}|\[playerHandle\]|\bplayerHandle\b/gi, value: playerHandle },
   ];
 
   replacements.forEach(({ regex, value }) => {

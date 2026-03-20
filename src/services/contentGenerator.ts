@@ -21,6 +21,7 @@ export interface GenerationConfig {
   section?: 'initial' | 'secondary' | 'all';
   teamName?: string;
   fakeDomain?: string;
+  playerHandle?: string;
 }
 
 export interface IContentGenerator {
@@ -52,6 +53,7 @@ export class ContentGenerator implements IContentGenerator {
           section: config.section,
           teamName: config.teamName,
           fakeDomain: config.fakeDomain,
+          playerHandle: config.playerHandle,
         }),
       });
 

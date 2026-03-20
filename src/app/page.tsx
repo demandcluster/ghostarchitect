@@ -227,7 +227,7 @@ export default function Home() {
       }, 300);
 
       try {
-        const { contentLocale, teamName, fakeDomain } = useGameStore.getState();
+        const { contentLocale, teamName, fakeDomain, playerHandle } = useGameStore.getState();
         console.log(`Starting INITIAL content generation (attempt ${generationAttemptCountRef.current})`);
         
         const initialResult = await generator.generateAll({
@@ -236,7 +236,8 @@ export default function Home() {
           temperature: 0.9,
           section: 'initial',
           teamName,
-          fakeDomain
+          fakeDomain,
+          playerHandle: playerHandle || "User"
         });
 
         console.log("[DEBUG] initialResult:", initialResult.preBreachEmails.length, "pre,", initialResult.breachEmails.length, "breach");
@@ -259,7 +260,8 @@ export default function Home() {
           temperature: 0.8,
           section: 'secondary',
           teamName,
-          fakeDomain
+          fakeDomain,
+          playerHandle: playerHandle || "User"
         }).then(secondaryResult => {
           contentStoreRef.current.setLogEntries(secondaryResult.logEntries);
           contentStoreRef.current.setNPCBadAdvice(secondaryResult.npcBadAdvice);
