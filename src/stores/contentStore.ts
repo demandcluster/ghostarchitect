@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Email, LogEntry, DMMessage, LOLBin, WiFiNetwork } from '@/content/types';
+import type { Email, LogEntry, DMMessage, LOLBin, WiFiNetwork, IOCIndicator } from '@/content/types';
 
 export interface ContentStoreState {
   // Generated content
@@ -10,6 +10,7 @@ export interface ContentStoreState {
   npcBadAdvice: DMMessage[];
   lolbins: LOLBin[];
   wifi: WiFiNetwork[];
+  expectedIOCs: IOCIndicator[];
 
   // Session metadata
   sessionId: string | null;
@@ -27,6 +28,7 @@ interface ContentStore extends ContentStoreState {
   setNPCBadAdvice(dms: DMMessage[]): void;
   setLOLBins(bins: LOLBin[]): void;
   setWiFi(networks: WiFiNetwork[]): void;
+  setExpectedIOCs(iocs: IOCIndicator[]): void;
   setIsOfflineContent(isOffline: boolean): void;
 
   // Check if content is ready
@@ -49,6 +51,7 @@ export const useContentStore = create<ContentStore>((set, get) => ({
   npcBadAdvice: [],
   lolbins: [],
   wifi: [],
+  expectedIOCs: [],
   sessionId: null,
   generatedAt: null,
   isOfflineContent: false,
@@ -64,6 +67,7 @@ export const useContentStore = create<ContentStore>((set, get) => ({
   setNPCBadAdvice: (dms) => set({ npcBadAdvice: dms }),
   setLOLBins: (bins) => set({ lolbins: bins }),
   setWiFi: (networks) => set({ wifi: networks }),
+  setExpectedIOCs: (iocs) => set({ expectedIOCs: iocs }),
 
   setIsOfflineContent: (isOffline) => set({ isOfflineContent: isOffline }),
 
@@ -95,6 +99,7 @@ export const useContentStore = create<ContentStore>((set, get) => ({
       npcBadAdvice: state.npcBadAdvice,
       lolbins: state.lolbins,
       wifi: state.wifi,
+      expectedIOCs: state.expectedIOCs,
       generatedAt: state.generatedAt,
       isOfflineContent: state.isOfflineContent,
     };
@@ -114,6 +119,7 @@ export const useContentStore = create<ContentStore>((set, get) => ({
         npcBadAdvice: data.npcBadAdvice || [],
         lolbins: data.lolbins || [],
         wifi: data.wifi || [],
+        expectedIOCs: data.expectedIOCs || [],
         generatedAt: data.generatedAt,
         isOfflineContent: data.isOfflineContent || false,
       });
@@ -130,6 +136,7 @@ export const useContentStore = create<ContentStore>((set, get) => ({
       npcBadAdvice: [],
       lolbins: [],
       wifi: [],
+      expectedIOCs: [],
       sessionId: null,
       generatedAt: null,
       isOfflineContent: false,

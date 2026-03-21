@@ -5,18 +5,15 @@ import { motion } from "framer-motion";
 import { useScoreStore } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
 import { LOG_ENTRIES } from "@/content/logEntries";
+import type { IOCIndicator, LogEntry } from "@/content/types";
 
 interface IOCExtractionProps {
   onComplete: () => void;
+  expectedIOCs?: IOCIndicator[];
+  logEntries?: LogEntry[];
 }
 
-interface IOC {
-  type: string;
-  value: string;
-  hint: string;
-}
-
-const EXPECTED_IOCS: IOC[] = [
+const DEFAULT_IOCS: IOCIndicator[] = [
   { type: "Attacker IP", value: "185.234.72.14", hint: "Source of SSH brute force" },
   { type: "C2 Server", value: "45.33.91.200", hint: "Payload download and data exfiltration destination" },
   { type: "C2 Port", value: "8443", hint: "Port used for data upload" },
@@ -32,13 +29,16 @@ const LEVEL_COLORS: Record<string, string> = {
   CRITICAL: "text-[var(--danger)]",
 };
 
-export function IOCExtraction({ onComplete }: IOCExtractionProps) {
+export function IOCExtraction({ onComplete, expectedIOCs, logEntries }: IOCExtractionProps) {
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [shownHints, setShownHints] = useState<Set<string>>(new Set());
   const [logsOpen, setLogsOpen] = useState(false);
   const addAction = useScoreStore((s) => s.addAction);
   const addFlag = useNarrativeStore((s) => s.addFlag);
+
+  const iocsToUse = expectedIOCs && expectedIOCs.length > 0 ? expectedIOCs : DEFAULT_IOCS;
+  const logsToUse = logEntries && logEntries.length > 0 ? logEntries : LOG_ENTRIES;
 
   const showHint = (iocType: string) => {
     setShownHints((prev) => new Set(prev).add(iocType));
@@ -54,7 +54,7 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
   const handleSubmit = () => {
     let correctCount = 0;
 
-    EXPECTED_IOCS.forEach((ioc) => {
+    iocsToUse.forEach((ioc) => {
       const input = (inputs[ioc.type] || "").trim().toLowerCase();
       const expected = ioc.value.toLowerCase();
       if (input === expected || input.includes(expected)) {
@@ -62,16 +62,16 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
       }
     });
 
-    const points = Math.round((correctCount / 6) * 25);
+    const points = Math.round((correctCount / iocsToUse.length) * 25);
     addAction({
       id: "ioc-extraction",
       category: "forensicSkill",
       points,
       maxPoints: 25,
-      label: `IOC extraction: ${correctCount}/${EXPECTED_IOCS.length} identified`,
+      label: `IOC extraction: ${correctCount}/${iocsToUse.length} identified`,
     });
 
-    if (correctCount === EXPECTED_IOCS.length) {
+    if (correctCount === iocsToUse.length) {
       addFlag("extracted_all_iocs");
     }
 
@@ -110,7 +110,7 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
           className="overflow-hidden"
         >
           <div className="max-h-48 overflow-auto bg-[var(--bg-window)] p-4">
-            {LOG_ENTRIES.map((entry) => (
+            {logsToUse.map((entry) => (
               <div
                 key={entry.id}
                 className="font-mono text-xs leading-relaxed mb-3 last:mb-0"
@@ -128,7 +128,7 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
       </div>
 
       <div className="space-y-4">
-        {EXPECTED_IOCS.map((ioc) => (
+        {iocsToUse.map((ioc) => (
           <div key={ioc.type}>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-medium text-[var(--text-secondary)]" htmlFor={`ioc-${ioc.type}`}>

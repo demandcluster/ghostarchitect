@@ -12,6 +12,7 @@ import {
 } from "chart.js";
 import { Radar } from "react-chartjs-2";
 import { useScoreStore, ScoreCategory } from "@/stores/scoreStore";
+import { CATEGORY_NOMINAL_MAX } from "@/engine/scoring";
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip);
 
@@ -77,9 +78,9 @@ export function RadarChart() {
     scales: {
       r: {
         min: 0,
-        max: 25,
+        max: 150, // Nominal max for visualization
         ticks: {
-          stepSize: 5,
+          stepSize: 30,
           display: false,
         },
         grid: {
@@ -99,7 +100,7 @@ export function RadarChart() {
         callbacks: {
           label: (ctx: { dataIndex: number; raw: unknown }) => {
             const axis = AXIS_ORDER[ctx.dataIndex];
-            return `${LABELS[axis]}: ${ctx.raw}/25`;
+            return `${LABELS[axis]}: ${ctx.raw}`;
           },
         },
       },
@@ -128,13 +129,12 @@ export function RadarChart() {
             >
               <span className="text-secondary text-xs">{LABELS[axis]}</span>
               <span className="font-bold text-primary">
-                {animatedScores[i]}/25
+                {animatedScores[i]}
               </span>
             </div>
           ))}
           <div className="col-span-2 text-center mt-2">
-            <span className="text-lg font-bold text-accent">{total}/100</span>
-            <span className="text-xs text-muted ml-2">Total Score</span>
+            <span className="text-lg font-bold text-accent">Total Score: {total}</span>
           </div>
         </div>
       )}

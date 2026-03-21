@@ -1,13 +1,12 @@
 import { ScoreCategory } from "@/stores/scoreStore";
 
-export const CATEGORY_MAX: Record<ScoreCategory, number> = {
-  phishingIQ: 125,
-  passwordHygiene: 125,
-  networkSecurity: 125,
-  forensicSkill: 125,
+// Nominal maximums for UI scaling only
+export const CATEGORY_NOMINAL_MAX: Record<ScoreCategory, number> = {
+  phishingIQ: 150,
+  passwordHygiene: 150,
+  networkSecurity: 150,
+  forensicSkill: 150,
 };
-
-export const TOTAL_MAX = 500;
 
 export function computeTotal(
   categoryScores: Record<ScoreCategory, number>

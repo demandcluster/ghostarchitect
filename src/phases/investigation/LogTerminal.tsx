@@ -25,6 +25,14 @@ export function LogTerminal({ entries, onFlaggedChange }: LogTerminalProps) {
 
   // Stream logs in over 15-20s
   useEffect(() => {
+    if (entries.length === 0) {
+      setVisibleCount(0);
+      return;
+    }
+
+    const totalDuration = 15000; // 15 seconds
+    const intervalTime = Math.max(50, totalDuration / entries.length);
+
     const interval = setInterval(() => {
       setVisibleCount((c) => {
         if (c >= entries.length) {
@@ -33,7 +41,7 @@ export function LogTerminal({ entries, onFlaggedChange }: LogTerminalProps) {
         }
         return c + 1;
       });
-    }, (18000 / entries.length));
+    }, intervalTime);
 
     return () => clearInterval(interval);
   }, [entries.length]);

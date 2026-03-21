@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useScoreStore } from "@/stores/scoreStore";
 import { useGameStore } from "@/stores/gameStore";
 import { motion, AnimatePresence } from "framer-motion";
+import { CATEGORY_NOMINAL_MAX } from "@/engine/scoring";
 
 interface FloatingLabel {
   id: number;
@@ -82,14 +83,16 @@ export function HUD() {
 
   return (
     <motion.div
-      className="fixed top-3 right-3 z-40 flex items-center gap-3 select-none rounded-xl px-3 py-2"
+      drag
+      dragMomentum={false}
+      className="fixed top-3 right-3 z-40 flex items-center gap-3 select-none rounded-xl px-3 py-2 cursor-move shadow-lg"
       style={containerStyle}
       initial={{ x: 20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
     >
       {/* Trust gauge */}
-      <div className="relative flex flex-col items-center">
+      <div className="relative flex flex-col items-center pointer-events-none">
         <motion.div
           className="relative w-14 h-14"
           style={isBreach ? { filter: "drop-shadow(0 0 4px currentColor)" } : undefined}
@@ -159,20 +162,19 @@ export function HUD() {
         onMouseLeave={() => setShowTooltip(false)}
       >
         <motion.div
-          className="text-[9px] mb-1"
-          style={{ color: "var(--text-muted)" }}
+          className="text-[9px] mb-1 font-bold text-accent"
           key={totalScore}
           initial={{ scale: 1.1 }}
           animate={{ scale: 1 }}
           transition={{ duration: 0.2, type: "spring" }}
         >
-          Score: {totalScore}/500
+          Score: {totalScore}
         </motion.div>
         {/* Four category bars */}
         <div className="space-y-1">
           {(Object.keys(CATEGORY_BAR_COLORS) as Array<keyof typeof categoryScores>).map((cat) => {
             const score = categoryScores[cat];
-            const width = `${(score / 125) * 100}%`;
+            const width = `${Math.min(100, (score / CATEGORY_NOMINAL_MAX[cat]) * 100)}%`;
             return (
               <div key={cat} className="h-[3px] rounded-full overflow-hidden" style={{ background: "var(--bg-window-sunken)" }}>
                 <motion.div
@@ -193,13 +195,13 @@ export function HUD() {
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
-              className="absolute top-full left-0 mt-1 rounded p-2 text-[9px] whitespace-nowrap z-50 shadow-lg"
+              className="absolute top-full left-0 mt-1 rounded p-2 text-[9px] whitespace-nowrap z-50 shadow-lg pointer-events-none"
               style={{ background: "#e2e8f0", border: "1px solid var(--border)", color: "#1e293b" }}
             >
               {Object.keys(categoryScores).map((cat) => (
                 <div key={cat} className="flex justify-between gap-3">
                   <span>{cat === "phishingIQ" ? "Phishing IQ" : cat === "passwordHygiene" ? "Password Hygiene" : cat === "networkSecurity" ? "Network Security" : "Forensic Skill"}</span>
-                  <span className="font-mono">{categoryScores[cat as keyof typeof categoryScores]}/125</span>
+                  <span className="font-mono">{categoryScores[cat as keyof typeof categoryScores]}</span>
                 </div>
               ))}
             </motion.div>

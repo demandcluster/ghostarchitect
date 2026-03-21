@@ -10,6 +10,7 @@ export interface GeneratedContent {
   npcBadAdvice: DMMessage[];
   lolbins: LOLBin[];
   wifi: WiFiNetwork[];
+  expectedIOCs: any[];
   sessionId: string;
   isOfflineContent: boolean;
 }

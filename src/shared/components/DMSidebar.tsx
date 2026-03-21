@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { DMMessage, DMChoice } from "@/content/types";
 
@@ -14,49 +14,32 @@ interface DMSidebarProps {
 export function DMSidebar({
   messages,
   onChoice,
-  revealUpTo = 0,
-  revealedIds
+  revealUpTo = 999,
+  revealedIds = [],
 }: DMSidebarProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
-
-  // If revealedIds is provided, we use those IDs to show messages in discovery order.
-  // This ensures replies appear correctly threaded underneath their triggers.
-  const visibleMessages = revealedIds
-    ? revealedIds
-        .map((id) => messages.find((m) => m.id === id))
-        .filter((m): m is DMMessage => !!m)
-    : messages.slice(0, revealUpTo);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [revealUpTo, revealedIds]);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, revealedIds]);
+
+  const visibleMessages = messages.filter(
+    (m, i) => i < revealUpTo || revealedIds.includes(m.id)
+  );
 
   return (
-    <div className="flex flex-col h-full" style={{ background: "#f8fafc" }}>
-      <div className="flex-1 overflow-auto p-3 space-y-3">
+    <div className="flex flex-col h-full bg-[var(--bg-secondary)]">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth"
+      >
         <AnimatePresence mode="popLayout">
-          {visibleMessages.map((msg, idx) => (
-            <motion.div
-              key={msg.id ?? `msg-${idx}`}
-              initial={{ opacity: 0, y: 15, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{
-                opacity: 0,
-                height: 0,
-                marginBottom: 0,
-                overflow: "hidden"
-              }}
-              transition={{
-                duration: 0.3,
-                layout: { duration: 0.3 }
-              }}
-              layout
-            >
-              <DMBubble message={msg} onChoice={onChoice} />
-            </motion.div>
+          {visibleMessages.map((msg) => (
+            <DMBubble key={msg.id} message={msg} onChoice={onChoice} />
           ))}
         </AnimatePresence>
-        <div ref={bottomRef} />
       </div>
     </div>
   );
@@ -71,6 +54,13 @@ function DMBubble({
 }) {
   const [chosen, setChosen] = useState<string | null>(null);
   const [hoveredChoice, setHoveredChoice] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
+
+  // Shuffle choices once per message to prevent predictable answer order
+  const shuffledChoices = useMemo(() => {
+    if (!message.choices) return [];
+    return [...message.choices].sort(() => Math.random() - 0.5);
+  }, [message.id, message.choices]);
 
   const handleChoice = (choice: DMChoice) => {
     if (chosen) return;
@@ -78,168 +68,127 @@ function DMBubble({
     onChoice(message.id, choice);
   };
 
+  const isUrl = message.avatar && 
+    (message.avatar.startsWith("http") || message.avatar.startsWith("/")) &&
+    message.avatar.length > 4 && 
+    !imgError;
+
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
     >
       {/* Avatar + name */}
-      <div className="flex items-center gap-2 mb-1">
-        {message.avatar &&
-        (message.avatar.startsWith("http://") ||
-          message.avatar.startsWith("https://") ||
-          message.avatar.startsWith("/")) ? (
+      <div className="flex items-center gap-2 mb-1.5">
+        {isUrl ? (
           <motion.img
             src={message.avatar}
             alt={message.sender}
-            className="w-6 h-6 rounded-full object-cover"
-            style={{ border: "2px solid rgba(59,110,248,0.2)" }}
+            onError={() => setImgError(true)}
+            className="w-6 h-6 rounded-full object-cover shadow-sm"
+            style={{ border: "1.5px solid var(--accent)" }}
             whileHover={{ scale: 1.1 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
           />
         ) : (
           <motion.div
-            className="w-6 h-6 rounded-full text-accent text-[10px] font-bold flex items-center justify-center"
-            style={{ background: "rgba(59,110,248,0.08)" }}
+            className="w-6 h-6 rounded-full text-white text-[10px] font-bold flex items-center justify-center shadow-sm"
+            style={{ background: "var(--accent)", border: "1px solid rgba(255,255,255,0.2)" }}
             whileHover={{ scale: 1.1 }}
-            transition={{ type: "spring", stiffness: 400, damping: 17 }}
           >
-            {message.avatar || message.sender?.charAt(0) || "?"}
+            {message.avatar && message.avatar.length <= 3 
+              ? message.avatar 
+              : message.sender?.charAt(0) || "?"}
           </motion.div>
+        )}
+        <div className="flex flex-col">
+          <span className="text-[11px] font-bold text-white leading-none">
+            {message.sender}
+          </span>
+          <span className="text-[9px] text-white/60 mt-0.5 uppercase tracking-wider font-medium">
+            {message.senderRole}
+          </span>
+        </div>
+      </div>
+
+      {/* Message bubble */}
+      <div
+        className="ml-8 p-3 rounded-2xl rounded-tl-none text-xs leading-relaxed border"
+        style={{
+          background: "var(--bg-window-raised)",
+          borderColor: "var(--border)",
+          color: "var(--text-primary)",
+        }}
+      >
+        {message.text}
+
+        {/* Choices */}
+        {shuffledChoices.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {shuffledChoices.map((choice) => {
+              const isSelected = chosen === choice.id;
+              const isOtherSelected = chosen && !isSelected;
+              const isCorrect = choice.isCorrect;
+
+              return (
+                <motion.button
+                  key={choice.id}
+                  onClick={() => handleChoice(choice)}
+                  disabled={!!chosen}
+                  onMouseEnter={() => !chosen && setHoveredChoice(choice.id)}
+                  onMouseLeave={() => setHoveredChoice(null)}
+                  whileHover={!chosen ? { x: 4 } : {}}
+                  className={`
+                    w-full p-2.5 rounded-xl text-left transition-all relative border
+                    ${
+                      isSelected
+                        ? isCorrect
+                          ? "bg-[var(--success-subtle)] border-[var(--success)]/40 text-[var(--success)]"
+                          : "bg-[var(--danger-subtle)] border-[var(--danger)]/40 text-[var(--danger)]"
+                        : isOtherSelected
+                          ? "opacity-40 border-transparent bg-transparent"
+                          : "bg-[var(--bg-window-sunken)] border-[var(--border)] hover:border-[var(--accent)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    }
+                  `}
+                >
+                  <div className="flex items-start gap-2">
+                    <span className="shrink-0 mt-0.5">•</span>
+                    <span>{choice.label}</span>
+                  </div>
+                  {isSelected && (
+                    <motion.div
+                      layoutId={`indicator-${message.id}`}
+                      className="absolute inset-y-0 left-0 w-1 bg-current rounded-full shadow-[0_0_8px_currentColor]"
+                    />
+                  )}
+                </motion.button>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* Name and role */}
-      <div>
-        <span className="text-xs font-medium" style={{ color: "#475569" }}>
-          {message.sender}
-        </span>
-        <span className="text-[10px] ml-1" style={{ color: "#94a3b8" }}>
-          {message.senderRole}
-        </span>
-      </div>
-
-      {/* Message text */}
-      <motion.div
-        className="ml-8 p-3 rounded-lg text-sm leading-relaxed max-w-[65ch]"
-        style={{ background: "#f8fafc", color: "#1e293b" }}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3, delay: 0.1 }}
-      >
-        {message.text}
-      </motion.div>
-
-      {/* Choices */}
-      {message.choices && (
-        <div className="ml-8 mt-3 space-y-2">
-          {message.choices.map((choice, idx) => {
-            const isSelected = chosen === choice.id;
-            const isHovered = hoveredChoice === choice.id;
-            const isCorrect = choice.isCorrect;
-
-            return (
-              <motion.button
-                key={choice.id || `choice-${idx}`}
-                onClick={() => handleChoice(choice)}
-                disabled={chosen !== null}
-                onHoverStart={() => setHoveredChoice(choice.id)}
-                onHoverEnd={() => setHoveredChoice(null)}
-                className="w-full text-left px-3.5 py-2.5 rounded-sm text-sm font-medium transition-all border relative overflow-hidden focus:outline-none focus:ring-2 focus:ring-[rgba(59,110,248,0.4)]"
-                whileHover={chosen === null ? { x: 4 } : undefined}
-                whileTap={chosen === null ? { scale: 0.98 } : undefined}
-                style={{
-                  borderColor: isSelected
-                    ? isCorrect
-                      ? "rgba(22,163,74,0.4)"
-                      : "rgba(220,38,38,0.4)"
-                    : chosen
-                      ? "var(--border)"
-                      : isHovered && chosen === null
-                        ? "rgba(59,110,248,0.3)"
-                        : "var(--border)",
-                  background: isSelected
-                    ? isCorrect
-                      ? "rgba(22,163,74,0.08)"
-                      : "rgba(220,38,38,0.08)"
-                    : "rgba(59,110,248,0.06)",
-                  opacity: chosen === null || isSelected ? 1 : 0.4,
-                  boxShadow:
-                    isHovered && chosen === null
-                      ? "0 2px 8px rgba(59,110,248,0.15)"
-                      : "none"
-                }}
-              >
-                <motion.div
-                  className="absolute inset-0"
-                  initial={false}
-                  animate={{
-                    background:
-                      isHovered && chosen === null
-                        ? "rgba(59,110,248,0.03)"
-                        : "rbga(0,0,0,0.0)"
-                  }}
-                  transition={{ duration: 0.2 }}
-                />
-                <span className="relative z-10">{choice.label}</span>
-                {/* Hover indicator for correct answer (subtle hint) */}
-                {isHovered && !chosen && isCorrect && (
-                  <motion.span
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] opacity-30"
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 0.3, scale: 1 }}
-                  >
-                    ✓
-                  </motion.span>
-                )}
-              </motion.button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Post-choice feedback */}
+      {/* Choice feedback */}
       <AnimatePresence>
-        {chosen &&
-          (() => {
-            const picked = message.choices!.find((c) => c.id === chosen)!;
-            const delta = picked.isCorrect ? 10 : -10;
-            return (
-              <motion.div
-                initial={{ opacity: 0, y: -5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-2 px-3.5 py-2 rounded-sm text-sm flex items-center gap-2"
-                style={{
-                  background: picked.isCorrect
-                    ? "rgba(22,163,74,0.08)"
-                    : "rgba(220,38,38,0.08)",
-                  color: picked.isCorrect ? "#22c55e" : "#ef4444"
-                }}
+        {chosen && (() => {
+          const choice = message.choices?.find(c => c.id === chosen);
+          if (!choice?.scoreEffect) return null;
+          const delta = choice.scoreEffect.points;
+          return (
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="ml-8 mt-2 flex items-center gap-2"
+            >
+              <motion.span 
+                className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm"
+                style={{ background: delta > 0 ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)", color: delta > 0 ? "#4ade80" : "#f87171" }}
               >
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
-                >
-                  {picked.isCorrect ? "✓ Good call." : "✗ Wrong call."}
-                </motion.span>
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 400,
-                    damping: 17,
-                    delay: 0.1
-                  }}
-                  style={{ color: delta > 0 ? "#22c55e" : "#ef4444" }}
-                >
-                  {delta > 0 ? `+${delta}` : delta} trust
-                </motion.span>
-              </motion.div>
-            );
-          })()}
+                {delta > 0 ? `+${delta}` : delta} trust
+              </motion.span>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
     </motion.div>
   );

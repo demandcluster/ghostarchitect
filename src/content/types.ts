@@ -89,3 +89,9 @@ export interface FileListing {
   isEvidence: boolean;
   description?: string;
 }
+
+export interface IOCIndicator {
+  type: string;
+  value: string;
+  hint: string;
+}

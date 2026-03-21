@@ -42,10 +42,7 @@ export const useScoreStore = create<ScoreState>((set) => ({
     set((state) => {
       const full: ScoreAction = { ...action, timestamp: Date.now() };
       const newCategoryScores = { ...state.categoryScores };
-      newCategoryScores[action.category] = Math.min(
-        125,
-        newCategoryScores[action.category] + action.points
-      );
+      newCategoryScores[action.category] = newCategoryScores[action.category] + action.points;
       return {
         actions: [...state.actions, full],
         categoryScores: newCategoryScores,

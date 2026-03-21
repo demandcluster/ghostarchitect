@@ -1,26 +1,32 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useScoreStore } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
 import { useGameStore } from "@/stores/gameStore";
 
+import type { WiFiNetwork } from "@/content/types";
+
 interface EvilTwinWiFiProps {
   onComplete: () => void;
+  networks?: WiFiNetwork[];
 }
 
 interface WiFiAP {
+  id: string;
   ssid: string;
   bssid: string;
   signal: number;
   authType: string;
   isEvil: boolean;
+  indicators?: string[];
 }
 
-function buildAccessPoints(teamName: string): WiFiAP[] {
+function buildDefaultAccessPoints(teamName: string): WiFiAP[] {
   return [
     {
+      id: "wifi-legit-default",
       ssid: `${teamName}-Secure`,
       bssid: "AA:BB:CC:11:22:33",
       signal: -72,
@@ -28,6 +34,7 @@ function buildAccessPoints(teamName: string): WiFiAP[] {
       isEvil: false,
     },
     {
+      id: "wifi-evil-default",
       ssid: `${teamName}-Secure`,
       bssid: "DE:AD:BE:EF:CA:FE",
       signal: -38,
@@ -37,7 +44,7 @@ function buildAccessPoints(teamName: string): WiFiAP[] {
   ];
 }
 
-export function EvilTwinWiFi({ onComplete }: EvilTwinWiFiProps) {
+export function EvilTwinWiFi({ onComplete, networks }: EvilTwinWiFiProps) {
   const [selectedAP, setSelectedAP] = useState<WiFiAP | null>(null);
   const [connected, setConnected] = useState(false);
   const [showPacketCapture, setShowPacketCapture] = useState(false);
@@ -48,6 +55,21 @@ export function EvilTwinWiFi({ onComplete }: EvilTwinWiFiProps) {
   const setDecision = useNarrativeStore((s) => s.setDecision);
   const fakeDomain = useGameStore((s) => s.fakeDomain);
   const teamName = useGameStore((s) => s.teamName);
+
+  const accessPoints = useMemo<WiFiAP[]>(() => {
+    if (networks && networks.length > 0) {
+      return networks.map(n => ({
+        id: n.id,
+        ssid: n.ssid,
+        bssid: n.bssid,
+        signal: n.signalStrength,
+        authType: n.authType,
+        isEvil: n.isEvilTwin,
+        indicators: n.indicators
+      }));
+    }
+    return buildDefaultAccessPoints(teamName);
+  }, [networks, teamName]);
 
   useEffect(() => {
     containerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -63,7 +85,7 @@ export function EvilTwinWiFi({ onComplete }: EvilTwinWiFiProps) {
         category: "networkSecurity",
         points: 0,
         maxPoints: 75,
-        label: "Connected to Evil Twin AP",
+        label: `Connected to Evil Twin AP (${ap.ssid})`,
       });
       adjustTrust(-25);
       setShowPacketCapture(true);
@@ -73,15 +95,13 @@ export function EvilTwinWiFi({ onComplete }: EvilTwinWiFiProps) {
         category: "networkSecurity",
         points: 75,
         maxPoints: 75,
-        label: "Connected to legitimate AP (802.1X)",
+        label: `Connected to legitimate AP (${ap.ssid})`,
       });
       adjustTrust(20);
       addFlag("avoided_evil_twin");
       setConnected(true);
     }
   };
-
-  const accessPoints = buildAccessPoints(teamName);
 
   if (showPacketCapture) {
     return (
@@ -122,16 +142,15 @@ export function EvilTwinWiFi({ onComplete }: EvilTwinWiFiProps) {
                 sslstrip. Key indicators you missed:
               </p>
               <ul className="text-xs text-[var(--text-secondary)] mt-1 list-disc list-inside space-y-0.5">
-                <li>
-                  Signal strength -38 dBm is unusually strong (legitimate AP was
-                  -72 dBm)
-                </li>
-                <li>
-                  WPA2-PSK instead of 802.1X (corporate networks use enterprise
-                  auth)
-                </li>
-                <li>Different BSSID/MAC address than the known AP</li>
-                <li>Certificate mismatch on captive portal</li>
+                {selectedAP?.indicators && selectedAP.indicators.length > 0 ? (
+                  selectedAP.indicators.map((ind, i) => <li key={i}>{ind}</li>)
+                ) : (
+                  <>
+                    <li>Signal strength {selectedAP?.signal} dBm is unusually strong</li>
+                    <li>{selectedAP?.authType} instead of 802.1X enterprise auth</li>
+                    <li>Different BSSID than the known corporate APs</li>
+                  </>
+                )}
               </ul>
             </>
           ) : (
@@ -140,10 +159,8 @@ export function EvilTwinWiFi({ onComplete }: EvilTwinWiFiProps) {
                 Correct! You identified the legitimate access point.
               </p>
               <p className="text-xs text-[var(--text-secondary)] mt-2">
-                Key indicators: WPA2-Enterprise (802.1X) authentication,
-                expected BSSID, and normal signal strength (-72 dBm). The Evil
-                Twin had unusually strong signal and used WPA2-PSK — corporate
-                APs never use pre-shared keys.
+                Key indicators: {selectedAP?.authType} authentication,
+                expected BSSID, and normal signal strength ({selectedAP?.signal} dBm).
               </p>
             </>
           )}
@@ -174,7 +191,7 @@ export function EvilTwinWiFi({ onComplete }: EvilTwinWiFiProps) {
       <div className="space-y-3">
         {accessPoints.map((ap) => (
           <button
-            key={ap.bssid}
+            key={ap.id || ap.bssid}
             onClick={() => handleConnect(ap)}
             className="w-full p-4 border border-border rounded-lg text-left hover:border-accent transition-colors"
           >

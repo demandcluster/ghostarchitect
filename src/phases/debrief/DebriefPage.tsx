@@ -53,6 +53,7 @@ export function DebriefPage() {
 
   const actionsByCategory = actions.reduce<Record<string, ScoreAction[]>>(
     (acc, action) => {
+      if (!acc[action.category]) acc[acc.category] = []; // This line was actually buggy in original (acc.category vs action.category)
       if (!acc[action.category]) acc[action.category] = [];
       acc[action.category].push(action);
       return acc;
@@ -78,9 +79,14 @@ export function DebriefPage() {
           {endingMeta.label}
         </span>
       </div>
-      <p className="text-sm text-[var(--text-muted)] mb-7">
-        Trust Score: {trustScore}/100
-      </p>
+      <div className="flex items-center gap-6 mb-7">
+        <p className="text-sm text-[var(--text-muted)]">
+          Trust Score: <span className="font-bold text-[var(--text-primary)]">{trustScore}/100</span>
+        </p>
+        <p className="text-sm text-[var(--text-muted)]">
+          Total Forensic Score: <span className="font-bold text-accent">{Object.values(categoryScores).reduce((a,b)=>a+b,0)}</span>
+        </p>
+      </div>
 
       {/* Pill tab bar */}
       <div className="flex gap-1 mb-6 p-1 rounded-xl bg-[var(--bg-window-sunken)] border border-[var(--border)] w-fit">
@@ -125,8 +131,8 @@ export function DebriefPage() {
                     <span className="text-sm font-medium text-[var(--text-primary)]">
                       {CATEGORY_LABELS[cat]}
                     </span>
-                    <span className="text-base font-bold text-[var(--text-primary)]">
-                      {categoryScores[cat]}/25
+                    <span className="text-base font-bold text-accent">
+                      {categoryScores[cat]}
                     </span>
                   </div>
                   <div className="divide-y divide-[var(--border)]">
@@ -137,7 +143,7 @@ export function DebriefPage() {
                       >
                         <span className="text-[var(--text-muted)]">{action.label}</span>
                         <span className="text-[var(--text-secondary)] font-mono">
-                          {action.points}/{action.maxPoints}
+                          +{action.points}
                         </span>
                       </div>
                     ))}

@@ -77,7 +77,8 @@ export default function Home() {
     socialEngineeringDMs,
     npcBadAdvice,
     lolbins,
-    wifi
+    wifi,
+    expectedIOCs
   } = useContentStore(useShallow((s) => ({
     preBreachEmails: s.preBreachEmails,
     breachEmails: s.breachEmails,
@@ -85,7 +86,8 @@ export default function Home() {
     socialEngineeringDMs: s.socialEngineeringDMs,
     npcBadAdvice: s.npcBadAdvice,
     lolbins: s.lolbins,
-    wifi: s.wifi
+    wifi: s.wifi,
+    expectedIOCs: s.expectedIOCs
   })));
   const isContentReady = useContentStore(s => s.isContentReady);
   
@@ -267,6 +269,7 @@ export default function Home() {
           contentStoreRef.current.setNPCBadAdvice(secondaryResult.npcBadAdvice);
           contentStoreRef.current.setLOLBins(secondaryResult.lolbins);
           contentStoreRef.current.setWiFi(secondaryResult.wifi);
+          contentStoreRef.current.setExpectedIOCs(secondaryResult.expectedIOCs);
           contentStoreRef.current.persistToStorage();
           console.log('Secondary content generation complete.');
         }).catch(err => {
@@ -679,6 +682,7 @@ export default function Home() {
       title: "Network Connection",
       content: (
         <EvilTwinWiFi
+          networks={isContentReady() && wifi.length > 0 ? wifi : undefined}
           onComplete={async () => {
             addTimelineEntry({
               id: "breach-complete",
@@ -845,8 +849,10 @@ export default function Home() {
       id: "ioc",
       title: "IOC Documentation",
       content: (
-        <IOCExtraction
-          onComplete={() => changeStep("investigation-rotation")}
+        <IOCExtraction 
+          expectedIOCs={isContentReady() && expectedIOCs.length > 0 ? expectedIOCs : undefined}
+          logEntries={isContentReady() && logEntries.length > 0 ? logEntries : undefined}
+          onComplete={() => changeStep("investigation-rotation")} 
         />
       )
     });

@@ -101,22 +101,22 @@ DM SCENARIOS (EXACTLY 6-8 INDEPENDENT SCENARIOS):
 
 SCENARIO STRUCTURE:
 {
-  "id": "scenario-unique-id",
-  "setup": { "id": "s-setup", "sender": "Name", "senderRole": "Role", "avatar": "URL", "text": "...", "choices": [...] },
-  "onPass": { "id": "s-pass", "sender": "Name", "senderRole": "Role", "avatar": "URL", "text": "Technical validation of the correct ISO 27001/Regulatory response." },
-  "onFail": { "id": "s-fail", "sender": "Name", "senderRole": "Role", "avatar": "URL", "text": "Severe technical and regulatory consequence of the incorrect action." }
+  "setup": { "id": "s-setup", "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "...", "choices": [...] },
+  "onPass": { "id": "s-pass", "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Technical validation of the correct ISO 27001/Regulatory response." },
+  "onFail": { "id": "s-fail", "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Severe technical and regulatory consequence of the incorrect action." }
 }`;
     } else if (section === "secondary") {
-      requiredFields = ["logEntries", "npcBadAdvice", "lolbins", "wifi"];
+      requiredFields = ["logEntries", "expectedIOCs", "npcBadAdvice", "lolbins", "wifi"];
       sectionPrompt = `ACT AS A SENIOR SOC ANALYST AND DIGITAL FORENSICS EXPERT.
 The target audience is CYBERSECURITY PROFESSIONALS conducting advanced log analysis.
 Use placeholders "${teamName}" and "${fakeDomain}".
 
 SECONDARY CONTENT FOCUS (INVESTIGATION):
 - logEntries (EXACTLY 25-30 logs. MANDATORY: 70% LEGITIMATE traffic, 30% MALICIOUS attack indicators).
+- expectedIOCs (EXACTLY 6 specific strings found in the malicious logs: IP addresses, file paths, or tokens. MUST be an array of {type, value, hint}).
 - npcBadAdvice (EXACTLY 4-6 dialogues).
 - lolbins (EXACTLY 8-12 processes. MANDATORY: 50% LEGITIMATE usage, 50% MALICIOUS exploitation).
-- wifi (EXACTLY 5-8 networks).
+- wifi (EXACTLY 5-8 networks. MANDATORY: 60% CORPORATE/HOME, 40% EVIL TWIN/SUSPICIOUS).
 
 TECHNICAL LOG DEPTH & KILL CHAIN (MANDATORY):
 Logs MUST follow a coherent MITRE ATT&CK kill chain, utilizing precise SIEM artifacts:
@@ -125,6 +125,9 @@ Logs MUST follow a coherent MITRE ATT&CK kill chain, utilizing precise SIEM arti
 3. Persistence: Windows Event ID 7045 (Service Installation) with binary paths pointing to user-writable directories, or Event ID 4672 anomalies.
 4. Lateral Movement: Windows Event ID 4624 (Network Logon Type 3) moving from a workstation to a Domain Controller, or AWS CloudTrail 'AssumeRole' API calls.
 Ensure the JSON output for logs includes specific keys for 'timestamp', 'eventID', 'source', 'destination', 'processName', and 'commandLine'.
+
+IOC EXTRACTION (MANDATORY):
+The 'expectedIOCs' array must correspond EXACTLY to the 'logEntries' generated. If a log shows an SSH brute force from 1.2.3.4, then an IOC of type "Attacker IP" with value "1.2.3.4" must exist.
 
 HACKLORE & NPC BAD ADVICE (MANDATORY):
 The 'npcBadAdvice' array MUST test the player's ability to reject outdated, fear-based cybersecurity myths ("Hacklore"). 
@@ -172,10 +175,9 @@ DM SCENARIOS (EXACTLY 6-8 INDEPENDENT SCENARIOS):
 
 SCENARIO STRUCTURE:
 {
-  "id": "scenario-unique-id",
-  "setup": { "id": "s-setup", "sender": "Name", "senderRole": "Role", "avatar": "URL", "text": "...", "choices": [...] },
-  "onPass": { "id": "s-pass", "sender": "Name", "senderRole": "Role", "avatar": "URL", "text": "Technical validation of the correct ISO 27001/Regulatory response." },
-  "onFail": { "id": "s-fail", "sender": "Name", "senderRole": "Role", "avatar": "URL", "text": "Severe technical and regulatory consequence of the incorrect action." }
+  "setup": { "id": "s-setup", "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "...", "choices": [...] },
+  "onPass": { "id": "s-pass", "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Technical validation of the correct ISO 27001/Regulatory response." },
+  "onFail": { "id": "s-fail", "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Severe technical and regulatory consequence of the incorrect action." }
 }`;
 
       const secondaryPrompt = `ACT AS A SENIOR SOC ANALYST AND DIGITAL FORENSICS EXPERT.
@@ -325,6 +327,7 @@ Use locale: ${config.locale}. Make it challenging, believable, and completely IM
           ? finalContent.lolbins
           : [],
         wifi: Array.isArray(finalContent.wifi) ? finalContent.wifi : [],
+        expectedIOCs: Array.isArray(finalContent.expectedIOCs) ? finalContent.expectedIOCs : [],
         sessionId: config.sessionId,
         isOfflineContent: false
       };

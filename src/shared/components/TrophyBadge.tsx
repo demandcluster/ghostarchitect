@@ -73,7 +73,7 @@ export function TrophyBadge({ isOpen, onClose }: TrophyBadgeProps) {
                 transition={{ delay: 0.3 }}
                 className="font-bold text-[var(--accent)]"
               >
-                {totalScore}/500
+                {totalScore}
               </motion.span>
             </div>
 
@@ -99,7 +99,7 @@ function calculateRank(score: number): {
   className: string;
   colors: string[];
 } {
-  // Score is category score only (max 500), not including time bonus
+  // Score is category score only, not including time bonus
   if (score >= 450) {
     return { name: "PLATINUM", emoji: "🏆", className: "text-slate-300", colors: ["#cbd5e1", "#e2e8f0", "#ffffff"] };
   }
