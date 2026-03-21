@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { computeLeaderboardSnapshot } from '@/lib/leaderboard';
 import { requirePrisma, NoDatabaseError } from '@/lib/prisma';
 

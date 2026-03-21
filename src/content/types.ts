@@ -41,6 +41,7 @@ export interface DMMessage {
   text: string;
   timestamp: number;
   choices?: DMChoice[];
+  nextMessageId?: string;
   isBadAdvice?: boolean;
   complexity?: number;
 }

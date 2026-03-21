@@ -26,7 +26,7 @@ import { PRE_BREACH_EMAILS, BREACH_EMAILS } from "@/content/emails";
 import { SOCIAL_ENGINEERING_DM, NPC_BAD_ADVICE } from "@/content/dmScripts";
 import { LOG_ENTRIES } from "@/content/logEntries";
 import { LOLBINS } from "@/content/fileListings";
-import type { DMChoice, LogEntry } from "@/content/types";
+import type { DMChoice, LogEntry, IOCIndicator } from "@/content/types";
 import { ContentLoadingScreen } from "@/components/ContentLoadingScreen";
 import { createContentGenerator } from "@/services/contentGenerator";
 import { useContentStore } from "@/stores/contentStore";
@@ -63,6 +63,7 @@ export default function Home() {
   const setPhase = useGameStore((s) => s.setPhase);
   const setVisualMode = useGameStore((s) => s.setVisualMode);
   const teamName = useGameStore((s) => s.teamName);
+  const fakeDomain = useGameStore((s) => s.fakeDomain);
   const gameStore = useGameStore();
   const { trigger: triggerBreach } = useBreachTransition();
 
@@ -84,10 +85,10 @@ export default function Home() {
     npcBadAdvice: s.npcBadAdvice,
     lolbins: s.lolbins,
     wifi: s.wifi,
-    expectedIOCs: s.expectedIOCs
+    expectedIOCs: s.expectedIOCs as IOCIndicator[]
   })));
   const isContentReady = useContentStore(s => s.isContentReady);
-  
+
   console.log("[DEBUG] Content State:", {
     ready: isContentReady(),
     preCount: preBreachEmails.length,
@@ -106,11 +107,15 @@ export default function Home() {
     | "network-security"
     | "incident-response"
   >("social-engineering");
+
   const [revealedDmIds, setRevealedDmIds] = useState<string[]>([]);
+  const [dmInteractionsDone, setDmInteractionsDone] = useState(0);
   const [dmDone, setDmDone] = useState(false);
   const [flaggedLogs, setFlaggedLogs] = useState<LogEntry[]>([]);
+  const [npcDmReveal, setNpcDmReveal] = useState(0);
   const [npcDmIndex, setNpcDmIndex] = useState(0);
-  const { changeStep } = useStepTransition(setStep);
+  const [npcDmDone, setNpcDmDone] = useState(false);
+  const { isTransitioning, changeStep } = useStepTransition(setStep);
 
   // Content generation state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -119,6 +124,9 @@ export default function Home() {
     current: "",
     total: 0
   });
+  const [retryState, setRetryState] = useState<
+    { attempt: number; max: number } | undefined
+  >();
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generationDisabled, setGenerationDisabled] = useState(false);
   const contentStore = useContentStore();
@@ -260,7 +268,7 @@ export default function Home() {
           contentStoreRef.current.setNPCBadAdvice(secondaryResult.npcBadAdvice);
           contentStoreRef.current.setLOLBins(secondaryResult.lolbins);
           contentStoreRef.current.setWiFi(secondaryResult.wifi);
-          contentStoreRef.current.setExpectedIOCs(secondaryResult.expectedIOCs);
+          contentStoreRef.current.setExpectedIOCs(secondaryResult.expectedIOCs as IOCIndicator[]);
           contentStoreRef.current.persistToStorage();
           console.log('Secondary content generation complete.');
         }).catch(err => {

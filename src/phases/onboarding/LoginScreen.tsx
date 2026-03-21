@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 import { useGameStore } from "@/stores/gameStore";
 import { useScoreStore } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
@@ -129,7 +130,9 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
             style={{ background: "linear-gradient(to bottom, rgba(255,255,255,0.02), transparent)" }}
           >
             {logoUrl ? (
-              <img src={logoUrl} alt={teamName} className="w-10 h-10 rounded-lg object-contain bg-white/5 p-1.5" />
+              <div className="relative w-10 h-10 bg-white/5 p-1.5 rounded-lg overflow-hidden">
+                <Image src={logoUrl} alt={teamName} fill style={{ objectFit: 'contain' }} />
+              </div>
             ) : (
               <div className="w-10 h-10 bg-[rgba(0,229,51,0.1)] border border-[rgba(0,229,51,0.2)] rounded-xl flex items-center justify-center text-xs font-bold text-[var(--accent)] font-mono">
                 {initials}

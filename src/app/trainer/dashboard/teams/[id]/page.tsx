@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef, type FormEvent } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '../../../AuthProvider';
 
 interface Team {
@@ -171,13 +172,6 @@ export default function TeamDetailPage() {
     }
   }
 
-  function formatDuration(start: string, end: string | null): string {
-    if (!end) return '--';
-    const ms = new Date(end).getTime() - new Date(start).getTime();
-    const mins = Math.round(ms / 60000);
-    return `${mins}m`;
-  }
-
   if (authLoading || loading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
@@ -235,7 +229,9 @@ export default function TeamDetailPage() {
             </p>
           </div>
           {team.logoUrl && (
-            <img src={team.logoUrl} alt="Team logo" className="h-12 w-12 rounded object-contain" />
+            <div className="relative h-12 w-12">
+              <Image src={team.logoUrl} alt="Team logo" fill style={{ objectFit: 'contain' }} className="rounded" />
+            </div>
           )}
         </div>
 

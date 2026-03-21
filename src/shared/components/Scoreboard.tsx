@@ -46,7 +46,7 @@ export function Scoreboard() {
       })
       .catch((err) => {
         if (!active) return;
-        setError(err.message);
+        setError(err instanceof Error ? err.message : String(err));
         setLoading(false);
       });
 

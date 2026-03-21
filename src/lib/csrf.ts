@@ -28,10 +28,7 @@ export function validateCSRFToken(
 /**
  * Generate a CSRF token and set it as a cookie.
  */
-export function setCSRFTokenCookie(
-  response: Response,
-  token: string,
-): void {
+export function setCSRFTokenCookie(): void {
   // Note: We can't directly set cookies on Response in Next.js API routes
   // This is typically done via NextResponse.cookies.set()
   // This function is for reference if needed in middleware

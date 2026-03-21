@@ -177,8 +177,8 @@ export class ContentPoolManager {
     ];
 
     // 4. Branding and Chaining
-    const brand = (item: unknown, complexity: number): any => {
-      if (!item) return item;
+    const brand = (item: unknown, complexity: number): Record<string, unknown> => {
+      if (!item) return {} as Record<string, unknown>;
       let branded = typeof item === 'string' ? (JSON.parse(item) as Record<string, unknown>) : { ...(item as Record<string, unknown>) };
       let str = JSON.stringify(branded);
 
@@ -268,7 +268,7 @@ export class ContentPoolManager {
 
       // Automatically shuffle DM choices if they exist
       if (branded.choices && Array.isArray(branded.choices)) {
-        branded.choices = this.shuffle([...branded.choices]);
+        branded.choices = [...(branded.choices as DMChoice[])].sort(() => Math.random() - 0.5);
       }
 
       return { ...branded, complexity };
@@ -276,7 +276,7 @@ export class ContentPoolManager {
 
     const socialEngineeringDMs: DMMessage[] = [];
     if (introItem) {
-      const brandedIntro = brand(introItem.data, introItem.qualityScore) as DMMessage;
+      const brandedIntro = brand(introItem.data, introItem.qualityScore) as unknown as DMMessage;
       if (selectedScenarios.length > 0) brandedIntro.nextMessageId = `s1-setup-${options.sessionId}`;
       socialEngineeringDMs.push(brandedIntro);
     }
@@ -290,17 +290,17 @@ export class ContentPoolManager {
       const passId = `s${sId}-pass-${options.sessionId}`;
       const failId = `s${sId}-fail-${options.sessionId}`;
 
-      const setup = brand(sData.setup, complexity) as DMMessage;
+      const setup = brand(sData.setup, complexity) as unknown as DMMessage;
       setup.id = setupId;
       setup.choices?.forEach((c: DMChoice) => {
         c.nextMessageId = c.nextMessageId === 'ON_PASS_ID' ? passId : failId;
       });
 
-      const pass = brand(sData.onPass, complexity) as DMMessage;
+      const pass = brand(sData.onPass, complexity) as unknown as DMMessage;
       pass.id = passId;
       pass.nextMessageId = nextSId;
 
-      const fail = brand(sData.onFail, complexity) as DMMessage;
+      const fail = brand(sData.onFail, complexity) as unknown as DMMessage;
       fail.id = failId;
       fail.nextMessageId = nextSId;
 
@@ -322,13 +322,13 @@ export class ContentPoolManager {
     });
 
     const result = {
-      preBreachEmails: preEmails.map(i => brand(i.data, i.qualityScore) as Email),
+      preBreachEmails: preEmails.map(i => brand(i.data, i.qualityScore) as unknown as Email),
       socialEngineeringDMs,
-      breachEmails: breachEmails.map(i => brand(i.data, i.qualityScore) as Email),
-      logEntries: safeFlatMap(this.pickRandom(logs, 1)) as LogEntry[],
-      npcBadAdvice: safeFlatMap(this.pickRandom(advice, 1)) as DMMessage[],
-      lolbins: bins.map(i => brand(i.data, i.qualityScore) as LOLBin),
-      wifi: wifi.map(i => brand(i.data, i.qualityScore) as WiFiNetwork),
+      breachEmails: breachEmails.map(i => brand(i.data, i.qualityScore) as unknown as Email),
+      logEntries: safeFlatMap(this.pickRandom(logs, 1)) as unknown as LogEntry[],
+      npcBadAdvice: safeFlatMap(this.pickRandom(advice, 1)) as unknown as DMMessage[],
+      lolbins: bins.map(i => brand(i.data, i.qualityScore) as unknown as LOLBin),
+      wifi: wifi.map(i => brand(i.data, i.qualityScore) as unknown as WiFiNetwork),
       isOfflineContent: poolItems.length === 0
     };
 
@@ -359,9 +359,10 @@ export class ContentPoolManager {
       if (batch.lolbins.length > 0) entries.push({ type: 'LOLBIN_BATCH', data: batch.lolbins });
       if (batch.wifi.length > 0) entries.push({ type: 'WIFI_BATCH', data: batch.wifi });
       const dmItems = batch.socialEngineeringDMs;
-      dmItems.forEach((item: any) => {
-        if (item.setup) entries.push({ type: 'DM_SCENARIO', data: item });
-        else entries.push({ type: 'DM_INTRO', data: item });
+      dmItems.forEach((item: unknown) => {
+        const d = item as Record<string, unknown>;
+        if (d.setup) entries.push({ type: 'DM_SCENARIO', data: d });
+        else entries.push({ type: 'DM_INTRO', data: d });
       });
       for (const entry of entries) {
         const item = await prisma.contentPool.create({ data: { type: entry.type, data: entry.data as any, audited: false } });

@@ -48,7 +48,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
         'Connection': 'keep-alive',
       },
     });
-  } catch (error) {
+  } catch (error: unknown) {
     if (error instanceof NoDatabaseError) {
       return NextResponse.json({ error: 'Database not available' }, { status: 503 });
     }

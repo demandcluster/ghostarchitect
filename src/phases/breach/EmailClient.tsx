@@ -62,13 +62,13 @@ function brandEmail(email: Email, index: number, fakeDomain: string, teamName: s
   };
 
   // Heal missing fields locally as well
-  const from = sub(clean(email.from) || clean((email as Record<string, unknown>).sender) || 'system@' + fakeDomain);
-  const body = sub(clean(email.body) || clean((email as Record<string, unknown>).text) || clean((email as Record<string, unknown>).message) || '');
-  const subject = sub(clean(email.subject) || clean((email as Record<string, unknown>).title) || 'No Subject');
-  const to = sub(clean(email.to) || clean((email as Record<string, unknown>).recipient) || playerHandle + '@' + fakeDomain);
+  const from = sub(clean(email.from) || clean((email as unknown as Record<string, unknown>).sender) || 'system@' + fakeDomain);
+  const body = sub(clean(email.body) || clean((email as unknown as Record<string, unknown>).text) || clean((email as unknown as Record<string, unknown>).message) || '');
+  const subject = sub(clean(email.subject) || clean((email as unknown as Record<string, unknown>).title) || 'No Subject');
+  const to = sub(clean(email.to) || clean((email as unknown as Record<string, unknown>).recipient) || playerHandle + '@' + fakeDomain);
   
   // Ensure date is valid for splitting
-  let date = clean(email.date) || clean((email as Record<string, unknown>).timestamp) || clean((email as Record<string, unknown>).time) || '';
+  let date = clean(email.date) || clean((email as unknown as Record<string, unknown>).timestamp) || clean((email as unknown as Record<string, unknown>).time) || '';
   if (!date || !date.includes(' ')) {
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
@@ -77,7 +77,7 @@ function brandEmail(email: Email, index: number, fakeDomain: string, teamName: s
   }
 
   // Heal missing headers logic
-  const rawHeaders = (email.headers || {}) as Record<string, unknown>;
+  const rawHeaders = (email.headers || {}) as unknown as Record<string, unknown>;
   const isPhish = email.isPhishing;
 
   // Use extractEmail to ensure returnPath is a valid email, not a display name

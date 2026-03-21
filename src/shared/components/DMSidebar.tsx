@@ -55,18 +55,26 @@ function DMBubble({
   const [chosen, setChosen] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
   
-  const [prevMessageId, setPrevMessageId] = useState(message.id);
-  const [shuffledChoices, setShuffledChoices] = useState<DMChoice[]>(() => 
-    message.choices ? [...message.choices].sort(() => Math.random() - 0.5) : []
-  );
+  // Use a secondary state + effect to ensure the shuffle happens once
+  const [shuffledChoices, setShuffledChoices] = useState<DMChoice[]>([]);
 
-  // Sync shuffled choices when message changes
-  if (message.id !== prevMessageId) {
-    setPrevMessageId(message.id);
-    setShuffledChoices(message.choices ? [...message.choices].sort(() => Math.random() - 0.5) : []);
-    setChosen(null); // Reset choice for new message
-    setImgError(false);
-  }
+  useEffect(() => {
+    let active = true;
+    
+    // Use microtask to avoid cascading render warning
+    Promise.resolve().then(() => {
+      if (!active) return;
+      if (message.choices) {
+        setShuffledChoices([...message.choices].sort(() => Math.random() - 0.5));
+      } else {
+        setShuffledChoices([]);
+      }
+      setChosen(null);
+      setImgError(false);
+    });
+
+    return () => { active = false; };
+  }, [message.id, message.choices]);
 
   const handleChoice = (choice: DMChoice) => {
     if (chosen) return;
