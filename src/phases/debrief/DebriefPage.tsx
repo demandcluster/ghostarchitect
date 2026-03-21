@@ -53,7 +53,6 @@ export function DebriefPage() {
 
   const actionsByCategory = actions.reduce<Record<string, ScoreAction[]>>(
     (acc, action) => {
-      if (!acc[action.category]) acc[acc.category] = []; // This line was actually buggy in original (acc.category vs action.category)
       if (!acc[action.category]) acc[action.category] = [];
       acc[action.category].push(action);
       return acc;
