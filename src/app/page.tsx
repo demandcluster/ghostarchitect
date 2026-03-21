@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { isLikelyBot } from "@/lib/botDetection";
 import { OSShell } from "@/shared/components/OSShell";
 import { DMSidebar } from "@/shared/components/DMSidebar";
 import { useBreachTransition } from "@/shared/components/TransitionOverlay";
@@ -61,11 +60,9 @@ export default function Home() {
   });
 
   const [showScoreboard, setShowScoreboard] = useState(false);
-  const phase = useGameStore((s) => s.phase);
   const setPhase = useGameStore((s) => s.setPhase);
   const setVisualMode = useGameStore((s) => s.setVisualMode);
   const teamName = useGameStore((s) => s.teamName);
-  const fakeDomain = useGameStore((s) => s.fakeDomain);
   const gameStore = useGameStore();
   const { trigger: triggerBreach } = useBreachTransition();
 
@@ -110,13 +107,10 @@ export default function Home() {
     | "incident-response"
   >("social-engineering");
   const [revealedDmIds, setRevealedDmIds] = useState<string[]>([]);
-  const [dmInteractionsDone, setDmInteractionsDone] = useState(0);
   const [dmDone, setDmDone] = useState(false);
   const [flaggedLogs, setFlaggedLogs] = useState<LogEntry[]>([]);
-  const [npcDmReveal, setNpcDmReveal] = useState(0);
   const [npcDmIndex, setNpcDmIndex] = useState(0);
-  const [npcDmDone, setNpcDmDone] = useState(false);
-  const { isTransitioning, changeStep } = useStepTransition(setStep);
+  const { changeStep } = useStepTransition(setStep);
 
   // Content generation state
   const [isGenerating, setIsGenerating] = useState(false);
@@ -125,9 +119,6 @@ export default function Home() {
     current: "",
     total: 0
   });
-  const [retryState, setRetryState] = useState<
-    { attempt: number; max: number } | undefined
-  >();
   const [generationError, setGenerationError] = useState<string | null>(null);
   const [generationDisabled, setGenerationDisabled] = useState(false);
   const contentStore = useContentStore();
@@ -277,19 +268,20 @@ export default function Home() {
           // Don't block the user, store will just use fallback/empty arrays for these fields
         });
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Content generation failed:", error);
         clearInterval(progressInterval);
         clearInterval(barInterval);
         
+        const err = error as { message?: string };
         // Check for rate limit errors and disable further generation
-        if (error.message && (
-          error.message.includes('Rate limit') ||
-          error.message.includes('Too Many Requests') ||
-          error.message.includes('Please wait') ||
-          error.message.includes('Too many errors')
+        if (err.message && (
+          err.message.includes('Rate limit') ||
+          err.message.includes('Too Many Requests') ||
+          err.message.includes('Please wait') ||
+          err.message.includes('Too many errors')
         )) {
-          setGenerationError(error.message);
+          setGenerationError(err.message);
           setGenerationDisabled(true); 
           console.warn('Rate limit hit, disabling content generation for this session');
         }
@@ -303,7 +295,7 @@ export default function Home() {
     };
 
     initContent();
-  }, [step, generator, generationDisabled]);
+  }, [step, generator, generationDisabled, gameStore]);
 
   // Dev shortcut: set breach visual mode when ?step= targets a post-breach phase
   useEffect(() => {
@@ -329,9 +321,9 @@ export default function Home() {
     const currentMsg = dms.find(m => m.id === lastId);
 
     // If it's an informational message (no choices) and points to another message
-    if (currentMsg && (!currentMsg.choices || currentMsg.choices.length === 0) && (currentMsg as any).nextMessageId) {
-      const nextId = (currentMsg as any).nextMessageId;
-      if (!revealedDmIds.includes(nextId)) {
+    if (currentMsg && (!currentMsg.choices || currentMsg.choices.length === 0) && (currentMsg as { nextMessageId?: string }).nextMessageId) {
+      const nextId = (currentMsg as { nextMessageId?: string }).nextMessageId;
+      if (nextId && !revealedDmIds.includes(nextId)) {
         const timer = setTimeout(() => {
           setRevealedDmIds(prev => [...prev, nextId]);
         }, 2500); // Delay for reading
@@ -391,7 +383,9 @@ export default function Home() {
       addFlag,
       addTimelineEntry,
       setRevealedDmIds,
-      setDmDone
+      setDmDone,
+      isContentReady,
+      socialEngineeringDMs
     ]
   );
 

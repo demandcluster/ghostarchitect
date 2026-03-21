@@ -64,14 +64,15 @@ export async function POST(request: NextRequest, { params }: Params) {
 
     try {
       await writeFile(filepath, buffer);
-    } catch (writeError: any) {
-      if (writeError.code === 'EACCES' || writeError.code === 'EPERM') {
+    } catch (writeError: unknown) {
+      const err = writeError as { code?: string };
+      if (err.code === 'EACCES' || err.code === 'EPERM') {
         return NextResponse.json(
           { error: 'Permission denied: Unable to write to upload directory. Contact administrator.' },
           { status: 500 }
         );
       }
-      if (writeError.code === 'ENOSPC') {
+      if (err.code === 'ENOSPC') {
         return NextResponse.json(
           { error: 'Disk full: Unable to save logo. Contact administrator.' },
           { status: 500 }

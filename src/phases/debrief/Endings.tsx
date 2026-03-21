@@ -17,13 +17,13 @@ export function Endings({ ending }: EndingsProps) {
   const fakeDomain = useGameStore((s) => s.fakeDomain);
   const teamName = useGameStore((s) => s.teamName);
 
-  if (ending === "fired") return <FiredEnding score={total} fakeDomain={fakeDomain} teamName={teamName} />;
+  if (ending === "fired") return <FiredEnding score={total} teamName={teamName} />;
   if (ending === "promoted") return <PromotedEnding score={total} fakeDomain={fakeDomain} />;
   if (ending === "lateral") return <LateralEnding score={total} />;
   return <NeutralEnding score={total} />;
 }
 
-function FiredEnding({ score, fakeDomain, teamName }: { score: number; fakeDomain: string; teamName: string }) {
+function FiredEnding({ score, teamName }: { score: number; teamName: string }) {
   return (
     <motion.div
       initial={{ opacity: 0 }}

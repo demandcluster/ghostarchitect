@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useScoreStore } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
 import { useGameStore } from "@/stores/gameStore";

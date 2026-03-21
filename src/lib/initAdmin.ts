@@ -24,13 +24,13 @@ const shouldLog = process.env.NODE_ENV !== 'production';
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,32}$/;
 const PASSWORD_RE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{12,}$/;
 
-function log(message: string, ...args: any[]) {
+function log(message: string, ...args: unknown[]) {
   if (shouldLog) {
     console.log(message, ...args);
   }
 }
 
-function logError(message: string, error: any) {
+function logError(message: string, error: unknown) {
   if (shouldLog) {
     console.error(message, error);
   } else {
@@ -91,8 +91,8 @@ export async function initAdminOnStartup() {
     }
 
     // 2. Check if admin user already exists
-    let existingAdmin = await prisma.admin.findFirst().catch(() => null);
-    let adminName = existingAdmin?.username || process.env.ADMIN_USERNAME || 'admin';
+    const existingAdmin = await prisma.admin.findFirst().catch(() => null);
+    const adminName = existingAdmin?.username || process.env.ADMIN_USERNAME || 'admin';
 
     if (!existingAdmin) {
       // Get admin credentials from environment

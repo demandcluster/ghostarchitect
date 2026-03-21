@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { DMMessage, DMChoice } from "@/content/types";
 
@@ -53,14 +53,20 @@ function DMBubble({
   onChoice: (messageId: string, choice: DMChoice) => void;
 }) {
   const [chosen, setChosen] = useState<string | null>(null);
-  const [hoveredChoice, setHoveredChoice] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
+  
+  const [prevMessageId, setPrevMessageId] = useState(message.id);
+  const [shuffledChoices, setShuffledChoices] = useState<DMChoice[]>(() => 
+    message.choices ? [...message.choices].sort(() => Math.random() - 0.5) : []
+  );
 
-  // Shuffle choices once per message to prevent predictable answer order
-  const shuffledChoices = useMemo(() => {
-    if (!message.choices) return [];
-    return [...message.choices].sort(() => Math.random() - 0.5);
-  }, [message.id, message.choices]);
+  // Sync shuffled choices when message changes
+  if (message.id !== prevMessageId) {
+    setPrevMessageId(message.id);
+    setShuffledChoices(message.choices ? [...message.choices].sort(() => Math.random() - 0.5) : []);
+    setChosen(null); // Reset choice for new message
+    setImgError(false);
+  }
 
   const handleChoice = (choice: DMChoice) => {
     if (chosen) return;
@@ -135,8 +141,6 @@ function DMBubble({
                   key={choice.id}
                   onClick={() => handleChoice(choice)}
                   disabled={!!chosen}
-                  onMouseEnter={() => !chosen && setHoveredChoice(choice.id)}
-                  onMouseLeave={() => setHoveredChoice(null)}
                   whileHover={!chosen ? { x: 4 } : {}}
                   className={`
                     w-full p-2.5 rounded-xl text-left transition-all relative border

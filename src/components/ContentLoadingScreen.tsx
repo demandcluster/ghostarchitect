@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 interface ContentLoadingScreenProps {
   progress: {
@@ -32,21 +32,15 @@ const LOADING_MESSAGES = [
 ] as const;
 
 export function ContentLoadingScreen({ progress, fakeProgress, retryState, error, onCancel }: ContentLoadingScreenProps) {
-  const [stepIndex, setStepIndex] = useState(0);
   const [currentMessage, setCurrentMessage] = useState<string>(LOADING_MESSAGES[0]);
 
-  useEffect(() => {
-    const currentIndex = STEPS.indexOf(progress.current as any);
-    if (currentIndex !== -1) {
-      setStepIndex(currentIndex);
-    }
-  }, [progress.current]);
+  const stepIndex = STEPS.indexOf(progress.current as typeof STEPS[number]);
 
   // Rotate loading messages
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentMessage((prev) => {
-        const idx = LOADING_MESSAGES.indexOf(prev as any);
+        const idx = LOADING_MESSAGES.indexOf(prev as typeof LOADING_MESSAGES[number]);
         return LOADING_MESSAGES[(idx + 1) % LOADING_MESSAGES.length];
       });
     }, 2500);
@@ -54,7 +48,7 @@ export function ContentLoadingScreen({ progress, fakeProgress, retryState, error
     return () => clearInterval(interval);
   }, []);
 
-  const getStatusIcon = (step: string, idx: number) => {
+  const getStatusIcon = (_step: string, idx: number) => {
     if (idx < stepIndex) return '✓';
     if (idx === stepIndex) return retryState ? '⏳' : '🔄';
     return '○';

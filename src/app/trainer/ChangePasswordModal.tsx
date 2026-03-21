@@ -48,7 +48,7 @@ export function ChangePasswordModal({ isOpen, onClose, forced = false }: Props) 
         const body = await res.json().catch(() => ({}));
         setError(body.error ?? 'Failed to change password');
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred');
     } finally {
       setLoading(false);

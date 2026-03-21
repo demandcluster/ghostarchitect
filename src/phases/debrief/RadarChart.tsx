@@ -12,7 +12,6 @@ import {
 } from "chart.js";
 import { Radar } from "react-chartjs-2";
 import { useScoreStore, ScoreCategory } from "@/stores/scoreStore";
-import { CATEGORY_NOMINAL_MAX } from "@/engine/scoring";
 
 ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip);
 

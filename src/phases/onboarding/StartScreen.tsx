@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/stores/gameStore";
 import { getGameService } from "@/services/config/serviceConfig";
@@ -320,7 +320,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
       if (session.teamId) setTeamId(session.teamId);
       if (session.teamName) setTeamName(session.teamName);
       if (session.fakeDomain) setFakeDomain(session.fakeDomain);
-      if ((session as any).logoUrl) setLogoUrl((session as any).logoUrl);
+      if ((session as { logoUrl?: string | null }).logoUrl) setLogoUrl((session as { logoUrl?: string | null }).logoUrl as string);
       
       const assignedHandle = session.playerHandle ?? playerHandle.trim() ?? null;
       if (assignedHandle) setPlayerHandleStore(assignedHandle);

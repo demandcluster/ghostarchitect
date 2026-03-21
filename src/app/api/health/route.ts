@@ -5,11 +5,10 @@ import path from 'path';
 export async function GET() {
   let uploadsWritable = false;
   try {
-    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'logos');
     // Just check if we can access it or the parent if it doesn't exist yet
     await access(path.join(process.cwd(), 'public', 'uploads'), constants.W_OK);
     uploadsWritable = true;
-  } catch (e) {
+  } catch {
     uploadsWritable = false;
   }
 

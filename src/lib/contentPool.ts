@@ -1,6 +1,6 @@
 import { requirePrisma } from './prisma';
 import { OpenAIClient, AuditClient } from './openaiAI';
-import type { Email, LogEntry, DMMessage, LOLBin, WiFiNetwork } from '@/content/types';
+import type { Email, LogEntry, DMMessage, LOLBin, WiFiNetwork, DMChoice } from '@/content/types';
 
 export type ContentPoolType = 
   | 'EMAIL_PRE' 
@@ -17,6 +17,20 @@ export interface PoolFetchOptions {
   teamName: string;
   fakeDomain: string;
   playerHandle: string;
+}
+
+interface PoolItem {
+  id: string;
+  type: string;
+  data: unknown;
+  qualityScore: number;
+}
+
+interface BalancedItem {
+  data: Record<string, unknown>;
+  qualityScore: number;
+  id: string;
+  isMalicious: boolean;
 }
 
 export class ContentPoolManager {
@@ -44,12 +58,14 @@ export class ContentPoolManager {
     const prisma = requirePrisma();
     
     // 1. Get pool items (audited and high score)
-    const poolItems = await prisma.contentPool.findMany({
+    const poolItemsRaw = await prisma.contentPool.findMany({
       where: {
         audited: true,
         qualityScore: { gte: 5 }
       }
     });
+    
+    const poolItems = poolItemsRaw as unknown as PoolItem[];
 
     // 2. Filter out seen content (only if session exists in DB)
     const sessionExists = await prisma.session.findUnique({
@@ -70,7 +86,7 @@ export class ContentPoolManager {
     const pool = available.length > 0 ? available : poolItems;
 
     // Helper to clean malformed AI strings
-    const clean = (val: any): string | undefined => {
+    const clean = (val: unknown): string | undefined => {
       if (val === null || val === undefined) return undefined;
       const s = String(val).trim();
       if (s.toLowerCase() === 'undefined' || s.toLowerCase() === 'null' || s === '') return undefined;
@@ -78,20 +94,20 @@ export class ContentPoolManager {
     };
 
     // 3. Select and balance items
-    const getBalancedItems = (type: ContentPoolType, count: number, maliciousKey: string) => {
+    const getBalancedItems = (type: ContentPoolType, count: number, maliciousKey: string): BalancedItem[] => {
       const items = pool.filter(i => i.type === type);
       const allFlat = items.flatMap(i => {
         const rawData = i.data;
-        let dataArray: any[] = [];
+        let dataArray: Record<string, unknown>[] = [];
         
         if (Array.isArray(rawData)) {
-          dataArray = rawData;
-        } else if (rawData && typeof rawData === 'object') {
-          dataArray = [rawData];
+          dataArray = rawData as Record<string, unknown>[];
+        } else if (rawData && typeof rawData === 'object' && rawData !== null) {
+          dataArray = [rawData as Record<string, unknown>];
         }
         
         if (dataArray.length === 0) return [];
-        return dataArray.map((d: any) => ({ 
+        return dataArray.map((d) => ({ 
           data: d, 
           qualityScore: i.qualityScore, 
           id: i.id,
@@ -137,32 +153,33 @@ export class ContentPoolManager {
 
     const preEmails = getBalancedItems('EMAIL_PRE', 5, 'isPhishing');
     const breachEmails = getBalancedItems('EMAIL_BREACH', 8, 'isPhishing');
-    const logs = this.pickRandom(findBatches('LOG_BATCH'), 1);
-    const advice = this.pickRandom(findBatches('NPC_ADVICE'), 1);
+    const logs = findBatches('LOG_BATCH');
+    const advice = findBatches('NPC_ADVICE');
     const bins = getBalancedItems('LOLBIN_BATCH', 10, 'isMalicious');
     const wifi = getBalancedItems('WIFI_BATCH', 6, 'isEvilTwin');
 
     const dmIntroPool = findBatches('DM_INTRO');
     const dmScenarioPool = findBatches('DM_SCENARIO');
 
-    const intro = this.pickRandom(dmIntroPool, 1)[0];
+    const introItem = this.pickRandom(dmIntroPool, 1)[0];
     const sPool = dmScenarioPool.map(s => {
-      const sData = s.data as any;
-      const text = (sData.setup?.text || '').toLowerCase();
+      const sData = s.data as Record<string, unknown>;
+      const setup = sData.setup as Record<string, unknown> | undefined;
+      const text = (String(setup?.text || '')).toLowerCase();
       return { 
         ...s, 
         isSE: text.includes('password') || text.includes('link') || text.includes('urgent') || text.includes('access')
       };
     });
-    const scenarios = [
+    const selectedScenarios = [
       ...this.pickRandom(sPool.filter(s => s.isSE), 2),
       ...this.pickRandom(sPool.filter(s => !s.isSE), 2)
     ];
 
     // 4. Branding and Chaining
-    const brand = (item: any, complexity: number) => {
+    const brand = (item: unknown, complexity: number): any => {
       if (!item) return item;
-      let branded = typeof item === 'string' ? JSON.parse(item) : { ...item };
+      let branded = typeof item === 'string' ? (JSON.parse(item) as Record<string, unknown>) : { ...(item as Record<string, unknown>) };
       let str = JSON.stringify(branded);
 
       const replacements = [
@@ -175,7 +192,7 @@ export class ContentPoolManager {
         str = str.replace(regex, value);
       });
       
-      branded = JSON.parse(str);
+      branded = JSON.parse(str) as Record<string, unknown>;
 
       const fakeBase = options.fakeDomain.split('.')[0];
       const phishingUrl = `https://${fakeBase}-secure-auth.net/login/verify`;
@@ -187,8 +204,8 @@ export class ContentPoolManager {
           return val.replace(/{{phishing-link}}|\[phishing-link\]/gi, branded.isPhishing ? phishingUrl : safeUrl);
         }
         if (Array.isArray(val)) return val.map(replaceLinks);
-        if (typeof val === 'object') {
-          const newObj = { ...val };
+        if (typeof val === 'object' && val !== null) {
+          const newObj = { ...val } as Record<string, unknown>;
           for (const key in newObj) {
             newObj[key] = replaceLinks(newObj[key]);
           }
@@ -211,9 +228,10 @@ export class ContentPoolManager {
           branded.isPhishing = branded.isPhishing === true || String(branded.isPhishing) === 'true';
         }
 
-        branded = replaceLinks(branded);
+        const deeplyBranded = replaceLinks(branded) as Record<string, unknown>;
+        Object.assign(branded, deeplyBranded);
 
-        let dateVal = clean(branded.date) || clean(branded.timestamp) || clean(branded.time);
+        const dateVal = clean(branded.date) || clean(branded.timestamp) || clean(branded.time);
         if (!dateVal || !dateVal.includes('-')) {
           const now = new Date();
           const dateStr = now.toISOString().split('T')[0];
@@ -232,18 +250,19 @@ export class ContentPoolManager {
 
         if (!branded.headers) {
           branded.headers = {
-            returnPath: `<${extractEmail(branded.from)}>`,
+            returnPath: `<${extractEmail(String(branded.from))}>`,
             spf: branded.isPhishing ? 'fail' : 'pass',
             dkim: branded.isPhishing ? 'fail' : 'pass',
             dmarc: branded.isPhishing ? 'fail' : 'pass'
           };
         } else {
-          branded.headers.spf = clean(branded.headers.spf) || (branded.isPhishing ? 'fail' : 'pass');
-          branded.headers.dkim = clean(branded.headers.dkim) || (branded.isPhishing ? 'fail' : 'pass');
-          branded.headers.dmarc = clean(branded.headers.dmarc) || (branded.isPhishing ? 'fail' : 'pass');
-          let rp = clean(branded.headers.returnPath) || `<${extractEmail(branded.from)}>`;
+          const h = branded.headers as Record<string, unknown>;
+          h.spf = clean(h.spf) || (branded.isPhishing ? 'fail' : 'pass');
+          h.dkim = clean(h.dkim) || (branded.isPhishing ? 'fail' : 'pass');
+          h.dmarc = clean(h.dmarc) || (branded.isPhishing ? 'fail' : 'pass');
+          let rp = clean(h.returnPath) || `<${extractEmail(String(branded.from))}>`;
           if (!rp.startsWith('<')) rp = `<${rp}>`;
-          branded.headers.returnPath = rp;
+          h.returnPath = rp;
         }
       }
 
@@ -256,39 +275,39 @@ export class ContentPoolManager {
     };
 
     const socialEngineeringDMs: DMMessage[] = [];
-    if (intro) {
-      const brandedIntro = brand(intro.data, intro.qualityScore);
-      if (scenarios.length > 0) brandedIntro.nextMessageId = `s1-setup-${options.sessionId}`;
+    if (introItem) {
+      const brandedIntro = brand(introItem.data, introItem.qualityScore) as DMMessage;
+      if (selectedScenarios.length > 0) brandedIntro.nextMessageId = `s1-setup-${options.sessionId}`;
       socialEngineeringDMs.push(brandedIntro);
     }
 
-    scenarios.forEach((s, idx) => {
+    selectedScenarios.forEach((s, idx) => {
       const complexity = s.qualityScore;
-      const sData = s.data as any;
+      const sData = s.data as Record<string, unknown>;
       const sId = idx + 1;
-      const nextSId = idx < scenarios.length - 1 ? `s${sId + 1}-setup-${options.sessionId}` : undefined;
+      const nextSId = idx < selectedScenarios.length - 1 ? `s${sId + 1}-setup-${options.sessionId}` : undefined;
       const setupId = `s${sId}-setup-${options.sessionId}`;
       const passId = `s${sId}-pass-${options.sessionId}`;
       const failId = `s${sId}-fail-${options.sessionId}`;
 
-      const setup = brand(sData.setup, complexity);
+      const setup = brand(sData.setup, complexity) as DMMessage;
       setup.id = setupId;
-      setup.choices.forEach((c: any) => {
+      setup.choices?.forEach((c: DMChoice) => {
         c.nextMessageId = c.nextMessageId === 'ON_PASS_ID' ? passId : failId;
       });
 
-      const pass = brand(sData.onPass, complexity);
+      const pass = brand(sData.onPass, complexity) as DMMessage;
       pass.id = passId;
       pass.nextMessageId = nextSId;
 
-      const fail = brand(sData.onFail, complexity);
+      const fail = brand(sData.onFail, complexity) as DMMessage;
       fail.id = failId;
       fail.nextMessageId = nextSId;
 
       socialEngineeringDMs.push(setup, pass, fail);
     });
 
-    const allSelectedItems = [...preEmails, ...breachEmails, ...logs, ...advice, ...bins, ...wifi, intro, ...scenarios].filter(Boolean);
+    const allSelectedItems = [...preEmails, ...breachEmails, ...logs, ...advice, ...bins, ...wifi, ...(introItem ? [introItem] : []), ...selectedScenarios].filter(Boolean);
     const allSelectedIds = allSelectedItems.map(i => i!.id);
     if (sessionExists && allSelectedIds.length > 0) {
       await prisma.sessionSeenContent.createMany({
@@ -297,19 +316,19 @@ export class ContentPoolManager {
       });
     }
 
-    const safeFlatMap = (items: any[]) => items.flatMap(i => {
-      const arr = Array.isArray(i.data) ? i.data : (i.data ? [i.data] : []);
-      return arr.map((e: any) => brand(e, i.qualityScore));
+    const safeFlatMap = (items: PoolItem[]) => items.flatMap(i => {
+      const arr = Array.isArray(i.data) ? (i.data as unknown[]) : (i.data ? [i.data] : []);
+      return arr.map((e) => brand(e, i.qualityScore));
     });
 
     const result = {
-      preBreachEmails: preEmails.map(i => brand(i.data, i.qualityScore)),
+      preBreachEmails: preEmails.map(i => brand(i.data, i.qualityScore) as Email),
       socialEngineeringDMs,
-      breachEmails: breachEmails.map(i => brand(i.data, i.qualityScore)),
-      logEntries: safeFlatMap(logs),
-      npcBadAdvice: safeFlatMap(advice),
-      lolbins: bins.map(i => brand(i.data, i.qualityScore)),
-      wifi: wifi.map(i => brand(i.data, i.qualityScore)),
+      breachEmails: breachEmails.map(i => brand(i.data, i.qualityScore) as Email),
+      logEntries: safeFlatMap(this.pickRandom(logs, 1)) as LogEntry[],
+      npcBadAdvice: safeFlatMap(this.pickRandom(advice, 1)) as DMMessage[],
+      lolbins: bins.map(i => brand(i.data, i.qualityScore) as LOLBin),
+      wifi: wifi.map(i => brand(i.data, i.qualityScore) as WiFiNetwork),
       isOfflineContent: poolItems.length === 0
     };
 
@@ -317,7 +336,7 @@ export class ContentPoolManager {
     return result;
   }
 
-  private pickRandom(arr: any[], count: number) {
+  private pickRandom<T>(arr: T[], count: number): T[] {
     const shuffled = this.shuffle([...arr]);
     return shuffled.slice(0, count);
   }
@@ -332,7 +351,7 @@ export class ContentPoolManager {
     try {
       console.log(`[PoolManager] Refilling pool for section: ${section}`);
       const batch = await this.generator.generateBatch({ sessionId: 'pool-gen', locale: 'en', section });
-      const entries: { type: ContentPoolType; data: any }[] = [];
+      const entries: { type: ContentPoolType; data: unknown }[] = [];
       if (batch.preBreachEmails.length > 0) entries.push({ type: 'EMAIL_PRE', data: batch.preBreachEmails });
       if (batch.breachEmails.length > 0) entries.push({ type: 'EMAIL_BREACH', data: batch.breachEmails });
       if (batch.logEntries.length > 0) entries.push({ type: 'LOG_BATCH', data: batch.logEntries });
@@ -345,7 +364,7 @@ export class ContentPoolManager {
         else entries.push({ type: 'DM_INTRO', data: item });
       });
       for (const entry of entries) {
-        const item = await prisma.contentPool.create({ data: { type: entry.type, data: entry.data, audited: false } });
+        const item = await prisma.contentPool.create({ data: { type: entry.type, data: entry.data as any, audited: false } });
         this.auditItem(item.id, entry.type, entry.data);
       }
     } catch (e) { console.error('[PoolManager] Refill error:', e); }

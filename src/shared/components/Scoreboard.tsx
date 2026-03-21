@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, Reorder } from "framer-motion";
+import { AnimatePresence, Reorder } from "framer-motion";
 import { useGameStore } from "@/stores/gameStore";
 import type { LeaderboardEntry, LeaderboardSnapshot } from "@/services/gameService";
 
@@ -25,7 +25,12 @@ export function Scoreboard() {
   useEffect(() => {
     if (!BACKEND_ENABLED || !teamId) return;
 
-    setLoading(true);
+    let active = true;
+    
+    // Move state updates to next tick to avoid cascading render warning
+    Promise.resolve().then(() => {
+      if (active) setLoading(true);
+    });
 
     // Fetch initial snapshot
     fetch(`/api/v1/teams/${encodeURIComponent(teamId)}/leaderboard`)
@@ -34,11 +39,13 @@ export function Scoreboard() {
         return res.json();
       })
       .then((data: LeaderboardSnapshot) => {
+        if (!active) return;
         setRankings(data.rankings);
         setTeamName(data.teamName ?? null);
         setLoading(false);
       })
       .catch((err) => {
+        if (!active) return;
         setError(err.message);
         setLoading(false);
       });
@@ -50,6 +57,7 @@ export function Scoreboard() {
     eventSourceRef.current = es;
 
     es.onmessage = (event) => {
+      if (!active) return;
       try {
         const data: LeaderboardSnapshot = JSON.parse(event.data);
         setRankings(data.rankings);
@@ -64,6 +72,7 @@ export function Scoreboard() {
     };
 
     return () => {
+      active = false;
       es.close();
       eventSourceRef.current = null;
     };

@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { initAdminOnStartup } from '@/lib/initAdmin';
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const result = await initAdminOnStartup();
 

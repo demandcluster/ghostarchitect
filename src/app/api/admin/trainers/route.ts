@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
 import { requirePrisma, NoDatabaseError } from '@/lib/prisma';
-import { requireAdmin, type AdminTokenPayload } from '@/lib/adminAuth';
+import { requireAdmin } from '@/lib/adminAuth';
 
 const USERNAME_RE = /^[a-zA-Z0-9_]{3,32}$/;
 

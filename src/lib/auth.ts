@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAccessToken, verifyRefreshToken, signAccessToken, type TokenPayload } from '@/lib/jwt';
-import { cookies } from 'next/headers';
+import { verifyAccessToken, verifyRefreshToken, type TokenPayload } from '@/lib/jwt';
 
 /**
  * Extract and verify trainer identity from the request.

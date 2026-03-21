@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import type { LogEntry } from "@/content/types";
 
 interface LogTerminalProps {
@@ -18,6 +17,15 @@ const LEVEL_COLORS: Record<string, string> = {
 
 export function LogTerminal({ entries, onFlaggedChange }: LogTerminalProps) {
   const [visibleCount, setVisibleCount] = useState(0);
+  const [prevEntries, setPrevEntries] = useState(entries);
+
+  // Reset count if entries change (e.g. new search or new session)
+  // This is the recommended pattern for adjusting state when props change
+  if (entries !== prevEntries) {
+    setPrevEntries(entries);
+    setVisibleCount(0);
+  }
+
   const [filterText, setFilterText] = useState("");
   const [flaggedIds, setFlaggedIds] = useState<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -25,10 +33,7 @@ export function LogTerminal({ entries, onFlaggedChange }: LogTerminalProps) {
 
   // Stream logs in over 15-20s
   useEffect(() => {
-    if (entries.length === 0) {
-      setVisibleCount(0);
-      return;
-    }
+    if (entries.length === 0) return;
 
     const totalDuration = 15000; // 15 seconds
     const intervalTime = Math.max(50, totalDuration / entries.length);
@@ -44,7 +49,7 @@ export function LogTerminal({ entries, onFlaggedChange }: LogTerminalProps) {
     }, intervalTime);
 
     return () => clearInterval(interval);
-  }, [entries.length]);
+  }, [entries]);
 
   // Auto-scroll
   useEffect(() => {

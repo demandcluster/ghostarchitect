@@ -28,12 +28,12 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("[Content Generation] Error:", error);
     
     return NextResponse.json(
       {
-        error: error.message || "Failed to generate content",
+        error: error instanceof Error ? error.message : "Failed to generate content",
         isOffline: true
       },
       { status: 500 }

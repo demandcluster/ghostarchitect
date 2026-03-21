@@ -34,6 +34,19 @@ export interface BatchGenerationConfig {
   fakeDomain?: string;
 }
 
+export interface GeneratedContent {
+  preBreachEmails: Email[];
+  breachEmails: Email[];
+  logEntries: LogEntry[];
+  socialEngineeringDMs: DMMessage[];
+  npcBadAdvice: DMMessage[];
+  lolbins: LOLBin[];
+  wifi: WiFiNetwork[];
+  expectedIOCs: unknown[];
+  sessionId: string;
+  isOfflineContent: boolean;
+}
+
 export class OpenAIClient {
   private config: OpenAIConfig;
 
@@ -45,24 +58,13 @@ export class OpenAIClient {
     };
   }
 
-  async generateBatch(config: BatchGenerationConfig): Promise<{
-    preBreachEmails: Email[];
-    breachEmails: Email[];
-    logEntries: LogEntry[];
-    socialEngineeringDMs: DMMessage[]; // This will now hold individual scenario units for the pool
-    npcBadAdvice: DMMessage[];
-    lolbins: LOLBin[];
-    wifi: WiFiNetwork[];
-    sessionId: string;
-    isOfflineContent: boolean;
-  }> {
+  async generateBatch(config: BatchGenerationConfig): Promise<GeneratedContent> {
     const temperature = config.temperature ?? 0.9;
     const section = config.section ?? "all";
 
     // For pool generation, we use placeholders instead of specific team data
     const teamName = "[teamName]";
     const fakeDomain = "[fakeDomain]";
-    const playerHandle = "[playerHandle]";
 
     let sectionPrompt = "";
     let requiredFields: string[] = [];
@@ -188,7 +190,7 @@ SECONDARY CONTENT FOCUS (INVESTIGATION):
 - logEntries (EXACTLY 25-30 logs. MANDATORY: 70% LEGITIMATE traffic, 30% MALICIOUS attack indicators).
 - npcBadAdvice (EXACTLY 4-6 dialogues).
 - lolbins (EXACTLY 8-12 processes. MANDATORY: 50% LEGITIMATE usage, 50% MALICIOUS exploitation).
-- wifi (EXACTLY 5-8 networks).
+- wifi (EXACTLY 5-8 networks. MANDATORY: 60% CORPORATE/HOME, 40% EVIL TWIN/SUSPICIOUS).
 
 TECHNICAL LOG DEPTH & KILL CHAIN (MANDATORY):
 Logs MUST follow a coherent MITRE ATT&CK kill chain, utilizing precise SIEM artifacts:
@@ -288,7 +290,7 @@ Use locale: ${config.locale}. Make it challenging, believable, and completely IM
         throw new Error("No content generated from OpenAI API");
       }
 
-      const parsedContent = JSON.parse(generatedContent) as any;
+      const parsedContent = JSON.parse(generatedContent) as Record<string, unknown>;
       let finalContent = parsedContent;
 
       // Check if fields are nested
@@ -296,44 +298,44 @@ Use locale: ${config.locale}. Make it challenging, believable, and completely IM
       if (!hasDirectFields) {
         for (const key of Object.keys(parsedContent)) {
           const nestedValue = parsedContent[key];
-          if (nestedValue && typeof nestedValue === "object") {
-            finalContent = { ...finalContent, ...nestedValue };
+          if (nestedValue && typeof nestedValue === "object" && nestedValue !== null) {
+            finalContent = { ...finalContent, ...(nestedValue as Record<string, unknown>) };
           }
         }
       }
 
       // Map specialized fields back to the standard return interface
-      const validatedContent = {
+      const validatedContent: GeneratedContent = {
         preBreachEmails: Array.isArray(finalContent.preBreachEmails)
-          ? finalContent.preBreachEmails
+          ? (finalContent.preBreachEmails as Email[])
           : [],
         breachEmails: Array.isArray(finalContent.breachEmails)
-          ? finalContent.breachEmails
+          ? (finalContent.breachEmails as Email[])
           : [],
         logEntries: Array.isArray(finalContent.logEntries)
-          ? finalContent.logEntries
+          ? (finalContent.logEntries as LogEntry[])
           : [],
         // Temporary storage for pool hydration:
         socialEngineeringDMs: [
-          ...(finalContent.dmIntro ? [finalContent.dmIntro] : []),
+          ...(finalContent.dmIntro ? [finalContent.dmIntro as DMMessage] : []),
           ...(Array.isArray(finalContent.dmScenarios)
-            ? finalContent.dmScenarios
+            ? (finalContent.dmScenarios as DMMessage[])
             : [])
-        ] as any[],
+        ],
         npcBadAdvice: Array.isArray(finalContent.npcBadAdvice)
-          ? finalContent.npcBadAdvice
+          ? (finalContent.npcBadAdvice as DMMessage[])
           : [],
         lolbins: Array.isArray(finalContent.lolbins)
-          ? finalContent.lolbins
+          ? (finalContent.lolbins as LOLBin[])
           : [],
-        wifi: Array.isArray(finalContent.wifi) ? finalContent.wifi : [],
-        expectedIOCs: Array.isArray(finalContent.expectedIOCs) ? finalContent.expectedIOCs : [],
+        wifi: Array.isArray(finalContent.wifi) ? (finalContent.wifi as WiFiNetwork[]) : [],
+        expectedIOCs: Array.isArray(finalContent.expectedIOCs) ? (finalContent.expectedIOCs as unknown[]) : [],
         sessionId: config.sessionId,
         isOfflineContent: false
       };
 
       return validatedContent;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("[OpenAI API] Error:", error);
       throw error;
     }
@@ -369,7 +371,7 @@ export class AuditClient {
 
   async auditContent(
     type: string,
-    content: any
+    content: unknown
   ): Promise<{ score: number; feedback: string }> {
     try {
       const prompt = `AUDIT this cybersecurity game content for an advanced professional audience.
@@ -413,13 +415,16 @@ Return ONLY a JSON object: { "score": number, "feedback": "string" }`;
 
       if (!response.ok) return { score: 5, feedback: "Audit failed" };
 
-      const data = await response.json();
-      const result = JSON.parse(data.choices[0].message.content);
+      const responseData = await response.json();
+      const generatedContent = responseData.choices?.[0]?.message?.content;
+      if (!generatedContent) return { score: 5, feedback: "Audit failed - no content" };
+
+      const result = JSON.parse(generatedContent) as { score?: number; feedback?: string };
       return {
         score: Number(result.score) || 5,
         feedback: String(result.feedback) || ""
       };
-    } catch (e) {
+    } catch (e: unknown) {
       console.error("Audit error:", e);
       return { score: 5, feedback: "Error during audit" };
     }

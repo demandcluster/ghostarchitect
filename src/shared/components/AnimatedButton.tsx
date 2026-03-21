@@ -7,7 +7,7 @@ interface AnimatedButtonProps extends HTMLMotionProps<"button"> {
   size?: "sm" | "md" | "lg";
   isLoading?: boolean;
   children: React.ReactNode;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 const variantStyles = {

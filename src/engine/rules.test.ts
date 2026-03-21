@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vitest";
 import { deriveFlags } from "./rules";
-import type { Ending } from "./rules";
 
 describe("deriveFlags", () => {
   const emptyDecisions: Record<string, string> = {};

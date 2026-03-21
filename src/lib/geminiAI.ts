@@ -1,3 +1,5 @@
+import type { Email, LogEntry, DMMessage, LOLBin, WiFiNetwork } from '@/content/types';
+
 export interface GeminiAIConfig {
   apiKey: string;
   model: 'gemini-1.5-pro' | 'gemini-1.5-flash' | 'gemini-1.0-pro';
@@ -22,6 +24,18 @@ export interface BatchGenerationConfig {
   temperature?: number;
 }
 
+interface GeminiBatchResponse {
+  preBreachEmails: Email[];
+  breachEmails: Email[];
+  logEntries: LogEntry[];
+  socialEngineeringDMs: DMMessage[];
+  npcBadAdvice: DMMessage[];
+  lolbins: LOLBin[];
+  wifi: WiFiNetwork[];
+  sessionId?: string;
+  isOfflineContent?: boolean;
+}
+
 export class GeminiAIClient {
   private config: GeminiAIConfig;
 
@@ -32,17 +46,7 @@ export class GeminiAIClient {
     };
   }
 
-  async generateBatch(config: BatchGenerationConfig): Promise<{
-    preBreachEmails: string;
-    breachEmails: string;
-    logEntries: string;
-    socialEngineeringDMs: string;
-    npcBadAdvice: string;
-    lolbins: string;
-    wifi: string;
-    sessionId: string;
-    isOfflineContent: boolean;
-  }> {
+  async generateBatch(config: BatchGenerationConfig): Promise<GeminiBatchResponse & { sessionId: string; isOfflineContent: boolean }> {
     const temperature = config.temperature ?? 0.9;
 
     // Create a comprehensive prompt for batch generation
@@ -67,50 +71,29 @@ export class GeminiAIClient {
       })
     });
 
-    console.log('[Gemini API] Request body:', {
-      model: this.config.model,
-      temperature: temperature,
-      hasJsonSchema: true
-    });
-
     if (!response.ok) {
       const error: GenerationError = {
         message: response.statusText,
         statusCode: response.status,
         isRetryable: response.status === 429 || response.status >= 500
       };
-      console.error('[Gemini API] Request failed:', {
-        status: response.status,
-        statusText: response.statusText
-      });
       throw error;
     }
 
     const responseData = await response.json();
-
-    console.log('[Gemini API] Response received:', {
-      hasCandidates: !!responseData.candidates?.[0],
-      hasContent: !!responseData.candidates?.[0]?.content?.parts?.[0]?.text,
-      responseLength: JSON.stringify(responseData).length
-    });
-
-    // Parse the Gemini response
-    const generatedContent = responseData.candidates[0]?.content?.parts?.[0]?.text;
+    const generatedContent = responseData.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!generatedContent) {
-      console.error('[Gemini API] No content generated');
       throw new Error('No content generated from Gemini API');
     }
 
-    // Debug: Log first 500 chars of generated content
-    console.log('[Gemini API] Generated content preview:', generatedContent.substring(0, 500));
-
-    // The API should return valid JSON when using response_json_schema
-    const parsedContent = JSON.parse(generatedContent) as any;
-    parsedContent.sessionId = config.sessionId;
-    parsedContent.isOfflineContent = false;
-
-    return parsedContent;
+    const parsedContent = JSON.parse(generatedContent) as GeminiBatchResponse;
+    
+    return {
+      ...parsedContent,
+      sessionId: config.sessionId,
+      isOfflineContent: false
+    } as GeminiBatchResponse & { sessionId: string; isOfflineContent: boolean };
   }
 
   // Define JSON Schema for structured output
@@ -262,6 +245,7 @@ export class GeminiAIClient {
           items: {
             type: "object",
             properties: {
+              id: { type: "string" },
               ssid: { type: "string" },
               bssid: { type: "string" },
               signalStrength: { type: "number" },
@@ -289,10 +273,8 @@ export class GeminiAIClient {
 }
 
 export function createGeminiAIClient(): GeminiAIClient | null {
-  // Use server-side environment variable (not NEXT_PUBLIC_*) to keep API key secure
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    console.warn("Gemini API key not found, content generation disabled");
     return null;
   }
 

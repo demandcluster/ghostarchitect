@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     try {
       const { ContentPoolManager } = await import('@/lib/contentPool');
       ContentPoolManager.getInstance().refillPool('all').catch(console.error);
-    } catch (e) {
+    } catch {
       console.warn('Could not trigger background refill');
     }
 

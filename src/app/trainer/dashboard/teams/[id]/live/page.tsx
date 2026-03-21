@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAuth } from '../../../../AuthProvider';
 
@@ -172,26 +173,33 @@ export default function LiveDashboardPage() {
     } catch { /* silently ignore */ }
   }, [authFetch, id]);
 
+  const [retryCount, setRetryCount] = useState(0);
+
   // ---------- SSE ----------
 
-  const connectSSE = useCallback(() => {
-    if (!id) return;
+  useEffect(() => {
+    if (!id || authLoading) return;
+    
+    let active = true;
+
     if (sseRef.current) {
       sseRef.current.close();
-      sseRef.current = null;
     }
-    setSseStatus('connecting');
+    
+    // Wrap in microtask to avoid setState warning if triggered synchronously
+    Promise.resolve().then(() => {
+      if (active) setSseStatus('connecting');
+    });
 
-    const token = accessToken;
-    // Native EventSource doesn't support custom headers; use a URL with token
-    // The existing SSE endpoint apparently uses cookies/session — connect directly.
-    // If it requires auth header, we'd need a fetch-based SSE approach.
     const es = new EventSource(`/api/v1/teams/${id}/leaderboard/stream`);
     sseRef.current = es;
 
-    es.onopen = () => setSseStatus('connected');
+    es.onopen = () => {
+      if (active) setSseStatus('connected');
+    };
 
     es.onmessage = (event) => {
+      if (!active) return;
       setSseStatus('connected');
       try {
         const parsed: LeaderboardSnapshot = JSON.parse(event.data);
@@ -209,7 +217,9 @@ export default function LiveDashboardPage() {
 
         if (newFlashed.size > 0) {
           setFlashedHandles(newFlashed);
-          setTimeout(() => setFlashedHandles(new Set()), 1200);
+          setTimeout(() => {
+            if (active) setFlashedHandles(new Set());
+          }, 1200);
         }
 
         setLeaderboard(entries.slice().sort((a, b) => b.totalScore - a.totalScore));
@@ -217,12 +227,21 @@ export default function LiveDashboardPage() {
     };
 
     es.onerror = () => {
+      if (!active) return;
       setSseStatus('reconnecting');
       es.close();
       sseRef.current = null;
-      reconnectRef.current = setTimeout(() => connectSSE(), 3000);
+      reconnectRef.current = setTimeout(() => {
+        if (active) setRetryCount(prev => prev + 1);
+      }, 3000);
     };
-  }, [id, accessToken]);
+
+    return () => {
+      active = false;
+      es.close();
+      if (reconnectRef.current) clearTimeout(reconnectRef.current);
+    };
+  }, [id, accessToken, authLoading, retryCount]);
 
   // ---------- Effects ----------
 
@@ -242,18 +261,25 @@ export default function LiveDashboardPage() {
 
   useEffect(() => {
     if (authLoading) return;
-    fetchTeam();
-    fetchSessions();
-    connectSSE();
+    
+    let active = true;
 
-    pollRef.current = setInterval(fetchSessions, 10_000);
+    const init = async () => {
+      if (!active) return;
+      await Promise.all([fetchTeam(), fetchSessions()]);
+    };
+
+    init();
+
+    pollRef.current = setInterval(() => {
+      if (active) fetchSessions();
+    }, 10_000);
 
     return () => {
-      sseRef.current?.close();
+      active = false;
       if (pollRef.current) clearInterval(pollRef.current);
-      if (reconnectRef.current) clearTimeout(reconnectRef.current);
     };
-  }, [authLoading, fetchTeam, fetchSessions, connectSSE]);
+  }, [authLoading, fetchTeam, fetchSessions]);
 
   // ---------- Computed stats ----------
 
@@ -400,11 +426,14 @@ export default function LiveDashboardPage() {
           </Link>
           <div style={{ width: 1, height: 24, background: 'var(--border)' }} />
           {team?.logoUrl && (
-            <img
-              src={team.logoUrl}
-              alt=""
-              style={{ height: 36, width: 36, objectFit: 'contain', borderRadius: 4 }}
-            />
+            <div style={{ position: 'relative', height: 36, width: 36 }}>
+              <Image
+                src={team.logoUrl}
+                alt=""
+                fill
+                style={{ objectFit: 'contain', borderRadius: 4 }}
+              />
+            </div>
           )}
           <span
             style={{

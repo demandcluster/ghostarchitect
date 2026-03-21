@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { requirePrisma, NoDatabaseError } from '@/lib/prisma';
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
     const prisma = requirePrisma();
 
@@ -13,7 +13,11 @@ export async function GET(_request: NextRequest) {
       ORDER BY table_name;
     `);
 
-    const tables = (result as any[]).map((row: any) => row.table_name);
+    interface TableRow {
+      table_name: string;
+    }
+
+    const tables = (result as TableRow[]).map((row) => row.table_name);
     const adminExists = await prisma.admin.findFirst();
 
     return NextResponse.json({

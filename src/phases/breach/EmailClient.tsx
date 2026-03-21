@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
 import { useGameStore } from "@/stores/gameStore";
 import { useScoreStore } from "@/stores/scoreStore";
@@ -45,7 +45,7 @@ function brandEmail(email: Email, index: number, fakeDomain: string, teamName: s
   const subOpt = (s?: string) => (s ? sub(s) : s);
 
   // Helper to catch malformed AI strings
-  const clean = (val: any): string | undefined => {
+  const clean = (val: unknown): string | undefined => {
     if (val === null || val === undefined) return undefined;
     const s = String(val).trim();
     if (s.toLowerCase() === 'undefined' || s.toLowerCase() === 'null' || s === '') return undefined;
@@ -62,13 +62,13 @@ function brandEmail(email: Email, index: number, fakeDomain: string, teamName: s
   };
 
   // Heal missing fields locally as well
-  const from = sub(clean(email.from) || clean((email as any).sender) || 'system@' + fakeDomain);
-  const body = sub(clean(email.body) || clean((email as any).text) || clean((email as any).message) || '');
-  const subject = sub(clean(email.subject) || clean((email as any).title) || 'No Subject');
-  const to = sub(clean(email.to) || clean((email as any).recipient) || playerHandle + '@' + fakeDomain);
+  const from = sub(clean(email.from) || clean((email as Record<string, unknown>).sender) || 'system@' + fakeDomain);
+  const body = sub(clean(email.body) || clean((email as Record<string, unknown>).text) || clean((email as Record<string, unknown>).message) || '');
+  const subject = sub(clean(email.subject) || clean((email as Record<string, unknown>).title) || 'No Subject');
+  const to = sub(clean(email.to) || clean((email as Record<string, unknown>).recipient) || playerHandle + '@' + fakeDomain);
   
   // Ensure date is valid for splitting
-  let date = clean(email.date) || clean((email as any).timestamp) || clean((email as any).time) || '';
+  let date = clean(email.date) || clean((email as Record<string, unknown>).timestamp) || clean((email as Record<string, unknown>).time) || '';
   if (!date || !date.includes(' ')) {
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0];
@@ -77,7 +77,7 @@ function brandEmail(email: Email, index: number, fakeDomain: string, teamName: s
   }
 
   // Heal missing headers logic
-  const rawHeaders = email.headers || {} as any;
+  const rawHeaders = (email.headers || {}) as Record<string, unknown>;
   const isPhish = email.isPhishing;
 
   // Use extractEmail to ensure returnPath is a valid email, not a display name
@@ -160,26 +160,21 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
     [emails, fakeDomain, teamName, playerHandle]
   );
 
-  const [selectedId, setSelectedId] = useState("");
+  const [localSelectedId, setSelectedId] = useState("");
 
-  // Sync selectedId when emails are first loaded
-  useEffect(() => {
-    if (brandedEmails.length > 0 && !selectedId) {
-      console.log("[EmailClient] Initializing selectedId with first email:", brandedEmails[0].id);
-      setSelectedId(brandedEmails[0].id);
+  // Derive the effective selected ID: 
+  // 1. Use local state if it exists and is still valid in the current list
+  // 2. Otherwise default to the first email in the list
+  const effectiveSelectedId = useMemo(() => {
+    if (brandedEmails.length === 0) return "";
+    
+    const exists = brandedEmails.some(e => e.id === localSelectedId);
+    if (localSelectedId && exists) {
+      return localSelectedId;
     }
-  }, [brandedEmails, selectedId]); // Depend on both to catch new lists or missing initial selection
-
-  // If selectedId becomes invalid (e.g. after a phase change), reset it
-  useEffect(() => {
-    if (selectedId && brandedEmails.length > 0) {
-      const exists = brandedEmails.some(e => e.id === selectedId);
-      if (!exists) {
-        console.log("[EmailClient] Selection invalid, resetting to first email");
-        setSelectedId(brandedEmails[0].id);
-      }
-    }
-  }, [brandedEmails, selectedId]);
+    
+    return brandedEmails[0].id;
+  }, [brandedEmails, localSelectedId]);
 
   const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({});
   const [expandedHeaders, setExpandedHeaders] = useState<Set<string>>(new Set());
@@ -187,13 +182,13 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
 
   const selectedEmail = useMemo(
     () => {
-      const found = brandedEmails.find((e) => e.id === selectedId);
+      const found = brandedEmails.find((e) => e.id === effectiveSelectedId);
       if (brandedEmails.length > 0) {
-        console.log("[EmailClient] Selection debug:", { selectedId, foundId: found?.id, hasBody: !!found?.body });
+        console.log("[EmailClient] Selection debug:", { effectiveSelectedId, foundId: found?.id, hasBody: !!found?.body });
       }
       return found;
     },
-    [brandedEmails, selectedId]
+    [brandedEmails, effectiveSelectedId]
   );
 
   const allJudged = brandedEmails.every((e) => verdicts[e.id]);
@@ -246,12 +241,12 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
               className="w-full text-left px-3 py-3.5 border-b text-xs transition-colors relative overflow-hidden"
               style={{
                 borderColor: "var(--border)",
-                background: selectedId === email.id ? "var(--accent-subtle)" : "rgba(0,0,0,0)",
-                borderLeft: selectedId === email.id ? "2px solid var(--accent)" : "none"
+                background: effectiveSelectedId === email.id ? "var(--accent-subtle)" : "rgba(0,0,0,0)",
+                borderLeft: effectiveSelectedId === email.id ? "2px solid var(--accent)" : "none"
               }}
             >
               <AnimatePresence mode="wait">
-                {selectedId === email.id && (
+                {effectiveSelectedId === email.id && (
                   <motion.div
                     className="absolute inset-0 -z-10"
                     style={{ background: "var(--accent-subtle)" }}

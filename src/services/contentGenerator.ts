@@ -1,6 +1,5 @@
-import type { Email, LogEntry, DMMessage, LOLBin, WiFiNetwork, EmailHeader } from '@/content/types';
+import type { Email, LogEntry, DMMessage, LOLBin, WiFiNetwork } from '@/content/types';
 import type { GeminiAIClient } from '@/lib/geminiAI';
-import { createGeminiAIClient } from '@/lib/geminiAI';
 
 export interface GeneratedContent {
   preBreachEmails: Email[];
@@ -10,7 +9,7 @@ export interface GeneratedContent {
   npcBadAdvice: DMMessage[];
   lolbins: LOLBin[];
   wifi: WiFiNetwork[];
-  expectedIOCs: any[];
+  expectedIOCs: unknown[];
   sessionId: string;
   isOfflineContent: boolean;
 }

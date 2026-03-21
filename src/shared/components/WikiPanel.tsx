@@ -317,7 +317,7 @@ function IncidentResponseContent() {
 
       <Callout variant="warning">
         Delay is your enemy during active exfiltration. Every minute of
-        monitoring without containment is more data in the attacker's hands.
+        monitoring without containment is more data in the attacker&apos;s hands.
       </Callout>
     </div>
   );

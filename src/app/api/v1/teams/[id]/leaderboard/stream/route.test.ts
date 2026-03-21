@@ -127,7 +127,7 @@ describe("GET /api/v1/teams/[id]/leaderboard/stream", () => {
 describe("SSE fan-out isolation", () => {
   it("addSSEClient/removeSSEClient manage team-scoped writers", () => {
     // This tests the leaderboard module's fan-out logic directly
-    const { readable, writable } = new TransformStream<Uint8Array>();
+    const { writable } = new TransformStream<Uint8Array>();
     const writer = writable.getWriter();
 
     // Should not throw

@@ -4,7 +4,7 @@ import { requirePrisma, NoDatabaseError } from '@/lib/prisma';
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_request: NextRequest, { params }: Params) {
+export async function GET(_: unknown, { params }: Params) {
   try {
     const prisma = requirePrisma();
     const { id } = await params;
