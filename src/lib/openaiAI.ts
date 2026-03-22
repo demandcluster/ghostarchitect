@@ -58,7 +58,9 @@ export class OpenAIClient {
     };
   }
 
-  async generateBatch(config: BatchGenerationConfig): Promise<GeneratedContent> {
+  async generateBatch(
+    config: BatchGenerationConfig
+  ): Promise<GeneratedContent> {
     const temperature = config.temperature ?? 0.9;
     const section = config.section ?? "all";
 
@@ -97,27 +99,41 @@ INITIAL CONTENT FOCUS (ONBOARDING & BREACH EMAILS):
 - LEGITIMATE EMAILS: MUST have passing SPF/DKIM/DMARC headers. No malicious links.
 - PHISHING EMAILS: MUST reflect Adversary-in-the-Middle (AiTM), Evilginx, or Device Code Phishing. Lures MUST impersonate legitimate infrastructure (e.g., a shared document hosted on an attacker-controlled SharePoint tenant or a fake Microsoft Authentication Broker) designed to steal session cookies and bypass legacy MFA. MUST include at least one header failure or domain spoofing artifact. DO NOT use obvious typos or generic malware attachments.
 
+DM INTRO (EXACTLY 1 welcome message):
+- dmIntro: { "sender": "Name", "senderRole": "IT Director", "avatar": "XX", "text": "Welcome message mentioning security protocols and [playerHandle]." }
+- NO choices. This is a pure informational greeting from a senior staff member.
+
 DM SCENARIOS (EXACTLY 6-8 INDEPENDENT SCENARIOS):
 - 50% Legitimate peer requests requiring strict adherence to access control policies (ISO 27001 A.9.2) and least privilege.
 - 50% Social Engineering. Attackers use sophisticated tactics like deepfakes, Helpdesk impersonation to reset MFA tokens, or MFA Fatigue (push bombing).
 
-SCENARIO STRUCTURE:
+SCENARIO STRUCTURE (choices MUST be inside setup):
 {
-  "setup": { "id": "s-setup", "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "...", "choices": [...] },
-  "onPass": { "id": "s-pass", "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Technical validation of the correct ISO 27001/Regulatory response." },
-  "onFail": { "id": "s-fail", "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Severe technical and regulatory consequence of the incorrect action." }
+  "setup": { "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "...", "choices": [{"label": "...", "isCorrect": true/false}] },
+  "onPass": { "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Technical validation of the correct ISO 27001/Regulatory response." },
+  "onFail": { "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Severe technical and regulatory consequence of the incorrect action." }
 }`;
     } else if (section === "secondary") {
-      requiredFields = ["logEntries", "expectedIOCs", "npcBadAdvice", "lolbins", "wifi"];
+      requiredFields = [
+        "logEntries",
+        "expectedIOCs",
+        "npcBadAdvice",
+        "lolbins",
+        "wifi"
+      ];
       sectionPrompt = `ACT AS A SENIOR SOC ANALYST AND DIGITAL FORENSICS EXPERT.
 The target audience is CYBERSECURITY PROFESSIONALS conducting advanced log analysis.
-Use placeholders "${teamName}" and "${fakeDomain}".
+IMPORTANT: Use these EXACT placeholders:
+- "[teamName]" for the company name
+- "[fakeDomain]" for the corporate domain
+- "[playerHandle]" for the user's name
 
 SECONDARY CONTENT FOCUS (INVESTIGATION):
 - logEntries (EXACTLY 25-30 logs. MANDATORY: 70% LEGITIMATE traffic, 30% MALICIOUS attack indicators).
 - expectedIOCs (EXACTLY 6 specific strings found in the malicious logs: IP addresses, file paths, or tokens. MUST be an array of {type, value, hint}).
 - npcBadAdvice (EXACTLY 4-6 dialogues).
 - lolbins (EXACTLY 8-12 processes. MANDATORY: 50% LEGITIMATE usage, 50% MALICIOUS exploitation).
+  Each LOLBin MUST have: 'id' (unique string), 'processName' (e.g. "powershell.exe"), 'pid' (unique integer), 'commandLine' (full command with args), 'isMalicious' (boolean), 'description' (what this process does), 'mitreId' (optional MITRE ATT&CK ID like "T1059.001").
 - wifi (EXACTLY 5-8 networks. MANDATORY: 60% CORPORATE/HOME, 40% EVIL TWIN/SUSPICIOUS).
 
 TECHNICAL LOG DEPTH & KILL CHAIN (MANDATORY):
@@ -126,7 +142,7 @@ Logs MUST follow a coherent MITRE ATT&CK kill chain, utilizing precise SIEM arti
 2. Execution: Malicious LOLBin usage. MUST include specific Windows Event IDs (e.g., Event ID 4688 for process creation, showing 'powershell.exe' or 'certutil.exe' executing obfuscated command lines).
 3. Persistence: Windows Event ID 7045 (Service Installation) with binary paths pointing to user-writable directories, or Event ID 4672 anomalies.
 4. Lateral Movement: Windows Event ID 4624 (Network Logon Type 3) moving from a workstation to a Domain Controller, or AWS CloudTrail 'AssumeRole' API calls.
-Ensure the JSON output for logs includes specific keys for 'timestamp', 'eventID', 'source', 'destination', 'processName', and 'commandLine'.
+Each log entry MUST include: 'timestamp', 'level' (INFO/WARN/ERROR/CRITICAL), 'source' (process or service name), 'message' (human-readable log line including eventID, destination, processName, commandLine details), and 'isMalicious' (boolean).
 
 IOC EXTRACTION (MANDATORY):
 The 'expectedIOCs' array must correspond EXACTLY to the 'logEntries' generated. If a log shows an SSH brute force from 1.2.3.4, then an IOC of type "Attacker IP" with value "1.2.3.4" must exist.
@@ -171,25 +187,33 @@ INITIAL CONTENT FOCUS (ONBOARDING & BREACH EMAILS):
 - LEGITIMATE EMAILS: MUST have passing SPF/DKIM/DMARC headers. No malicious links.
 - PHISHING EMAILS: MUST reflect Adversary-in-the-Middle (AiTM), Evilginx, or Device Code Phishing. Lures MUST impersonate legitimate infrastructure (e.g., a shared document hosted on an attacker-controlled SharePoint tenant or a fake Microsoft Authentication Broker) designed to steal session cookies and bypass legacy MFA. MUST include at least one header failure or domain spoofing artifact. DO NOT use obvious typos or generic malware attachments.
 
+DM INTRO (EXACTLY 1 welcome message):
+- dmIntro: { "sender": "Name", "senderRole": "IT Director", "avatar": "XX", "text": "Welcome message mentioning security protocols and [playerHandle]." }
+- NO choices. This is a pure informational greeting from a senior staff member.
+
 DM SCENARIOS (EXACTLY 6-8 INDEPENDENT SCENARIOS):
 - 50% Legitimate peer requests requiring strict adherence to access control policies (ISO 27001 A.9.2) and least privilege.
 - 50% Social Engineering. Attackers use sophisticated tactics like deepfakes, Helpdesk impersonation to reset MFA tokens, or MFA Fatigue (push bombing).
 
-SCENARIO STRUCTURE:
+SCENARIO STRUCTURE (choices MUST be inside setup):
 {
-  "setup": { "id": "s-setup", "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "...", "choices": [...] },
-  "onPass": { "id": "s-pass", "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Technical validation of the correct ISO 27001/Regulatory response." },
-  "onFail": { "id": "s-fail", "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Severe technical and regulatory consequence of the incorrect action." }
+  "setup": { "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "...", "choices": [{"label": "...", "isCorrect": true/false}] },
+  "onPass": { "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Technical validation of the correct ISO 27001/Regulatory response." },
+  "onFail": { "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Severe technical and regulatory consequence of the incorrect action." }
 }`;
 
       const secondaryPrompt = `ACT AS A SENIOR SOC ANALYST AND DIGITAL FORENSICS EXPERT.
 The target audience is CYBERSECURITY PROFESSIONALS conducting advanced log analysis.
-Use placeholders "${teamName}" and "${fakeDomain}".
+IMPORTANT: Use these EXACT placeholders:
+- "[teamName]" for the company name
+- "[fakeDomain]" for the corporate domain
+- "[playerHandle]" for the user's name
 
 SECONDARY CONTENT FOCUS (INVESTIGATION):
 - logEntries (EXACTLY 25-30 logs. MANDATORY: 70% LEGITIMATE traffic, 30% MALICIOUS attack indicators).
 - npcBadAdvice (EXACTLY 4-6 dialogues).
 - lolbins (EXACTLY 8-12 processes. MANDATORY: 50% LEGITIMATE usage, 50% MALICIOUS exploitation).
+  Each LOLBin MUST have: 'id' (unique string), 'processName' (e.g. "powershell.exe"), 'pid' (unique integer), 'commandLine' (full command with args), 'isMalicious' (boolean), 'description' (what this process does), 'mitreId' (optional MITRE ATT&CK ID like "T1059.001").
 - wifi (EXACTLY 5-8 networks. MANDATORY: 60% CORPORATE/HOME, 40% EVIL TWIN/SUSPICIOUS).
 
 TECHNICAL LOG DEPTH & KILL CHAIN (MANDATORY):
@@ -198,7 +222,7 @@ Logs MUST follow a coherent MITRE ATT&CK kill chain, utilizing precise SIEM arti
 2. Execution: Malicious LOLBin usage. MUST include specific Windows Event IDs (e.g., Event ID 4688 for process creation, showing 'powershell.exe' or 'certutil.exe' executing obfuscated command lines).
 3. Persistence: Windows Event ID 7045 (Service Installation) with binary paths pointing to user-writable directories, or Event ID 4672 anomalies.
 4. Lateral Movement: Windows Event ID 4624 (Network Logon Type 3) moving from a workstation to a Domain Controller, or AWS CloudTrail 'AssumeRole' API calls.
-Ensure the JSON output for logs includes specific keys for 'timestamp', 'eventID', 'source', 'destination', 'processName', and 'commandLine'.
+Each log entry MUST include: 'timestamp', 'level' (INFO/WARN/ERROR/CRITICAL), 'source' (process or service name), 'message' (human-readable log line including eventID, destination, processName, commandLine details), and 'isMalicious' (boolean).
 
 HACKLORE & NPC BAD ADVICE (MANDATORY):
 The 'npcBadAdvice' array MUST test the player's ability to reject outdated, fear-based cybersecurity myths ("Hacklore"). 
@@ -290,7 +314,10 @@ Use locale: ${config.locale}. Make it challenging, believable, and completely IM
         throw new Error("No content generated from OpenAI API");
       }
 
-      const parsedContent = JSON.parse(generatedContent) as Record<string, unknown>;
+      const parsedContent = JSON.parse(generatedContent) as Record<
+        string,
+        unknown
+      >;
       let finalContent = parsedContent;
 
       // Check if fields are nested
@@ -298,8 +325,15 @@ Use locale: ${config.locale}. Make it challenging, believable, and completely IM
       if (!hasDirectFields) {
         for (const key of Object.keys(parsedContent)) {
           const nestedValue = parsedContent[key];
-          if (nestedValue && typeof nestedValue === "object" && nestedValue !== null) {
-            finalContent = { ...finalContent, ...(nestedValue as Record<string, unknown>) };
+          if (
+            nestedValue &&
+            typeof nestedValue === "object" &&
+            nestedValue !== null
+          ) {
+            finalContent = {
+              ...finalContent,
+              ...(nestedValue as Record<string, unknown>)
+            };
           }
         }
       }
@@ -328,8 +362,12 @@ Use locale: ${config.locale}. Make it challenging, believable, and completely IM
         lolbins: Array.isArray(finalContent.lolbins)
           ? (finalContent.lolbins as LOLBin[])
           : [],
-        wifi: Array.isArray(finalContent.wifi) ? (finalContent.wifi as WiFiNetwork[]) : [],
-        expectedIOCs: Array.isArray(finalContent.expectedIOCs) ? (finalContent.expectedIOCs as unknown[]) : [],
+        wifi: Array.isArray(finalContent.wifi)
+          ? (finalContent.wifi as WiFiNetwork[])
+          : [],
+        expectedIOCs: Array.isArray(finalContent.expectedIOCs)
+          ? (finalContent.expectedIOCs as unknown[])
+          : [],
         sessionId: config.sessionId,
         isOfflineContent: false
       };
@@ -364,7 +402,7 @@ export class AuditClient {
   private apiKey: string;
   private model: string;
 
-  constructor(apiKey: string, model: string = "gpt-4o") {
+  constructor(apiKey: string, model: string = "gpt-5.2") {
     this.apiKey = apiKey;
     this.model = model;
   }
@@ -388,7 +426,7 @@ CRITICAL COMPLIANCE & 2026 STANDARDS CHECK:
 3. TELEMETRIC ACCURACY (LOGS & LOLBINS):
    - Logs MUST utilize realistic, accurate artifacts (e.g., Windows Event IDs 4624, 4625, 4688, 7045 or AWS CloudTrail). If a log claims to show lateral movement but uses an incorrect Event ID or illogical port, score a CRITICAL FAIL.
 4. HACKLORE IDENTIFICATION (NPC_ADVICE):
-   - The NPC dialogue MUST represent a pervasive cybersecurity myth (e.g., juice jacking, frequent password expiration). The scenario is only valid if the 'isCorrect: true' choice actively debunks the myth and redirects to a data-driven practice.
+   - The NPC Advice is bad practice by design. The NPC dialogue MUST represent a pervasive cybersecurity myth (e.g., juice jacking, frequent password expiration). The scenario is only valid if the 'isCorrect: true' choice actively debunks the myth and redirects to a data-driven practice.
 
 SCORING (1-10):
 - 1-3: CRITICAL FAIL (e.g., technically inaccurate Event IDs, suggests password resets stop session hijacking, or "correct" action violates ISO 27001/NIS2 timelines). REJECT.
@@ -417,9 +455,13 @@ Return ONLY a JSON object: { "score": number, "feedback": "string" }`;
 
       const responseData = await response.json();
       const generatedContent = responseData.choices?.[0]?.message?.content;
-      if (!generatedContent) return { score: 5, feedback: "Audit failed - no content" };
+      if (!generatedContent)
+        return { score: 5, feedback: "Audit failed - no content" };
 
-      const result = JSON.parse(generatedContent) as { score?: number; feedback?: string };
+      const result = JSON.parse(generatedContent) as {
+        score?: number;
+        feedback?: string;
+      };
       return {
         score: Number(result.score) || 5,
         feedback: String(result.feedback) || ""
@@ -438,7 +480,7 @@ export function createOpenAIClient(): OpenAIClient | null {
     return null;
   }
 
-  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const model = process.env.OPENAI_MODEL || "gpt-4.1";
 
   return new OpenAIClient({ apiKey, model });
 }

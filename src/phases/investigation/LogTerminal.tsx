@@ -138,13 +138,13 @@ export function LogTerminal({ entries, onFlaggedChange }: LogTerminalProps) {
         ref={scrollRef}
         className="flex-1 min-h-0 overflow-auto px-2 py-3 font-mono text-[13px] leading-[1.5]"
       >
-        {filteredEntries.map((entry) => {
+        {filteredEntries.map((entry, idx) => {
           const lineNum = entries.indexOf(entry) + 1;
           const isFlagged = flaggedIds.has(entry.id);
 
           return (
             <div
-              key={entry.id}
+              key={`${entry.id}-${idx}`}
               onClick={() => toggleFlag(entry)}
               className={`
                 flex items-start gap-2 px-2.5 py-1 cursor-pointer rounded-sm

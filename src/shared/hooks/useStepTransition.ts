@@ -13,7 +13,8 @@ type GameStep =
   | "investigation-lolbins"
   | "investigation-ioc"
   | "investigation-rotation"
-  | "debrief";
+  | "debrief"
+  | "ending";
 
 export function useStepTransition(setStep: (step: GameStep) => void) {
   const [isTransitioning, setIsTransitioning] = useState(false);

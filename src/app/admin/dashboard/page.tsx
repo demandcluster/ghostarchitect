@@ -647,11 +647,31 @@ function ContentPoolPanel({ authFetch }: { authFetch: (url: string, options?: Re
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ section })
       });
-      // Give it a moment then refresh
-      setTimeout(fetchCounts, 2000);
+      // Poll until counts change (generation is async on server)
+      const before = data?.summary.total ?? 0;
+      let attempts = 0;
+      const poll = async () => {
+        attempts++;
+        try {
+          const res = await authFetch('/api/admin/content');
+          if (res.ok) {
+            const fresh = await res.json();
+            setData(fresh);
+            if (fresh.summary.total !== before || attempts >= 30) {
+              setActionLoading(null);
+              return;
+            }
+          }
+        } catch { /* ignore */ }
+        if (attempts < 30) {
+          setTimeout(poll, 3000);
+        } else {
+          setActionLoading(null);
+        }
+      };
+      setTimeout(poll, 3000);
     } catch (e) {
       console.error(e);
-    } finally {
       setActionLoading(null);
     }
   };
@@ -660,13 +680,13 @@ function ContentPoolPanel({ authFetch }: { authFetch: (url: string, options?: Re
     if (!confirm('Are you sure you want to clear the entire content pool? This will delete all generated content.')) {
       return;
     }
-    
+
     setActionLoading('clear');
     try {
       await authFetch('/api/admin/content', {
         method: 'DELETE'
       });
-      fetchCounts();
+      await fetchCounts();
     } catch (e) {
       console.error(e);
     } finally {
@@ -684,6 +704,25 @@ function ContentPoolPanel({ authFetch }: { authFetch: (url: string, options?: Re
           AI Content Pool
         </h2>
       </div>
+
+      {actionLoading && (
+        <div style={{
+          background: 'var(--warning-subtle, rgba(234,179,8,0.1))',
+          border: '1px solid var(--warning, #eab308)',
+          borderRadius: 8,
+          padding: '10px 16px',
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          fontSize: 12,
+          color: 'var(--warning, #eab308)',
+          fontWeight: 600
+        }}>
+          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'var(--warning, #eab308)' }} />
+          {actionLoading === 'clear' ? 'Clearing pool...' : `Generating content (${actionLoading})... This may take a minute.`}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
         {/* Summary Card */}

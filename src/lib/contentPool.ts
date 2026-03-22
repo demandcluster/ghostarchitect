@@ -101,22 +101,29 @@ export class ContentPoolManager {
         let dataArray: Record<string, unknown>[] = [];
         
         if (Array.isArray(rawData)) {
-          dataArray = rawData as Record<string, unknown>[];
-        } else if (rawData && typeof rawData === 'object' && rawData !== null) {
+          dataArray = rawData.filter(d => d && typeof d === 'object' && !Array.isArray(d)) as Record<string, unknown>[];
+        } else if (rawData && typeof rawData === 'object' && !Array.isArray(rawData)) {
           dataArray = [rawData as Record<string, unknown>];
         }
         
         if (dataArray.length === 0) return [];
-        return dataArray.map((d) => ({ 
-          data: d, 
-          qualityScore: i.qualityScore, 
-          id: i.id,
-          // Pre-normalization for filtering
-          isMalicious: d[maliciousKey] === true || 
-                       String(d[maliciousKey]) === 'true' ||
-                       String(d.type || '').toLowerCase().includes('phish') ||
-                       String(d.subject || d.title || '').toLowerCase().includes('urgent')
-        }));
+        return dataArray.map((d) => {
+          // Check the explicit key and common AI-generated variants
+          const checkBool = (...keys: string[]) => keys.some(k => d[k] === true || String(d[k] || '') === 'true');
+          const checkStr = (...keys: string[]) => keys.map(k => String(d[k] || '').toLowerCase()).join(' ');
+
+          let mal = checkBool(maliciousKey, 'isPhishing', 'isMalicious', 'isEvil', 'isEvilTwin', 'malicious', 'phishing', 'evil');
+          if (!mal) {
+            const text = checkStr('type', 'category', 'classification');
+            mal = /phish|malicious|evil|suspicious|attack|threat/.test(text);
+          }
+          if (!mal && maliciousKey === 'isPhishing') {
+            const subj = checkStr('subject', 'title', 'name');
+            mal = /urgent|verify.*account|suspend|click.*immediately|security.*alert/i.test(subj);
+          }
+
+          return { data: d, qualityScore: i.qualityScore, id: i.id, isMalicious: mal };
+        });
       });
       
       if (allFlat.length === 0) {
@@ -136,10 +143,22 @@ export class ContentPoolManager {
       const targetMalicious = Math.ceil(count * 0.5); 
       const targetLegit = count - targetMalicious;
 
-      const selected = [
-        ...this.pickRandom(malicious, targetMalicious),
-        ...this.pickRandom(legitimate, targetLegit)
-      ];
+      const pickedMal = this.pickRandom(malicious, targetMalicious);
+      const pickedLegit = this.pickRandom(legitimate, targetLegit);
+
+      // Guarantee at least 1 malicious item — if none detected, force-pick from pool
+      if (pickedMal.length === 0 && allFlat.length > 0) {
+        console.warn(`[ContentPool] ${type}: no malicious items detected, force-marking random item`);
+        const forced = allFlat[Math.floor(Math.random() * allFlat.length)];
+        (forced.data as Record<string, unknown>)[maliciousKey] = true;
+        forced.isMalicious = true;
+        pickedMal.push(forced);
+        // Remove from legit pick if it was there
+        const idx = pickedLegit.indexOf(forced);
+        if (idx !== -1) pickedLegit.splice(idx, 1);
+      }
+
+      const selected = [...pickedMal, ...pickedLegit];
 
       if (selected.length < count) {
         const remaining = allFlat.filter(i => !selected.includes(i));
@@ -179,7 +198,11 @@ export class ContentPoolManager {
     // 4. Branding and Chaining
     const brand = (item: unknown, complexity: number): Record<string, unknown> => {
       if (!item) return {} as Record<string, unknown>;
-      let branded = typeof item === 'string' ? (JSON.parse(item) as Record<string, unknown>) : { ...(item as Record<string, unknown>) };
+      if (typeof item === 'string') {
+        try { item = JSON.parse(item); } catch { return { value: item, complexity } as Record<string, unknown>; }
+      }
+      if (typeof item !== 'object' || item === null || Array.isArray(item)) return { value: item, complexity } as Record<string, unknown>;
+      let branded = { ...(item as Record<string, unknown>) };
       let str = JSON.stringify(branded);
 
       const replacements = [
@@ -214,7 +237,10 @@ export class ContentPoolManager {
         return val;
       };
 
-      if (branded.from || branded.sender || branded.body || branded.text || branded.subject || branded.title) {
+      // Detect DM messages (have choices, senderRole, or avatar) and skip email normalization
+      const isDM = branded.choices || branded.senderRole || branded.avatar;
+
+      if (!isDM && (branded.from || branded.sender || branded.body || branded.text || branded.subject || branded.title)) {
         branded.from = clean(branded.from) || clean(branded.sender) || clean(branded.author) || 'system@' + options.fakeDomain;
         branded.to = clean(branded.to) || clean(branded.recipient) || clean(branded.receiver) || options.playerHandle + '@' + options.fakeDomain;
         branded.subject = clean(branded.subject) || clean(branded.title) || 'No Subject';
@@ -266,6 +292,68 @@ export class ContentPoolManager {
         }
       }
 
+      // LOLBin normalization is handled at the result assembly level (see lolbins: safeFlatMap(...).map(...))
+      // to avoid brand() type-detection conflicts. Do NOT add LOLBin normalization here.
+
+      // Normalize log entry fields (must be before email normalization to prevent false matches)
+      if (branded.level !== undefined || branded.severity !== undefined || branded.logLevel !== undefined) {
+        branded.id = clean(branded.id) || `log-${Math.random().toString(36).slice(2, 8)}`;
+        branded.timestamp = clean(branded.timestamp) || clean(branded.time) || clean(branded.date) || new Date().toISOString();
+        const lvl = (clean(branded.level) || clean(branded.severity) || clean(branded.logLevel) || 'INFO').toUpperCase();
+        branded.level = ['INFO', 'WARN', 'ERROR', 'CRITICAL'].includes(lvl) ? lvl : 'INFO';
+        branded.source = clean(branded.source) || clean(branded.service) || clean(branded.processName) || clean(branded.process) || clean(branded.origin) || 'system';
+        // AI generates logs with eventID/destination/processName/commandLine instead of message
+        const cmdLine = clean(branded.commandLine) || clean(branded.command) || '';
+        const dest = clean(branded.destination) || '';
+        const eventId = clean(branded.eventID) || clean(branded.eventId) || '';
+        const synthParts = [eventId && `EventID:${eventId}`, dest && `dst:${dest}`, cmdLine].filter(Boolean);
+        branded.message = clean(branded.message) || clean(branded.text) || clean(branded.msg) || clean(branded.content) || clean(branded.body) || clean(branded.description) || (synthParts.length > 0 ? synthParts.join(' ') : '');
+        const mal = branded.isMalicious ?? branded.malicious ?? branded.suspicious ?? false;
+        branded.isMalicious = mal === true || String(mal) === 'true';
+        branded.attackTechnique = clean(branded.attackTechnique) || clean(branded.technique) || clean(branded.attack) || undefined;
+        branded.mitreId = clean(branded.mitreId) || clean(branded.mitre) || clean(branded.mitreAttackId) || undefined;
+        // Remove fields that would trigger email normalization
+        delete branded.text;
+        delete branded.body;
+        delete branded.content;
+        return { ...branded, complexity };
+      }
+
+      // Normalize WiFi network fields
+      if (branded.isEvilTwin !== undefined || branded.evil !== undefined || branded.bssid || branded.signalStrength !== undefined || branded.signal !== undefined) {
+        branded.id = clean(branded.id) || `wifi-${Math.random().toString(36).slice(2, 8)}`;
+        branded.ssid = clean(branded.ssid) || clean(branded.name) || clean(branded.networkName) || `${options.teamName}-Secure`;
+        branded.bssid = clean(branded.bssid) || clean(branded.macAddress) || clean(branded.mac) || 'XX:XX:XX:XX:XX:XX';
+        const sig = branded.signalStrength ?? branded.signal ?? branded.strength ?? -65;
+        branded.signalStrength = typeof sig === 'number' ? sig : parseInt(String(sig), 10) || -65;
+        branded.authType = clean(branded.authType) || clean(branded.auth) || clean(branded.security) || clean(branded.encryption) || 'WPA2-PSK';
+        const evil = branded.isEvilTwin ?? branded.evil ?? branded.isMalicious ?? branded.isEvil ?? false;
+        branded.isEvilTwin = evil === true || String(evil) === 'true';
+        if (!branded.indicators || !Array.isArray(branded.indicators)) {
+          branded.indicators = branded.hints ? (Array.isArray(branded.hints) ? branded.hints : []) : [];
+        }
+        // Ensure corporate SSIDs are branded with team name
+        const ssid = String(branded.ssid);
+        if (!ssid.toLowerCase().includes(options.teamName.toLowerCase())) {
+          branded.ssid = `${options.teamName}-${ssid}`;
+        }
+        return { ...branded, complexity };
+      }
+
+      // Normalize DM message fields
+      if (isDM || branded.sender || branded.senderRole || branded.text) {
+        branded.id = clean(branded.id) || `dm-${Math.random().toString(36).slice(2, 8)}`;
+        branded.sender = clean(branded.sender) || clean(branded.name) || clean(branded.from) || clean(branded.author) || 'Unknown';
+        branded.senderRole = clean(branded.senderRole) || clean(branded.role) || clean(branded.title) || clean(branded.position) || '';
+        branded.avatar = clean(branded.avatar) || clean(branded.initials) || (branded.sender as string)?.charAt(0)?.toUpperCase() || '?';
+        branded.text = clean(branded.text) || clean(branded.message) || clean(branded.body) || clean(branded.content) || '';
+        // Shuffle choices if present
+        if (branded.choices && Array.isArray(branded.choices)) {
+          branded.choices = [...(branded.choices as DMChoice[])].sort(() => Math.random() - 0.5);
+        }
+        return { ...branded, complexity };
+      }
+
       // Automatically shuffle DM choices if they exist
       if (branded.choices && Array.isArray(branded.choices)) {
         branded.choices = [...(branded.choices as DMChoice[])].sort(() => Math.random() - 0.5);
@@ -290,17 +378,38 @@ export class ContentPoolManager {
       const passId = `s${sId}-pass-${options.sessionId}`;
       const failId = `s${sId}-fail-${options.sessionId}`;
 
-      const setup = brand(sData.setup, complexity) as unknown as DMMessage;
+      // Normalize scenario keys — AI may use various names
+      const rawSetup = sData.setup || sData.message || sData.question || sData.prompt;
+      const rawPass = sData.onPass || sData.pass || sData.correct || sData.success || sData.on_pass;
+      const rawFail = sData.onFail || sData.fail || sData.incorrect || sData.failure || sData.on_fail;
+
+      if (!rawSetup) return; // skip malformed scenarios
+
+      const setup = brand(rawSetup, complexity) as unknown as DMMessage;
       setup.id = setupId;
+
+      // If AI put choices at the scenario level instead of inside setup, move them in
+      if ((!setup.choices || setup.choices.length === 0) && Array.isArray(sData.choices)) {
+        setup.choices = sData.choices as DMChoice[];
+      }
+
       setup.choices?.forEach((c: DMChoice) => {
-        c.nextMessageId = c.nextMessageId === 'ON_PASS_ID' ? passId : failId;
+        // Determine correctness: prefer isCorrect, fall back to trustDelta/scoreEffect sign
+        const rawChoice = c as unknown as Record<string, unknown>;
+        let correct = c.isCorrect;
+        if (correct === undefined || correct === null) {
+          const delta = Number(rawChoice.trustDelta ?? rawChoice.scoreEffect ?? 0);
+          correct = delta > 0;
+        }
+        c.isCorrect = correct === true || String(correct) === 'true';
+        c.nextMessageId = c.isCorrect ? passId : failId;
       });
 
-      const pass = brand(sData.onPass, complexity) as unknown as DMMessage;
+      const pass = brand(rawPass || {}, complexity) as unknown as DMMessage;
       pass.id = passId;
       pass.nextMessageId = nextSId;
 
-      const fail = brand(sData.onFail, complexity) as unknown as DMMessage;
+      const fail = brand(rawFail || {}, complexity) as unknown as DMMessage;
       fail.id = failId;
       fail.nextMessageId = nextSId;
 
@@ -316,19 +425,77 @@ export class ContentPoolManager {
       });
     }
 
-    const safeFlatMap = (items: PoolItem[]) => items.flatMap(i => {
-      const arr = Array.isArray(i.data) ? (i.data as unknown[]) : (i.data ? [i.data] : []);
-      return arr.map((e) => brand(e, i.qualityScore));
-    });
+    const safeFlatMap = (items: { data: unknown; qualityScore: number }[]) => {
+      const seen = new Set<string>();
+      return items.flatMap(i => {
+        const arr = Array.isArray(i.data) ? (i.data as unknown[]) : (i.data ? [i.data] : []);
+        return arr.map((e, idx) => {
+          const branded = brand(e, i.qualityScore);
+          // Deduplicate IDs
+          const rec = branded as Record<string, unknown>;
+          let id = String(rec.id || '');
+          if (!id || seen.has(id)) {
+            id = `${id || 'item'}-${idx}-${Math.random().toString(36).slice(2, 6)}`;
+            rec.id = id;
+          }
+          seen.add(id);
+          return branded;
+        });
+      });
+    };
 
     const result = {
-      preBreachEmails: preEmails.map(i => brand(i.data, i.qualityScore) as unknown as Email),
+      preBreachEmails: safeFlatMap(preEmails) as unknown as Email[],
       socialEngineeringDMs,
-      breachEmails: breachEmails.map(i => brand(i.data, i.qualityScore) as unknown as Email),
+      breachEmails: safeFlatMap(breachEmails) as unknown as Email[],
       logEntries: safeFlatMap(this.pickRandom(logs, 1)) as unknown as LogEntry[],
       npcBadAdvice: safeFlatMap(this.pickRandom(advice, 1)) as unknown as DMMessage[],
-      lolbins: bins.map(i => brand(i.data, i.qualityScore) as unknown as LOLBin),
-      wifi: wifi.map(i => brand(i.data, i.qualityScore) as unknown as WiFiNetwork),
+      lolbins: bins.flatMap(i => {
+        const arr = Array.isArray(i.data) ? (i.data as Record<string, unknown>[]) : (i.data ? [i.data as Record<string, unknown>] : []);
+        return arr;
+      }).map((r, idx) => {
+        // Direct normalization — skip brand() to avoid field mangling
+        const processName = String(r.processName || r.process || r.name || r.executable || r.binary || 'unknown.exe');
+        const pid = typeof r.pid === 'number' ? r.pid : (typeof r.PID === 'number' ? r.PID : Math.floor(Math.random() * 60000) + 1000 + idx);
+        const commandLine = String(r.commandLine || r.command || r.cmd || r.args || processName);
+        const description = String(r.description || r.desc || r.details || r.info || r.text || r.message || '');
+        const mal = r.isMalicious ?? r.malicious ?? r.suspicious ?? false;
+        return {
+          id: String(r.id || `lolbin-${idx}`),
+          processName,
+          pid: typeof pid === 'number' ? pid : parseInt(String(pid), 10) || (1000 + idx),
+          commandLine,
+          description,
+          isMalicious: mal === true || String(mal) === 'true',
+          mitreId: String(r.mitreId || r.mitre || r.mitreAttackId || r.technique || '') || undefined,
+          complexity: r.complexity as number | undefined,
+        } as unknown as LOLBin;
+      }),
+      wifi: wifi.map(w => {
+        const d = w.data as Record<string, unknown>;
+        const branded = brand(d, w.qualityScore);
+        // Force WiFi normalization regardless of what brand() detected
+        const ssidRaw = String(branded.ssid || branded.name || branded.networkName || branded.value || '');
+        const ssid = ssidRaw || `${options.teamName}-Secure`;
+        const bssid = String(branded.bssid || branded.macAddress || branded.mac || `${Math.floor(Math.random()*256).toString(16).padStart(2,'0').toUpperCase()}:${Math.floor(Math.random()*256).toString(16).padStart(2,'0').toUpperCase()}:${Math.floor(Math.random()*256).toString(16).padStart(2,'0').toUpperCase()}:${Math.floor(Math.random()*256).toString(16).padStart(2,'0').toUpperCase()}:${Math.floor(Math.random()*256).toString(16).padStart(2,'0').toUpperCase()}:${Math.floor(Math.random()*256).toString(16).padStart(2,'0').toUpperCase()}`);
+        const sig = Number(branded.signalStrength ?? branded.signal ?? branded.strength ?? branded.rssi ?? -(Math.floor(Math.random() * 50) + 35));
+        const authType = String(branded.authType || branded.auth || branded.security || branded.encryption || '');
+        const typeStr = String(branded.type || branded.category || branded.classification || '').toLowerCase();
+        const evil = branded.isEvilTwin === true || String(branded.isEvilTwin) === 'true'
+          || branded.evil === true || branded.isEvil === true || branded.isMalicious === true
+          || /evil|suspicious|rogue|fake|malicious/i.test(typeStr);
+        const indicators = Array.isArray(branded.indicators) ? branded.indicators as string[]
+          : Array.isArray(branded.hints) ? branded.hints as string[] : [];
+        return {
+          id: String(branded.id || `wifi-${Math.random().toString(36).slice(2, 8)}`),
+          ssid: evil ? (ssid.toLowerCase().includes(options.teamName.toLowerCase()) ? ssid : `${options.teamName}-${ssid}`) : ssid,
+          bssid,
+          signalStrength: sig,
+          authType: authType || (evil ? 'WPA2-PSK' : 'WPA2-Enterprise (802.1X)'),
+          isEvilTwin: evil,
+          indicators,
+        } as unknown as WiFiNetwork;
+      }),
       isOfflineContent: poolItems.length === 0
     };
 

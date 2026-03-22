@@ -14,7 +14,7 @@ interface DMSidebarProps {
 export function DMSidebar({
   messages,
   onChoice,
-  revealUpTo = 999,
+  revealUpTo = 0,
   revealedIds = [],
 }: DMSidebarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -28,6 +28,8 @@ export function DMSidebar({
   const visibleMessages = messages.filter(
     (m, i) => i < revealUpTo || revealedIds.includes(m.id)
   );
+
+  console.log('[DMSidebar] total:', messages.length, 'visible:', visibleMessages.length, 'revealUpTo:', revealUpTo, 'revealedIds:', revealedIds);
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-secondary)]">
@@ -142,7 +144,8 @@ function DMBubble({
             {shuffledChoices.map((choice) => {
               const isSelected = chosen === choice.id;
               const isOtherSelected = chosen && !isSelected;
-              const isCorrect = choice.isCorrect;
+
+              if (isOtherSelected) return null;
 
               return (
                 <motion.button
@@ -154,12 +157,10 @@ function DMBubble({
                     w-full p-2.5 rounded-xl text-left transition-all relative border
                     ${
                       isSelected
-                        ? isCorrect
+                        ? choice.isCorrect
                           ? "bg-[var(--success-subtle)] border-[var(--success)]/40 text-[var(--success)]"
                           : "bg-[var(--danger-subtle)] border-[var(--danger)]/40 text-[var(--danger)]"
-                        : isOtherSelected
-                          ? "opacity-40 border-transparent bg-transparent"
-                          : "bg-[var(--bg-window-sunken)] border-[var(--border)] hover:border-[var(--accent)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                        : "bg-[var(--bg-window-sunken)] border-[var(--border)] hover:border-[var(--accent)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                     }
                   `}
                 >
@@ -184,20 +185,28 @@ function DMBubble({
       <AnimatePresence>
         {chosen && (() => {
           const choice = message.choices?.find(c => c.id === chosen);
-          if (!choice?.scoreEffect) return null;
-          const delta = choice.scoreEffect.points;
+          if (!choice) return null;
+          const delta = choice.scoreEffect?.points ?? 0;
           return (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               className="ml-8 mt-2 flex items-center gap-2"
             >
-              <motion.span 
-                className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm"
-                style={{ background: delta > 0 ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)", color: delta > 0 ? "#4ade80" : "#f87171" }}
+              <span
+                className="text-[11px] font-medium"
+                style={{ color: choice.isCorrect ? "#4ade80" : "#f87171" }}
               >
-                {delta > 0 ? `+${delta}` : delta} trust
-              </motion.span>
+                {choice.isCorrect ? "✓ Good call." : "✗ Wrong call."}
+              </span>
+              {delta !== 0 && (
+                <span
+                  className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tighter shadow-sm"
+                  style={{ background: delta > 0 ? "rgba(34,197,94,0.25)" : "rgba(239,68,68,0.25)", color: delta > 0 ? "#4ade80" : "#f87171" }}
+                >
+                  {delta > 0 ? `+${delta}` : delta} trust
+                </span>
+              )}
             </motion.div>
           );
         })()}

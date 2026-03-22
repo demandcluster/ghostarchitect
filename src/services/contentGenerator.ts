@@ -1,5 +1,4 @@
 import type { Email, LogEntry, DMMessage, LOLBin, WiFiNetwork } from '@/content/types';
-import type { GeminiAIClient } from '@/lib/geminiAI';
 
 export interface GeneratedContent {
   preBreachEmails: Email[];
@@ -29,7 +28,7 @@ export interface IContentGenerator {
 }
 
 export class ContentGenerator implements IContentGenerator {
-  constructor(private geminiClient: GeminiAIClient | null = null) {}
+  constructor() {}
 
   async generateAll(config: GenerationConfig): Promise<GeneratedContent> {
     const temperature = config.temperature ?? 0.9;
@@ -83,5 +82,5 @@ export class ContentGenerator implements IContentGenerator {
 }
 
 export function createContentGenerator(): IContentGenerator | null {
-  return new ContentGenerator(null);
+  return new ContentGenerator();
 }

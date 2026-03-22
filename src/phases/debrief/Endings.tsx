@@ -17,8 +17,10 @@ export function Endings({ ending }: EndingsProps) {
   const fakeDomain = useGameStore((s) => s.fakeDomain);
   const teamName = useGameStore((s) => s.teamName);
 
-  if (ending === "fired") return <FiredEnding score={total} teamName={teamName} />;
-  if (ending === "promoted") return <PromotedEnding score={total} fakeDomain={fakeDomain} />;
+  if (ending === "fired")
+    return <FiredEnding score={total} teamName={teamName} />;
+  if (ending === "promoted")
+    return <PromotedEnding score={total} fakeDomain={fakeDomain} />;
   if (ending === "lateral") return <LateralEnding score={total} />;
   return <NeutralEnding score={total} />;
 }
@@ -72,9 +74,7 @@ function FiredEnding({ score, teamName }: { score: number; teamName: string }) {
           <div className="font-mono text-xs text-[#c9d1d9] space-y-1">
             <div>Listing: {teamName} Employee Database (4,500 records)</div>
             <div>Price: 0.15 BTC</div>
-            <div>
-              Sample: Doe, Jane | SSN: 9XX-XX-XXXX | DOB: 19XX-XX-XX
-            </div>
+            <div>Sample: Doe, Jane | SSN: 9XX-XX-XXXX | DOB: 19XX-XX-XX</div>
             <div className="text-text-muted">
               [All SSNs use structurally invalid 9XX prefix — simulation only]
             </div>
@@ -83,9 +83,7 @@ function FiredEnding({ score, teamName }: { score: number; teamName: string }) {
       </div>
 
       <div className="text-center">
-        <p className="text-sm text-text-secondary">
-          Final Score: {score}/100
-        </p>
+        <p className="text-sm text-text-secondary">Final Score: {score}/100</p>
         <p className="text-xs text-text-muted mt-1">
           The breach could have been contained with faster response.
         </p>
@@ -94,7 +92,13 @@ function FiredEnding({ score, teamName }: { score: number; teamName: string }) {
   );
 }
 
-function PromotedEnding({ score, fakeDomain }: { score: number; fakeDomain: string }) {
+function PromotedEnding({
+  score,
+  fakeDomain
+}: {
+  score: number;
+  fakeDomain: string;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -127,14 +131,13 @@ function PromotedEnding({ score, fakeDomain }: { score: number; fakeDomain: stri
           requested...
         </p>
         <p className="text-[10px] text-text-muted mt-2 italic">
-          To be continued in a future scenario...
+          To be continued in a future scenario... (all sessions are unique, so
+          play again!)
         </p>
       </div>
 
       <div className="text-center">
-        <p className="text-sm text-text-secondary">
-          Final Score: {score}/100
-        </p>
+        <p className="text-sm text-text-secondary">Final Score: {score}/~500</p>
       </div>
     </motion.div>
   );
@@ -158,7 +161,7 @@ function LateralEnding({ score }: { score: number }) {
         </p>
       </div>
       <div className="text-center text-sm text-text-secondary">
-        Score: {score}/100 — Review the debrief to see where you can improve.
+        Score: {score}/~500 — Review the debrief to see where you can improve.
       </div>
     </motion.div>
   );

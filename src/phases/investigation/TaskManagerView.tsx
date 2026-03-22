@@ -70,7 +70,7 @@ export function TaskManagerView({
           Malware Cleanup Results
         </h2>
         <div className="space-y-3">
-          {processes.map((proc) => {
+          {processes.map((proc, idx) => {
             const action = actions[proc.id];
             const correct = proc.isMalicious
               ? action === "quarantine"
@@ -78,7 +78,7 @@ export function TaskManagerView({
 
             return (
               <div
-                key={proc.id}
+                key={`${proc.id}-result-${idx}`}
                 className={`p-3 rounded-lg border ${
                   correct
                     ? "border-[rgba(22,163,74,0.35)]"
@@ -130,9 +130,9 @@ export function TaskManagerView({
           <span>PID</span>
           <span>Action</span>
         </div>
-        {processes.map((proc) => (
+        {processes.map((proc, idx) => (
           <div
-            key={proc.id}
+            key={`${proc.id}-${idx}`}
             onClick={() => setSelectedPid(proc.pid)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {

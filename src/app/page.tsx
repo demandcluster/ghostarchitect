@@ -22,6 +22,8 @@ import { ContainmentDecision } from "@/phases/investigation/ContainmentDecision"
 import { IOCExtraction } from "@/phases/investigation/IOCExtraction";
 import { CredentialRotation } from "@/phases/investigation/CredentialRotation";
 import { DebriefPage } from "@/phases/debrief/DebriefPage";
+import { EndingPage } from "@/phases/ending/EndingPage";
+import { deriveFlags } from "@/engine/rules";
 import { PRE_BREACH_EMAILS, BREACH_EMAILS } from "@/content/emails";
 import { SOCIAL_ENGINEERING_DM, NPC_BAD_ADVICE } from "@/content/dmScripts";
 import { LOG_ENTRIES } from "@/content/logEntries";
@@ -45,7 +47,8 @@ type GameStep =
   | "investigation-lolbins"
   | "investigation-ioc"
   | "investigation-rotation"
-  | "debrief";
+  | "debrief"
+  | "ending";
 
 export default function Home() {
   const [step, setStep] = useState<GameStep>(() => {
@@ -112,6 +115,7 @@ export default function Home() {
   const [dmInteractionsDone, setDmInteractionsDone] = useState(0);
   const [dmDone, setDmDone] = useState(false);
   const [flaggedLogs, setFlaggedLogs] = useState<LogEntry[]>([]);
+  const [logAnalysisResult, setLogAnalysisResult] = useState<{ correctFlags: number; falseFlags: number; missed: number; points: number } | null>(null);
   const [npcDmReveal, setNpcDmReveal] = useState(0);
   const [npcDmIndex, setNpcDmIndex] = useState(0);
   const [npcDmDone, setNpcDmDone] = useState(false);
@@ -325,12 +329,13 @@ export default function Home() {
     if (revealedDmIds.length === 0) return;
 
     const lastId = revealedDmIds[revealedDmIds.length - 1];
-    const dms = isContentReady() ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
+    const dms = isContentReady() && socialEngineeringDMs.length > 0 ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
     const currentMsg = dms.find(m => m.id === lastId);
 
     // If it's an informational message (no choices) and points to another message
     if (currentMsg && (!currentMsg.choices || currentMsg.choices.length === 0) && (currentMsg as { nextMessageId?: string }).nextMessageId) {
       const nextId = (currentMsg as { nextMessageId?: string }).nextMessageId;
+      console.log('[DM Auto-reveal] last msg:', lastId, 'has no choices, chaining to:', nextId, 'msg choices:', currentMsg.choices);
       if (nextId && !revealedDmIds.includes(nextId)) {
         const timer = setTimeout(() => {
           setRevealedDmIds(prev => [...prev, nextId]);
@@ -342,7 +347,7 @@ export default function Home() {
 
   const handleDMChoice = useCallback(
     (messageId: string, choice: DMChoice) => {
-      const dms = isContentReady() ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
+      const dms = isContentReady() && socialEngineeringDMs.length > 0 ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
       const currentMsg = dms.find(m => m.id === messageId);
       const complexity = currentMsg?.complexity || 5;
       const complexityMultiplier = complexity / 5;
@@ -372,7 +377,12 @@ export default function Home() {
       // Threading fix: Add the reply ID to revealed IDs immediately.
       // This preserves chronological discovery order.
       if (choice.nextMessageId) {
+        console.log('[DM Choice] Revealing response:', choice.nextMessageId, 'from choice isCorrect:', choice.isCorrect);
+        const responseMsg = dms.find(m => m.id === choice.nextMessageId);
+        console.log('[DM Choice] Response msg found:', !!responseMsg, 'nextMessageId:', responseMsg?.nextMessageId);
         setRevealedDmIds((prev) => prev.includes(choice.nextMessageId!) ? prev : [...prev, choice.nextMessageId!]);
+      } else {
+        console.log('[DM Choice] No nextMessageId on choice:', choice);
       }
 
       // Track completion
@@ -399,7 +409,7 @@ export default function Home() {
 
   const handleNpcChoice = useCallback(
     (messageId: string, choice: DMChoice) => {
-      const npcDms = isContentReady() ? npcBadAdvice : NPC_BAD_ADVICE;
+      const npcDms = isContentReady() && npcBadAdvice.length > 0 ? npcBadAdvice : NPC_BAD_ADVICE;
       const currentMsg = npcDms.find(m => m.id === messageId);
       const complexity = currentMsg?.complexity || 5;
       const complexityMultiplier = complexity / 5;
@@ -516,7 +526,7 @@ export default function Home() {
           
           // Initial DM reveal sequence: Show the first message (intro) after a delay
           setTimeout(() => {
-            const dms = isContentReady() ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
+            const dms = isContentReady() && socialEngineeringDMs.length > 0 ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
             if (dms.length > 0) {
               setRevealedDmIds([dms[0].id]);
             }
@@ -731,86 +741,113 @@ export default function Home() {
       id: "flagged",
       title: `Flagged Events (${flaggedLogs.length})`,
       content: (
-        <div className="p-3">
-          {flaggedLogs.length === 0 ? (
-            <p className="text-xs text-muted mb-4">
-              Click log lines to flag them for investigation.
-            </p>
-          ) : (
-            <div className="space-y-2 mb-4">
-              {flaggedLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className="p-2 bg-window-sunken rounded text-xs border border"
-                >
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="font-bold"
-                      style={{
-                        color:
-                          log.level === "CRITICAL" || log.level === "ERROR"
-                            ? "#e63946"
-                            : log.level === "WARN"
-                              ? "#ffdd57"
-                              : "#e0e0e0"
-                      }}
-                    >
-                      [{log.level}]
-                    </span>
-                    <span className="text-muted">{log.timestamp}</span>
+        <div className="flex flex-col h-full">
+          <div className="flex-1 overflow-auto p-3">
+            {flaggedLogs.length === 0 ? (
+              <p className="text-xs text-muted">
+                Click log lines to flag them for investigation.
+              </p>
+            ) : (
+              <div className="space-y-2">
+                {flaggedLogs.map((log, idx) => (
+                  <div
+                    key={`${log.id}-${idx}`}
+                    className="p-2 bg-window-sunken rounded text-xs border border"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="font-bold"
+                        style={{
+                          color:
+                            log.level === "CRITICAL" || log.level === "ERROR"
+                              ? "#e63946"
+                              : log.level === "WARN"
+                                ? "#ffdd57"
+                                : "#e0e0e0"
+                        }}
+                      >
+                        [{log.level}]
+                      </span>
+                      <span className="text-muted">{log.timestamp}</span>
+                    </div>
+                    <div className="text-primary mt-1 font-mono text-[11px]">
+                      {(log.message ?? '').slice(0, 100)}
+                      {(log.message ?? '').length > 100 ? "..." : ""}
+                    </div>
                   </div>
-                  <div className="text-primary mt-1 font-mono text-[11px]">
-                    {log.message.slice(0, 100)}
-                    {log.message.length > 100 ? "..." : ""}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          <button
-            onClick={async () => {
-              const malicious = (
-                isContentReady() ? logEntries : LOG_ENTRIES
-              ).filter((e) => e.isMalicious);
-              const correctFlags = flaggedLogs.filter(
-                (f) => f.isMalicious
-              ).length;
-              const falseFlags = flaggedLogs.filter(
-                (f) => !f.isMalicious
-              ).length;
+                ))}
+              </div>
+            )}
+            {logAnalysisResult && (
+              <div className={`mt-3 p-3 rounded text-xs border ${logAnalysisResult.correctFlags > logAnalysisResult.falseFlags ? 'bg-[var(--success-subtle)] border-[var(--success)]/40' : 'bg-[var(--danger-subtle)] border-[var(--danger)]/40'}`}>
+                <p className="font-bold" style={{ color: logAnalysisResult.correctFlags > logAnalysisResult.falseFlags ? 'var(--success)' : 'var(--danger)' }}>
+                  {logAnalysisResult.correctFlags > logAnalysisResult.falseFlags ? 'Good analysis!' : 'Needs improvement'}
+                </p>
+                <p className="mt-1 text-[var(--text-secondary)]">
+                  {logAnalysisResult.correctFlags} malicious entries correctly flagged, {logAnalysisResult.falseFlags} false positive{logAnalysisResult.falseFlags !== 1 ? 's' : ''}.
+                  {logAnalysisResult.missed > 0 && ` ${logAnalysisResult.missed} malicious entries missed.`}
+                </p>
+                <p className="mt-1 font-mono text-[var(--accent)]">+{logAnalysisResult.points}/25 forensic skill</p>
+              </div>
+            )}
+          </div>
+          <div className="p-3 border-t border-[var(--border)] shrink-0">
+            {logAnalysisResult ? (
+              <button
+                onClick={() => changeStep("investigation-lolbins")}
+                className="w-full py-2 bg-accent text-white rounded text-xs font-medium hover:bg-accent-hover"
+              >
+                Continue →
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  const malicious = (
+                    isContentReady() ? logEntries : LOG_ENTRIES
+                  ).filter((e) => e.isMalicious);
+                  const correctFlags = flaggedLogs.filter(
+                    (f) => f.isMalicious
+                  ).length;
+                  const falseFlags = flaggedLogs.filter(
+                    (f) => !f.isMalicious
+                  ).length;
+                  const missed = malicious.length - correctFlags;
+                  const points = Math.max(
+                    0,
+                    Math.round(
+                      ((correctFlags - falseFlags) / Math.max(malicious.length, 1)) * 25
+                    )
+                  );
 
-              addAction({
-                id: "log-analysis",
-                category: "forensicSkill",
-                points: Math.max(
-                  0,
-                  Math.round(
-                    ((correctFlags - falseFlags) / malicious.length) * 25
-                  )
-                ),
-                maxPoints: 25,
-                label: `Log analysis: ${correctFlags} correct flags, ${falseFlags} false positives`
-              });
+                  addAction({
+                    id: "log-analysis",
+                    category: "forensicSkill",
+                    points,
+                    maxPoints: 25,
+                    label: `Log analysis: ${correctFlags} correct flags, ${falseFlags} false positives`
+                  });
 
-              addTimelineEntry({
-                id: "log-analysis",
-                phase: "investigation",
-                description: `Flagged ${flaggedLogs.length} log entries (${correctFlags} malicious)`
-              });
+                  addTimelineEntry({
+                    id: "log-analysis",
+                    phase: "investigation",
+                    description: `Flagged ${flaggedLogs.length} log entries (${correctFlags} malicious)`
+                  });
 
-              await changeStep("investigation-lolbins");
-            }}
-            className="w-full py-2 bg-accent text-white rounded text-xs font-medium hover:bg-accent-hover"
-          >
-            {flaggedLogs.length > 0 ? "Submit Flagged Events" : "Continue →"}
-          </button>
+                  setLogAnalysisResult({ correctFlags, falseFlags, missed, points });
+                }}
+                className="w-full py-2 bg-accent text-white rounded text-xs font-medium hover:bg-accent-hover"
+              >
+                {flaggedLogs.length > 0 ? "Submit Flagged Events" : "Continue →"}
+              </button>
+            )}
+          </div>
         </div>
       )
     });
   }
 
   if (step === "investigation-lolbins") {
-    const npcDms = isContentReady() ? npcBadAdvice : NPC_BAD_ADVICE;
+    const npcDms = isContentReady() && npcBadAdvice.length > 0 ? npcBadAdvice : NPC_BAD_ADVICE;
     const allNpcMessagesAnswered = npcDmIndex >= npcDms.length;
 
     windows.push({
@@ -820,8 +857,8 @@ export default function Home() {
         <div className="h-full flex flex-col">
           <div className="flex-1 overflow-auto">
             <TaskManagerView
-              processes={isContentReady() && lolbins.length > 0 ? lolbins : LOLBINS}
-              onComplete={() => {}}
+              processes={isContentReady() && lolbins.length > 0 && lolbins[0]?.processName ? lolbins : LOLBINS}
+              onComplete={() => changeStep("investigation-ioc")}
             />
           </div>
           {allNpcMessagesAnswered && (
@@ -852,7 +889,7 @@ export default function Home() {
       title: "IOC Documentation",
       content: (
         <IOCExtraction 
-          expectedIOCs={isContentReady() && expectedIOCs.length > 0 ? expectedIOCs : undefined}
+          expectedIOCs={isContentReady() && expectedIOCs?.length > 0 ? expectedIOCs : undefined}
           logEntries={isContentReady() && logEntries.length > 0 ? logEntries : undefined}
           onComplete={() => changeStep("investigation-rotation")} 
         />
@@ -884,7 +921,7 @@ export default function Home() {
     windows.push({
       id: "debrief",
       title: "Incident Debrief",
-      content: <DebriefPage />
+      content: <DebriefPage onContinue={() => changeStep("ending")} />
     });
   }
 
@@ -894,7 +931,7 @@ export default function Home() {
     step === "onboarding-portal" ? (
       <DMSidebar
         messages={
-          isContentReady() ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM
+          isContentReady() && socialEngineeringDMs.length > 0 ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM
         }
         onChoice={handleDMChoice}
         revealedIds={revealedDmIds}
@@ -943,19 +980,37 @@ export default function Home() {
           }}
         />
       )}
-      <OSShell
-        key={step}
-        windows={windows}
-        dmSidebar={dmSidebar}
-        onAppClick={(appId) => {
-          if (appId === "scoreboard") {
-            setShowScoreboard((v) => !v);
-          }
-          if (appId === "wiki") {
-            setShowWiki((v) => !v);
-          }
-        }}
-      />
+      {step === "ending" ? (
+        <EndingPage
+          ending={deriveFlags(
+            useNarrativeStore.getState().decisions,
+            useNarrativeStore.getState().flags
+          ).ending}
+          teamName={useGameStore.getState().teamName}
+          fakeDomain={useGameStore.getState().fakeDomain}
+          onPlayAgain={() => {
+            useScoreStore.getState().reset();
+            useNarrativeStore.getState().reset();
+            useGameStore.getState().reset();
+            useContentStore.getState().clearSession();
+            setStep("start");
+          }}
+        />
+      ) : (
+        <OSShell
+          key={step}
+          windows={windows}
+          dmSidebar={dmSidebar}
+          onAppClick={(appId) => {
+            if (appId === "scoreboard") {
+              setShowScoreboard((v) => !v);
+            }
+            if (appId === "wiki") {
+              setShowWiki((v) => !v);
+            }
+          }}
+        />
+      )}
     </>
   );
 }

@@ -8,7 +8,7 @@ import {
   PointElement,
   LineElement,
   Filler,
-  Tooltip,
+  Tooltip
 } from "chart.js";
 import { Radar } from "react-chartjs-2";
 import { useScoreStore, ScoreCategory } from "@/stores/scoreStore";
@@ -19,14 +19,14 @@ const LABELS: Record<ScoreCategory, string> = {
   phishingIQ: "Phishing IQ",
   passwordHygiene: "Password Hygiene",
   networkSecurity: "Network Security",
-  forensicSkill: "Forensic Skill",
+  forensicSkill: "Forensic Skill"
 };
 
 const AXIS_ORDER: ScoreCategory[] = [
   "phishingIQ",
   "passwordHygiene",
   "networkSecurity",
-  "forensicSkill",
+  "forensicSkill"
 ];
 
 export function RadarChart() {
@@ -34,22 +34,29 @@ export function RadarChart() {
   const [animatedScores, setAnimatedScores] = useState([0, 0, 0, 0]);
   const [showNumbers, setShowNumbers] = useState(false);
 
-  // Sequential vertex animation
   useEffect(() => {
     const scores = AXIS_ORDER.map((k) => categoryScores[k]);
     let step = 0;
 
     const interval = setInterval(() => {
-      if (step >= 4) {
+      // 1. Use scores.length instead of a hardcoded 4
+      if (step >= scores.length) {
         clearInterval(interval);
         setShowNumbers(true);
         return;
       }
+
+      // 2. Capture the exact step for this specific interval tick
+      const currentStep = step;
+
       setAnimatedScores((prev) => {
         const next = [...prev];
-        next[step] = scores[step];
+        // 3. Use the captured constant, NOT the mutable 'step' variable
+        next[currentStep] = scores[currentStep];
         return next;
       });
+
+      // 4. Now it is safe to increment
       step++;
     }, 400);
 
@@ -66,33 +73,42 @@ export function RadarChart() {
         borderColor: "rgba(37, 99, 235, 0.8)",
         borderWidth: 2,
         pointBackgroundColor: "rgba(37, 99, 235, 1)",
-        pointRadius: 4,
-      },
-    ],
+        pointRadius: 4
+      }
+    ]
   };
 
   const options = {
     responsive: true,
     maintainAspectRatio: true,
+    // Add this layout section:
+    layout: {
+      padding: {
+        left: 30, // Gives room for the left label
+        right: 30, // Gives room for the right label
+        top: 10,
+        bottom: 10
+      }
+    },
     scales: {
       r: {
         min: 0,
         max: 150, // Nominal max for visualization
         ticks: {
-          stepSize: 30,
-          display: false,
+          stepSize: 10,
+          display: false
         },
         grid: {
-          color: "rgba(128, 128, 128, 0.2)",
+          color: "rgba(128, 128, 128, 0.2)"
         },
         angleLines: {
-          color: "rgba(128, 128, 128, 0.2)",
+          color: "rgba(128, 128, 128, 0.2)"
         },
         pointLabels: {
           font: { size: 12, family: "Inter, sans-serif" },
-          color: "var(--text-secondary)",
-        },
-      },
+          color: "var(--text-secondary)"
+        }
+      }
     },
     plugins: {
       tooltip: {
@@ -100,13 +116,13 @@ export function RadarChart() {
           label: (ctx: { dataIndex: number; raw: unknown }) => {
             const axis = AXIS_ORDER[ctx.dataIndex];
             return `${LABELS[axis]}: ${ctx.raw}`;
-          },
-        },
-      },
-    },
+          }
+        }
+      }
+    }
   };
 
-  const total = animatedScores.reduce((a, b) => a + b, 0);
+  const total = Object.values(categoryScores).reduce((a, b) => a + b, 0);
 
   return (
     <motion.div
@@ -133,7 +149,9 @@ export function RadarChart() {
             </div>
           ))}
           <div className="col-span-2 text-center mt-2">
-            <span className="text-lg font-bold text-accent">Total Score: {total}</span>
+            <span className="text-lg font-bold text-accent">
+              Total Score: {total}
+            </span>
           </div>
         </div>
       )}

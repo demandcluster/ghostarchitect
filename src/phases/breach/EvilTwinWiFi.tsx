@@ -57,18 +57,91 @@ export function EvilTwinWiFi({ onComplete, networks }: EvilTwinWiFiProps) {
   const teamName = useGameStore((s) => s.teamName);
 
   const accessPoints = useMemo<WiFiAP[]>(() => {
+    // The challenge always shows exactly 2 APs with the same corporate SSID:
+    // one legitimate (WPA2-Enterprise, normal signal) and one evil twin (WPA2-PSK, strong signal).
+    // AI-generated network data provides indicators/hints but the core pair is always built from the team name.
+    const randomMAC = () => Array.from({length: 6}, () => Math.floor(Math.random()*256).toString(16).padStart(2,'0').toUpperCase()).join(':');
+
+    // Extract any AI-provided indicators for the evil twin
+    let evilIndicators: string[] = [];
     if (networks && networks.length > 0) {
-      return networks.map(n => ({
-        id: n.id,
-        ssid: n.ssid,
-        bssid: n.bssid,
-        signal: n.signalStrength,
-        authType: n.authType,
-        isEvil: n.isEvilTwin,
-        indicators: n.indicators
-      }));
+      for (const n of networks) {
+        const raw = n as unknown as Record<string, unknown>;
+        const typeStr = String(raw.type || raw.category || '').toLowerCase();
+        const isEvil = n.isEvilTwin === true || /evil|suspicious|rogue|fake|malicious/i.test(typeStr);
+        if (isEvil) {
+          const ind = n.indicators || (Array.isArray(raw.indicators) ? raw.indicators as string[] : Array.isArray(raw.hints) ? raw.hints as string[] : []);
+          if (ind.length > 0) { evilIndicators = ind as string[]; break; }
+        }
+      }
     }
-    return buildDefaultAccessPoints(teamName);
+
+    const corpSSID = `${teamName}-Secure`;
+    const legitMAC = randomMAC();
+    const evilMAC = randomMAC();
+
+    const pair: WiFiAP[] = [
+      {
+        id: "wifi-legit",
+        ssid: corpSSID,
+        bssid: legitMAC,
+        signal: -(Math.floor(Math.random() * 20) + 60), // -60 to -80 dBm (normal)
+        authType: "WPA2-Enterprise (802.1X)",
+        isEvil: false,
+      },
+      {
+        id: "wifi-evil",
+        ssid: corpSSID,
+        bssid: evilMAC,
+        signal: -(Math.floor(Math.random() * 10) + 30), // -30 to -40 dBm (suspiciously strong)
+        authType: "WPA2-PSK",
+        isEvil: true,
+        indicators: evilIndicators.length > 0 ? evilIndicators : [
+          `Signal strength is unusually strong for this location`,
+          `WPA2-PSK instead of expected 802.1X enterprise auth`,
+          `Unknown BSSID (${evilMAC}) not in corporate AP inventory`,
+        ],
+      },
+    ];
+
+    // Add AI-generated background networks (non-evil ones as environmental noise)
+    const extras: WiFiAP[] = [];
+    if (networks && networks.length > 0) {
+      for (const n of networks) {
+        const raw = n as unknown as Record<string, unknown>;
+        const typeStr = String(raw.type || raw.category || '').toLowerCase();
+        const isEvil = n.isEvilTwin === true || /evil|suspicious|rogue|fake|malicious/i.test(typeStr);
+        if (isEvil) continue; // skip — we already have our evil twin
+        const name = String(n.ssid || raw.ssid || raw.name || raw.networkName || '');
+        if (!name || name.toLowerCase().includes(teamName.toLowerCase())) continue; // skip duplicates of corp SSID
+        extras.push({
+          id: String(n.id || raw.id || `wifi-bg-${extras.length}`),
+          ssid: name,
+          bssid: String(n.bssid || raw.bssid || '') || randomMAC(),
+          signal: Number(n.signalStrength ?? raw.signalStrength ?? raw.signal ?? -(Math.floor(Math.random() * 30) + 50)),
+          authType: String(n.authType || raw.authType || raw.auth || raw.security || 'Open'),
+          isEvil: false,
+        });
+      }
+    }
+
+    // If no AI extras, add hardcoded background noise
+    if (extras.length === 0) {
+      const defaultExtras: WiFiAP[] = [
+        { id: "wifi-bg-guest", ssid: "Airport_FreeWiFi", bssid: randomMAC(), signal: -(Math.floor(Math.random() * 15) + 55), authType: "Open", isEvil: false },
+        { id: "wifi-bg-neighbor", ssid: "NETGEAR-5G-Home", bssid: randomMAC(), signal: -(Math.floor(Math.random() * 10) + 70), authType: "WPA2-PSK", isEvil: false },
+        { id: "wifi-bg-iot", ssid: "HP-Print-A3-LaserJet", bssid: randomMAC(), signal: -(Math.floor(Math.random() * 10) + 75), authType: "WPA2-PSK", isEvil: false },
+      ];
+      extras.push(...defaultExtras);
+    }
+
+    // Combine: evil twin pair + up to 3 background networks, then shuffle
+    const all = [...pair, ...extras.slice(0, 3)];
+    for (let i = all.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [all[i], all[j]] = [all[j], all[i]];
+    }
+    return all;
   }, [networks, teamName]);
 
   useEffect(() => {
@@ -155,7 +228,7 @@ export function EvilTwinWiFi({ onComplete, networks }: EvilTwinWiFiProps) {
             </>
           ) : (
             <>
-              <p className="text-sm font-medium text-accent">
+              <p className="text-sm font-medium text-[var(--accent)]">
                 Correct! You identified the legitimate access point.
               </p>
               <p className="text-xs text-[var(--text-secondary)] mt-2">
@@ -180,7 +253,7 @@ export function EvilTwinWiFi({ onComplete, networks }: EvilTwinWiFiProps) {
   return (
     <div ref={containerRef} className="overflow-auto h-full">
     <div className="p-6 max-w-lg mx-auto">
-      <h2 className="text-lg font-bold text-text-primary mb-2">
+      <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2">
         Connect to Wi-Fi
       </h2>
       <p className="text-sm text-[var(--text-secondary)] mb-6">
@@ -189,29 +262,30 @@ export function EvilTwinWiFi({ onComplete, networks }: EvilTwinWiFiProps) {
       </p>
 
       <div className="space-y-3">
-        {accessPoints.map((ap) => (
+        {accessPoints.map((ap, idx) => (
           <button
-            key={ap.id || ap.bssid}
+            key={ap.id || ap.bssid || `wifi-${idx}`}
             onClick={() => handleConnect(ap)}
-            className="w-full p-4 border border-border rounded-lg text-left hover:border-accent transition-colors"
+            className="w-full p-4 border border-[var(--border)] rounded-lg text-left hover:border-[var(--accent)] transition-colors"
           >
             <div className="flex items-center justify-between">
-              <span className="font-medium text-sm text-text-primary">
+              <span className="font-medium text-sm text-[var(--text-primary)]">
                 {ap.ssid}
               </span>
               <SignalBars strength={ap.signal} />
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-[var(--text-secondary)]">
               <div>
-                <span className="text-text-muted">BSSID:</span>{" "}
-                <span className="font-mono">{ap.bssid}</span>
+                <span className="text-[var(--text-muted)]">BSSID:</span>{" "}
+                <span className="font-mono text-[var(--text-secondary)]">{ap.bssid}</span>
               </div>
               <div>
-                <span className="text-text-muted">Signal:</span>{" "}
-                <span className="font-mono">{ap.signal} dBm</span>
+                <span className="text-[var(--text-muted)]">Signal:</span>{" "}
+                <span className="font-mono text-[var(--text-secondary)]">{ap.signal} dBm</span>
               </div>
               <div>
-                <span className="text-text-muted">Auth:</span> {ap.authType}
+                <span className="text-[var(--text-muted)]">Auth:</span>{" "}
+                <span className="text-[var(--text-secondary)]">{ap.authType}</span>
               </div>
             </div>
           </button>
@@ -254,7 +328,7 @@ function PacketCaptureView({
       animate={{ opacity: 1 }}
       className="p-6 max-w-2xl mx-auto"
     >
-      <h3 className="text-base font-bold text-danger mb-3">
+      <h3 className="text-base font-bold text-[var(--danger)] mb-3">
         Packet Capture — Credential Interception Detected
       </h3>
 
@@ -265,10 +339,10 @@ function PacketCaptureView({
         <div className="text-[var(--warning)]">
           [HTTP] POST /auth/login HTTP/1.1
         </div>
-        <div className="text-text-muted">
+        <div className="text-[var(--text-muted)]">
           Host: {mailHost}
         </div>
-        <div className="text-text-muted">
+        <div className="text-[var(--text-muted)]">
           Content-Type: application/x-www-form-urlencoded
         </div>
         <div className="text-[var(--danger)] mt-2">
@@ -277,7 +351,7 @@ function PacketCaptureView({
         <div className="text-[var(--danger)] mt-2">
           [ALERT] Credentials captured in plaintext via sslstrip
         </div>
-        <div className="text-text-muted mt-2">
+        <div className="text-[var(--text-muted)] mt-2">
           [INFO] Captive portal certificate: CN={fakeDomain}
         </div>
         <div className="text-[var(--warning)]">
@@ -285,7 +359,7 @@ function PacketCaptureView({
         </div>
       </div>
 
-      <p className="text-xs text-text-muted mt-3">
+      <p className="text-xs text-[var(--text-muted)] mt-3">
         The Evil Twin AP intercepted your connection using sslstrip, downgrading
         HTTPS to HTTP and capturing credentials in plaintext.
       </p>
