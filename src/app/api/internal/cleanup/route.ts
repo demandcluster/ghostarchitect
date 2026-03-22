@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       where: { retainUntil: { lt: now } },
       select: { id: true },
     });
-    const expiredRetainTeamIds = expiredRetainTeams.map((t) => t.id);
+    const expiredRetainTeamIds = expiredRetainTeams.map((t: { id: string }) => t.id);
 
     const deletedSessionsByRetain = expiredRetainTeamIds.length > 0
       ? await prisma.session.deleteMany({ where: { teamId: { in: expiredRetainTeamIds } } })

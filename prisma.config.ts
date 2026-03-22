@@ -12,8 +12,6 @@ const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
 const schemaPath = packageJson.prisma?.schema || 'src/prisma/schema.prisma';
 
 export default defineConfig({
+  earlyAccess: true,
   schema: path.join(__dirname, schemaPath),
-  datasource: {
-    url: process.env.DATABASE_URL,
-  },
 });

@@ -42,7 +42,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Trainer not found' }, { status: 404 });
     }
 
-    const teamIds = trainer.teams.map((t) => t.id);
+    const teamIds = trainer.teams.map((t: { id: string }) => t.id);
 
     await prisma.$transaction([
       // Delete all sessions belonging to all teams owned by this trainer

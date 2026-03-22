@@ -19,11 +19,11 @@ async function main() {
     console.log('--- Content Pool Overview ---');
     console.log('Total items:', allItems.length);
     
-    const types = [...new Set(allItems.map(i => i.type))];
-    types.forEach(type => {
-      const items = allItems.filter(i => i.type === type);
-      const audited = items.filter(i => i.audited);
-      const highScore = audited.filter(i => i.qualityScore >= 5);
+    const types = [...new Set(allItems.map((i: { type: string }) => i.type))] as string[];
+    types.forEach((type: string) => {
+      const items = allItems.filter((i: { type: string }) => i.type === type);
+      const audited = items.filter((i: { audited: boolean }) => i.audited);
+      const highScore = audited.filter((i: { qualityScore: number }) => i.qualityScore >= 5);
       console.log(`Type: ${type} | Total: ${items.length} | Audited: ${audited.length} | Score >= 5: ${highScore.length}`);
     });
 
@@ -33,7 +33,7 @@ async function main() {
     });
     
     console.log('\n--- EMAIL_PRE Samples ---');
-    preEmails.forEach((item, i) => {
+    preEmails.forEach((item: { id: string; audited: boolean; qualityScore: number; data: unknown }, i: number) => {
       console.log(`\n[${i+1}] ID: ${item.id} | Audited: ${item.audited} | Score: ${item.qualityScore}`);
       console.log('Data:', JSON.stringify(item.data).slice(0, 200) + '...');
     });

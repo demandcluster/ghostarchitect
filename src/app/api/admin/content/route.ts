@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const totalCount = await prisma.contentPool.count();
 
     return NextResponse.json({
-      counts: counts.map(c => ({
+      counts: counts.map((c: { type: string; _count: { id: number } }) => ({
         type: c.type,
         count: c._count.id
       })),

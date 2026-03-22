@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const result = trainers.map((t) => ({
+    const result = trainers.map((t: { id: string; username: string; role: string; createdAt: Date; acceptedTermsAt: Date | null; _count: { teams: number } }) => ({
       id: t.id,
       username: t.username,
       role: t.role,

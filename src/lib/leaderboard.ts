@@ -57,7 +57,7 @@ export async function computeLeaderboardSnapshot(teamId: string) {
     }),
   ]);
 
-  const rankings = sessions.map((s, i) => ({
+  const rankings = sessions.map((s: { playerHandle: string | null; totalScore: number | null; completedAt: Date | null; phaseScores: unknown; endingReached: string | null }, i: number) => ({
     rank: i + 1,
     playerHandle: s.playerHandle ?? 'Anonymous',
     totalScore: s.totalScore ?? 0,

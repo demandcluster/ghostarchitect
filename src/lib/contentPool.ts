@@ -74,7 +74,7 @@ export class ContentPoolManager {
       ? (await prisma.sessionSeenContent.findMany({
           where: { sessionId: options.sessionId },
           select: { contentId: true }
-        })).map(s => s.contentId)
+        })).map((s: { contentId: string }) => s.contentId)
       : [];
 
     const available = poolItems.filter(item => !seenIds.includes(item.id));

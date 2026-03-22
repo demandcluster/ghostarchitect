@@ -24,24 +24,26 @@ export async function GET(request: NextRequest, { params }: Params) {
       return NextResponse.json({ error: 'Team not found' }, { status: 404 });
     }
 
-    const completedCount = team.sessions.filter((s) => s.completedAt).length;
+    type SessionRow = { id: string; playerHandle: string | null; totalScore: number | null; completedAt: Date | null; phaseScores: unknown; endingReached: string | null; deviceInfo: unknown };
+    const sessions = team.sessions as SessionRow[];
+    const completedCount = sessions.filter((s: SessionRow) => s.completedAt).length;
     const avgScore =
       completedCount > 0
         ? Math.round(
-            team.sessions
-              .filter((s) => s.totalScore != null)
-              .reduce((sum, s) => sum + (s.totalScore ?? 0), 0) / completedCount,
+            sessions
+              .filter((s: SessionRow) => s.totalScore != null)
+              .reduce((sum: number, s: SessionRow) => sum + (s.totalScore ?? 0), 0) / completedCount,
           )
         : 0;
 
     return NextResponse.json({
       team: { id: team.id, name: team.name, inviteCode: team.inviteCode, isActive: team.isActive },
       stats: {
-        totalSessions: team.sessions.length,
+        totalSessions: sessions.length,
         completedSessions: completedCount,
         averageScore: avgScore,
       },
-      sessions: team.sessions.map((s) => ({
+      sessions: sessions.map((s: SessionRow) => ({
         id: s.id,
         playerHandle: s.playerHandle,
         totalScore: s.totalScore,
