@@ -9,7 +9,10 @@ export async function GET(request: NextRequest, { params }: Params) {
     const prisma = requirePrisma();
     const { id } = await params;
 
-    const session = await prisma.session.findUnique({ where: { id } });
+    const session = await prisma.session.findUnique({
+      where: { id },
+      include: { team: { select: { name: true, fakeDomain: true, logoUrl: true } } },
+    });
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
@@ -27,6 +30,9 @@ export async function GET(request: NextRequest, { params }: Params) {
     return NextResponse.json({
       id: session.id,
       teamId: session.teamId,
+      teamName: session.team?.name ?? null,
+      fakeDomain: session.team?.fakeDomain ?? null,
+      logoUrl: session.team?.logoUrl ?? null,
       playerHandle: session.playerHandle,
       startedAt: session.startedAt.toISOString(),
       completedAt: session.completedAt?.toISOString(),

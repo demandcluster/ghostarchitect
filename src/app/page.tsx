@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { OSShell } from "@/shared/components/OSShell";
 import { DMSidebar } from "@/shared/components/DMSidebar";
 import { useBreachTransition } from "@/shared/components/TransitionOverlay";
@@ -143,6 +144,24 @@ export default function Home() {
     () => brandEmails(BREACH_EMAILS, teamName, fakeDomain, playerHandle),
     [teamName, fakeDomain, playerHandle]
   );
+
+  // Hydrate team branding from API if localStorage has stale defaults
+  const teamId = useGameStore((s) => s.teamId);
+  const setTeamName = useGameStore((s) => s.setTeamName);
+  const setFakeDomain = useGameStore((s) => s.setFakeDomain);
+  const setLogoUrl = useGameStore((s) => s.setLogoUrl);
+  useEffect(() => {
+    if (!teamId || (teamName !== "NexusCorp" && fakeDomain !== "nexuscorp.com")) return;
+    fetch(`/api/v1/teams/${teamId}/info`)
+      .then(r => r.ok ? r.json() : null)
+      .then(team => {
+        if (!team) return;
+        if (team.name) setTeamName(team.name);
+        if (team.fakeDomain) setFakeDomain(team.fakeDomain);
+        if (team.logoUrl) setLogoUrl(team.logoUrl);
+      })
+      .catch(() => {});
+  }, [teamId, teamName, fakeDomain, setTeamName, setFakeDomain, setLogoUrl]);
 
   console.log("[DEBUG] Content State:", {
     ready: isContentReady(),
@@ -992,15 +1011,6 @@ export default function Home() {
       />
     ) : undefined;
 
-  // When scoreboard is open, add it as an extra window
-  if (showScoreboard) {
-    windows.push({
-      id: "scoreboard",
-      title: "Scoreboard",
-      content: <Scoreboard />
-    });
-  }
-
   // When wiki is open, add it as an extra window
   if (showWiki) {
     windows.push({
@@ -1056,6 +1066,32 @@ export default function Home() {
           }}
         />
       )}
+
+      {/* Floating scoreboard — bottom-left overlay */}
+      <AnimatePresence>
+        {showScoreboard && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed bottom-14 left-3 z-50 w-80 max-h-[60vh] rounded-lg border border-[var(--border)] bg-[var(--bg-window)] shadow-2xl overflow-hidden flex flex-col"
+          >
+            <div className="h-8 flex items-center justify-between px-3 border-b border-[var(--border)] bg-[var(--bg-secondary)] shrink-0">
+              <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--text-secondary)]">Scoreboard</span>
+              <button
+                onClick={() => setShowScoreboard(false)}
+                className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs transition-colors"
+              >
+                ×
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <Scoreboard />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

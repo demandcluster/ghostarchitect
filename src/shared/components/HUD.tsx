@@ -85,7 +85,7 @@ export function HUD() {
     <motion.div
       drag
       dragMomentum={false}
-      className="fixed top-3 right-3 z-40 flex items-center gap-3 select-none rounded-xl px-3 py-2 cursor-move shadow-lg"
+      className="fixed bottom-14 left-3 z-40 flex items-center gap-3 select-none rounded-xl px-3 py-2 cursor-move shadow-lg"
       style={containerStyle}
       initial={{ x: 20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}

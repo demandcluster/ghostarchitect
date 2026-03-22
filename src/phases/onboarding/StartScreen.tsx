@@ -262,23 +262,39 @@ export function StartScreen({ onStart }: StartScreenProps) {
     if (!ack) setShowPrivacyModal(true);
   }, []);
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     const savedHandle = localStorage.getItem("ghost-architect:playerHandle");
     const savedTeamId = localStorage.getItem("ghost-architect:teamId");
     const savedSessionId = localStorage.getItem("ghost-architect:sessionId");
     if (savedHandle) setPlayerHandleStore(savedHandle);
     if (savedTeamId) setTeamId(savedTeamId);
     if (savedSessionId) setSessionId(savedSessionId);
+
+    // Hydrate team branding from API (localStorage may have stale defaults)
+    if (savedTeamId) {
+      try {
+        const res = await fetch(`/api/v1/teams/${savedTeamId}/info`);
+        if (res.ok) {
+          const team = await res.json();
+          if (team.name) setTeamName(team.name);
+          if (team.fakeDomain) setFakeDomain(team.fakeDomain);
+          if (team.logoUrl) setLogoUrl(team.logoUrl);
+        }
+      } catch {
+        // Non-blocking — proceed with localStorage values
+      }
+    }
+
     onStart();
   };
 
   const handleNewSession = () => {
-    localStorage.removeItem("ghost-architect:playerHandle");
-    localStorage.removeItem("ghost-architect:teamId");
-    localStorage.removeItem("ghost-architect:sessionId");
+    // Clear all game state from localStorage and zustand
+    useGameStore.getState().reset();
     setHasRestoredSession(false);
     setRestoredHandle(null);
     setPlayerHandle("");
+    setInviteCode("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -296,6 +312,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
         playerHandle.trim() || undefined
       );
 
+      console.log("[DEBUG] joinTeam response:", JSON.stringify(session));
       if (session.teamId) setTeamId(session.teamId);
       if (session.teamName) setTeamName(session.teamName);
       if (session.fakeDomain) setFakeDomain(session.fakeDomain);
