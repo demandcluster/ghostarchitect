@@ -773,7 +773,7 @@ function ContentPoolPanel({ authFetch }: { authFetch: (url: string, options?: Re
           <div style={labelStyle}>Pool Breakdown</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', marginTop: 8 }}>
             {[
-              'EMAIL_PRE', 'EMAIL_BREACH', 'DM_INTRO', 'DM_SCENARIO', 'NPC_ADVICE', 'LOG_BATCH', 'LOLBIN_BATCH', 'WIFI_BATCH'
+              'EMAIL_PRE', 'EMAIL_BREACH', 'LOG_BATCH', 'LOLBIN_BATCH', 'WIFI_BATCH'
             ].map(type => {
               const item = data?.counts.find(c => c.type === type);
               const count = item ? item.count : 0;

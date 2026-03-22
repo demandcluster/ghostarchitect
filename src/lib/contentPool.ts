@@ -1,15 +1,12 @@
 import { requirePrisma } from './prisma';
 import { OpenAIClient, AuditClient } from './openaiAI';
-import type { Email, LogEntry, DMMessage, LOLBin, WiFiNetwork, DMChoice } from '@/content/types';
+import type { Email, LogEntry, LOLBin, WiFiNetwork } from '@/content/types';
 
-export type ContentPoolType = 
-  | 'EMAIL_PRE' 
-  | 'EMAIL_BREACH' 
-  | 'DM_INTRO' 
-  | 'DM_SCENARIO' 
-  | 'NPC_ADVICE' 
-  | 'LOG_BATCH' 
-  | 'LOLBIN_BATCH' 
+export type ContentPoolType =
+  | 'EMAIL_PRE'
+  | 'EMAIL_BREACH'
+  | 'LOG_BATCH'
+  | 'LOLBIN_BATCH'
   | 'WIFI_BATCH';
 
 export interface PoolFetchOptions {
@@ -173,27 +170,8 @@ export class ContentPoolManager {
     const preEmails = getBalancedItems('EMAIL_PRE', 5, 'isPhishing');
     const breachEmails = getBalancedItems('EMAIL_BREACH', 8, 'isPhishing');
     const logs = findBatches('LOG_BATCH');
-    const advice = findBatches('NPC_ADVICE');
     const bins = getBalancedItems('LOLBIN_BATCH', 10, 'isMalicious');
     const wifi = getBalancedItems('WIFI_BATCH', 6, 'isEvilTwin');
-
-    const dmIntroPool = findBatches('DM_INTRO');
-    const dmScenarioPool = findBatches('DM_SCENARIO');
-
-    const introItem = this.pickRandom(dmIntroPool, 1)[0];
-    const sPool = dmScenarioPool.map(s => {
-      const sData = s.data as Record<string, unknown>;
-      const setup = sData.setup as Record<string, unknown> | undefined;
-      const text = (String(setup?.text || '')).toLowerCase();
-      return { 
-        ...s, 
-        isSE: text.includes('password') || text.includes('link') || text.includes('urgent') || text.includes('access')
-      };
-    });
-    const selectedScenarios = [
-      ...this.pickRandom(sPool.filter(s => s.isSE), 2),
-      ...this.pickRandom(sPool.filter(s => !s.isSE), 2)
-    ];
 
     // 4. Branding and Chaining
     const brand = (item: unknown, complexity: number): Record<string, unknown> => {
@@ -340,83 +318,10 @@ export class ContentPoolManager {
         return { ...branded, complexity };
       }
 
-      // Normalize DM message fields
-      if (isDM || branded.sender || branded.senderRole || branded.text) {
-        branded.id = clean(branded.id) || `dm-${Math.random().toString(36).slice(2, 8)}`;
-        branded.sender = clean(branded.sender) || clean(branded.name) || clean(branded.from) || clean(branded.author) || 'Unknown';
-        branded.senderRole = clean(branded.senderRole) || clean(branded.role) || clean(branded.title) || clean(branded.position) || '';
-        branded.avatar = clean(branded.avatar) || clean(branded.initials) || (branded.sender as string)?.charAt(0)?.toUpperCase() || '?';
-        branded.text = clean(branded.text) || clean(branded.message) || clean(branded.body) || clean(branded.content) || '';
-        // Shuffle choices if present
-        if (branded.choices && Array.isArray(branded.choices)) {
-          branded.choices = [...(branded.choices as DMChoice[])].sort(() => Math.random() - 0.5);
-        }
-        return { ...branded, complexity };
-      }
-
-      // Automatically shuffle DM choices if they exist
-      if (branded.choices && Array.isArray(branded.choices)) {
-        branded.choices = [...(branded.choices as DMChoice[])].sort(() => Math.random() - 0.5);
-      }
-
       return { ...branded, complexity };
     };
 
-    const socialEngineeringDMs: DMMessage[] = [];
-    if (introItem) {
-      const brandedIntro = brand(introItem.data, introItem.qualityScore) as unknown as DMMessage;
-      if (selectedScenarios.length > 0) brandedIntro.nextMessageId = `s1-setup-${options.sessionId}`;
-      socialEngineeringDMs.push(brandedIntro);
-    }
-
-    selectedScenarios.forEach((s, idx) => {
-      const complexity = s.qualityScore;
-      const sData = s.data as Record<string, unknown>;
-      const sId = idx + 1;
-      const nextSId = idx < selectedScenarios.length - 1 ? `s${sId + 1}-setup-${options.sessionId}` : undefined;
-      const setupId = `s${sId}-setup-${options.sessionId}`;
-      const passId = `s${sId}-pass-${options.sessionId}`;
-      const failId = `s${sId}-fail-${options.sessionId}`;
-
-      // Normalize scenario keys — AI may use various names
-      const rawSetup = sData.setup || sData.message || sData.question || sData.prompt;
-      const rawPass = sData.onPass || sData.pass || sData.correct || sData.success || sData.on_pass;
-      const rawFail = sData.onFail || sData.fail || sData.incorrect || sData.failure || sData.on_fail;
-
-      if (!rawSetup) return; // skip malformed scenarios
-
-      const setup = brand(rawSetup, complexity) as unknown as DMMessage;
-      setup.id = setupId;
-
-      // If AI put choices at the scenario level instead of inside setup, move them in
-      if ((!setup.choices || setup.choices.length === 0) && Array.isArray(sData.choices)) {
-        setup.choices = sData.choices as DMChoice[];
-      }
-
-      setup.choices?.forEach((c: DMChoice) => {
-        // Determine correctness: prefer isCorrect, fall back to trustDelta/scoreEffect sign
-        const rawChoice = c as unknown as Record<string, unknown>;
-        let correct = c.isCorrect;
-        if (correct === undefined || correct === null) {
-          const delta = Number(rawChoice.trustDelta ?? rawChoice.scoreEffect ?? 0);
-          correct = delta > 0;
-        }
-        c.isCorrect = correct === true || String(correct) === 'true';
-        c.nextMessageId = c.isCorrect ? passId : failId;
-      });
-
-      const pass = brand(rawPass || {}, complexity) as unknown as DMMessage;
-      pass.id = passId;
-      pass.nextMessageId = nextSId;
-
-      const fail = brand(rawFail || {}, complexity) as unknown as DMMessage;
-      fail.id = failId;
-      fail.nextMessageId = nextSId;
-
-      socialEngineeringDMs.push(setup, pass, fail);
-    });
-
-    const allSelectedItems = [...preEmails, ...breachEmails, ...logs, ...advice, ...bins, ...wifi, ...(introItem ? [introItem] : []), ...selectedScenarios].filter(Boolean);
+    const allSelectedItems = [...preEmails, ...breachEmails, ...logs, ...bins, ...wifi].filter(Boolean);
     const allSelectedIds = allSelectedItems.map(i => i!.id);
     if (sessionExists && allSelectedIds.length > 0) {
       await prisma.sessionSeenContent.createMany({
@@ -446,10 +351,8 @@ export class ContentPoolManager {
 
     const result = {
       preBreachEmails: safeFlatMap(preEmails) as unknown as Email[],
-      socialEngineeringDMs,
       breachEmails: safeFlatMap(breachEmails) as unknown as Email[],
       logEntries: safeFlatMap(this.pickRandom(logs, 1)) as unknown as LogEntry[],
-      npcBadAdvice: safeFlatMap(this.pickRandom(advice, 1)) as unknown as DMMessage[],
       lolbins: bins.flatMap(i => {
         const arr = Array.isArray(i.data) ? (i.data as Record<string, unknown>[]) : (i.data ? [i.data as Record<string, unknown>] : []);
         return arr;
@@ -522,15 +425,8 @@ export class ContentPoolManager {
       if (batch.preBreachEmails.length > 0) entries.push({ type: 'EMAIL_PRE', data: batch.preBreachEmails });
       if (batch.breachEmails.length > 0) entries.push({ type: 'EMAIL_BREACH', data: batch.breachEmails });
       if (batch.logEntries.length > 0) entries.push({ type: 'LOG_BATCH', data: batch.logEntries });
-      if (batch.npcBadAdvice.length > 0) entries.push({ type: 'NPC_ADVICE', data: batch.npcBadAdvice });
       if (batch.lolbins.length > 0) entries.push({ type: 'LOLBIN_BATCH', data: batch.lolbins });
       if (batch.wifi.length > 0) entries.push({ type: 'WIFI_BATCH', data: batch.wifi });
-      const dmItems = batch.socialEngineeringDMs;
-      dmItems.forEach((item: unknown) => {
-        const d = item as Record<string, unknown>;
-        if (d.setup) entries.push({ type: 'DM_SCENARIO', data: d });
-        else entries.push({ type: 'DM_INTRO', data: d });
-      });
       for (const entry of entries) {
         const item = await prisma.contentPool.create({ data: { type: entry.type, data: entry.data as any, audited: false } });
         this.auditItem(item.id, entry.type, entry.data);

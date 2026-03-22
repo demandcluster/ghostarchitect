@@ -1,7 +1,6 @@
 import type {
   Email,
   LogEntry,
-  DMMessage,
   LOLBin,
   WiFiNetwork
 } from "@/content/types";
@@ -38,8 +37,6 @@ export interface GeneratedContent {
   preBreachEmails: Email[];
   breachEmails: Email[];
   logEntries: LogEntry[];
-  socialEngineeringDMs: DMMessage[];
-  npcBadAdvice: DMMessage[];
   lolbins: LOLBin[];
   wifi: WiFiNetwork[];
   expectedIOCs: unknown[];
@@ -74,9 +71,7 @@ export class OpenAIClient {
     if (section === "initial") {
       requiredFields = [
         "preBreachEmails",
-        "breachEmails",
-        "dmIntro",
-        "dmScenarios"
+        "breachEmails"
       ];
       sectionPrompt = `ACT AS A SENIOR CYBERSECURITY GRC & THREAT INTELLIGENCE ARCHITECT.
 The target audience consists of highly skilled CYBERSECURITY PROFESSIONALS.
@@ -97,27 +92,11 @@ INITIAL CONTENT FOCUS (ONBOARDING & BREACH EMAILS):
 
 2026 PEDAGOGICAL PHISHING RULES (MANDATORY):
 - LEGITIMATE EMAILS: MUST have passing SPF/DKIM/DMARC headers. No malicious links.
-- PHISHING EMAILS: MUST reflect Adversary-in-the-Middle (AiTM), Evilginx, or Device Code Phishing. Lures MUST impersonate legitimate infrastructure (e.g., a shared document hosted on an attacker-controlled SharePoint tenant or a fake Microsoft Authentication Broker) designed to steal session cookies and bypass legacy MFA. MUST include at least one header failure or domain spoofing artifact. DO NOT use obvious typos or generic malware attachments.
-
-DM INTRO (EXACTLY 1 welcome message):
-- dmIntro: { "sender": "Name", "senderRole": "IT Director", "avatar": "XX", "text": "Welcome message mentioning security protocols and [playerHandle]." }
-- NO choices. This is a pure informational greeting from a senior staff member.
-
-DM SCENARIOS (EXACTLY 6-8 INDEPENDENT SCENARIOS):
-- 50% Legitimate peer requests requiring strict adherence to access control policies (ISO 27001 A.9.2) and least privilege.
-- 50% Social Engineering. Attackers use sophisticated tactics like deepfakes, Helpdesk impersonation to reset MFA tokens, or MFA Fatigue (push bombing).
-
-SCENARIO STRUCTURE (choices MUST be inside setup):
-{
-  "setup": { "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "...", "choices": [{"label": "...", "isCorrect": true/false}] },
-  "onPass": { "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Technical validation of the correct ISO 27001/Regulatory response." },
-  "onFail": { "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Severe technical and regulatory consequence of the incorrect action." }
-}`;
+- PHISHING EMAILS: MUST reflect Adversary-in-the-Middle (AiTM), Evilginx, or Device Code Phishing. Lures MUST impersonate legitimate infrastructure (e.g., a shared document hosted on an attacker-controlled SharePoint tenant or a fake Microsoft Authentication Broker) designed to steal session cookies and bypass legacy MFA. MUST include at least one header failure or domain spoofing artifact. DO NOT use obvious typos or generic malware attachments.`;
     } else if (section === "secondary") {
       requiredFields = [
         "logEntries",
         "expectedIOCs",
-        "npcBadAdvice",
         "lolbins",
         "wifi"
       ];
@@ -131,7 +110,6 @@ IMPORTANT: Use these EXACT placeholders:
 SECONDARY CONTENT FOCUS (INVESTIGATION):
 - logEntries (EXACTLY 25-30 logs. MANDATORY: 70% LEGITIMATE traffic, 30% MALICIOUS attack indicators).
 - expectedIOCs (EXACTLY 6 specific strings found in the malicious logs: IP addresses, file paths, or tokens. MUST be an array of {type, value, hint}).
-- npcBadAdvice (EXACTLY 4-6 dialogues).
 - lolbins (EXACTLY 8-12 processes. MANDATORY: 50% LEGITIMATE usage, 50% MALICIOUS exploitation).
   Each LOLBin MUST have: 'id' (unique string), 'processName' (e.g. "powershell.exe"), 'pid' (unique integer), 'commandLine' (full command with args), 'isMalicious' (boolean), 'description' (what this process does), 'mitreId' (optional MITRE ATT&CK ID like "T1059.001").
 - wifi (EXACTLY 5-8 networks. MANDATORY: 60% CORPORATE/HOME, 40% EVIL TWIN/SUSPICIOUS).
@@ -145,23 +123,13 @@ Logs MUST follow a coherent MITRE ATT&CK kill chain, utilizing precise SIEM arti
 Each log entry MUST include: 'timestamp', 'level' (INFO/WARN/ERROR/CRITICAL), 'source' (process or service name), 'message' (human-readable log line including eventID, destination, processName, commandLine details), and 'isMalicious' (boolean).
 
 IOC EXTRACTION (MANDATORY):
-The 'expectedIOCs' array must correspond EXACTLY to the 'logEntries' generated. If a log shows an SSH brute force from 1.2.3.4, then an IOC of type "Attacker IP" with value "1.2.3.4" must exist.
-
-HACKLORE & NPC BAD ADVICE (MANDATORY):
-The 'npcBadAdvice' array MUST test the player's ability to reject outdated, fear-based cybersecurity myths ("Hacklore"). 
-NPCs must urgently demand obsolete practices such as:
-- Forcing arbitrary 30/90-day password rotations instead of deploying FIDO2 phishing-resistant MFA.
-- Panicking over "juice jacking" at airport USB ports instead of checking EDR telemetry.
-- Believing that clearing browser cookies prevents modern malware execution.
-The correct player choice in these scenarios must dismiss the Hacklore and redirect the focus toward evidence-based, identity-centric defense strategies.`;
+The 'expectedIOCs' array must correspond EXACTLY to the 'logEntries' generated. If a log shows an SSH brute force from 1.2.3.4, then an IOC of type "Attacker IP" with value "1.2.3.4" must exist.`;
     } else {
       requiredFields = [
         "preBreachEmails",
         "breachEmails",
         "logEntries",
-        "dmIntro",
-        "dmScenarios",
-        "npcBadAdvice",
+        "expectedIOCs",
         "lolbins",
         "wifi"
       ];
@@ -185,22 +153,7 @@ INITIAL CONTENT FOCUS (ONBOARDING & BREACH EMAILS):
 
 2026 PEDAGOGICAL PHISHING RULES (MANDATORY):
 - LEGITIMATE EMAILS: MUST have passing SPF/DKIM/DMARC headers. No malicious links.
-- PHISHING EMAILS: MUST reflect Adversary-in-the-Middle (AiTM), Evilginx, or Device Code Phishing. Lures MUST impersonate legitimate infrastructure (e.g., a shared document hosted on an attacker-controlled SharePoint tenant or a fake Microsoft Authentication Broker) designed to steal session cookies and bypass legacy MFA. MUST include at least one header failure or domain spoofing artifact. DO NOT use obvious typos or generic malware attachments.
-
-DM INTRO (EXACTLY 1 welcome message):
-- dmIntro: { "sender": "Name", "senderRole": "IT Director", "avatar": "XX", "text": "Welcome message mentioning security protocols and [playerHandle]." }
-- NO choices. This is a pure informational greeting from a senior staff member.
-
-DM SCENARIOS (EXACTLY 6-8 INDEPENDENT SCENARIOS):
-- 50% Legitimate peer requests requiring strict adherence to access control policies (ISO 27001 A.9.2) and least privilege.
-- 50% Social Engineering. Attackers use sophisticated tactics like deepfakes, Helpdesk impersonation to reset MFA tokens, or MFA Fatigue (push bombing).
-
-SCENARIO STRUCTURE (choices MUST be inside setup):
-{
-  "setup": { "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "...", "choices": [{"label": "...", "isCorrect": true/false}] },
-  "onPass": { "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Technical validation of the correct ISO 27001/Regulatory response." },
-  "onFail": { "sender": "Name", "senderRole": "Role", "avatar": "Initials", "text": "Severe technical and regulatory consequence of the incorrect action." }
-}`;
+- PHISHING EMAILS: MUST reflect Adversary-in-the-Middle (AiTM), Evilginx, or Device Code Phishing. Lures MUST impersonate legitimate infrastructure (e.g., a shared document hosted on an attacker-controlled SharePoint tenant or a fake Microsoft Authentication Broker) designed to steal session cookies and bypass legacy MFA. MUST include at least one header failure or domain spoofing artifact. DO NOT use obvious typos or generic malware attachments.`;
 
       const secondaryPrompt = `ACT AS A SENIOR SOC ANALYST AND DIGITAL FORENSICS EXPERT.
 The target audience is CYBERSECURITY PROFESSIONALS conducting advanced log analysis.
@@ -211,7 +164,7 @@ IMPORTANT: Use these EXACT placeholders:
 
 SECONDARY CONTENT FOCUS (INVESTIGATION):
 - logEntries (EXACTLY 25-30 logs. MANDATORY: 70% LEGITIMATE traffic, 30% MALICIOUS attack indicators).
-- npcBadAdvice (EXACTLY 4-6 dialogues).
+- expectedIOCs (EXACTLY 6 specific strings found in the malicious logs: IP addresses, file paths, or tokens. MUST be an array of {type, value, hint}).
 - lolbins (EXACTLY 8-12 processes. MANDATORY: 50% LEGITIMATE usage, 50% MALICIOUS exploitation).
   Each LOLBin MUST have: 'id' (unique string), 'processName' (e.g. "powershell.exe"), 'pid' (unique integer), 'commandLine' (full command with args), 'isMalicious' (boolean), 'description' (what this process does), 'mitreId' (optional MITRE ATT&CK ID like "T1059.001").
 - wifi (EXACTLY 5-8 networks. MANDATORY: 60% CORPORATE/HOME, 40% EVIL TWIN/SUSPICIOUS).
@@ -224,13 +177,8 @@ Logs MUST follow a coherent MITRE ATT&CK kill chain, utilizing precise SIEM arti
 4. Lateral Movement: Windows Event ID 4624 (Network Logon Type 3) moving from a workstation to a Domain Controller, or AWS CloudTrail 'AssumeRole' API calls.
 Each log entry MUST include: 'timestamp', 'level' (INFO/WARN/ERROR/CRITICAL), 'source' (process or service name), 'message' (human-readable log line including eventID, destination, processName, commandLine details), and 'isMalicious' (boolean).
 
-HACKLORE & NPC BAD ADVICE (MANDATORY):
-The 'npcBadAdvice' array MUST test the player's ability to reject outdated, fear-based cybersecurity myths ("Hacklore"). 
-NPCs must urgently demand obsolete practices such as:
-- Forcing arbitrary 30/90-day password rotations instead of deploying FIDO2 phishing-resistant MFA.
-- Panicking over "juice jacking" at airport USB ports instead of checking EDR telemetry.
-- Believing that clearing browser cookies prevents modern malware execution.
-The correct player choice in these scenarios must dismiss the Hacklore and redirect the focus toward evidence-based, identity-centric defense strategies.`;
+IOC EXTRACTION (MANDATORY):
+The 'expectedIOCs' array must correspond EXACTLY to the 'logEntries' generated. If a log shows an SSH brute force from 1.2.3.4, then an IOC of type "Attacker IP" with value "1.2.3.4" must exist.`;
 
       sectionPrompt = `${initialPrompt}\n\n---\n\n${secondaryPrompt}`;
     }
@@ -266,15 +214,6 @@ Each email MUST have:
   }
 }
 * IMPORTANT: Headers MUST NOT be empty strings. Use "pass" or "fail" explicitly.
-
-DM CHOICE JSON STRUCTURE (MANDATORY):
-"choices": [
-  { "id": "c1", "label": "Technical redirection to secure protocol (Vault/IAM/Ticket)", "isCorrect": true, "nextMessageId": "ON_PASS_ID" },
-  { "id": "c2", "label": "Reckless sharing/Dangerous shortcut", "isCorrect": false, "nextMessageId": "ON_FAIL_ID" },
-  { "id": "c3", "label": "Passive/Unhelpful action (e.g. Ignoring)", "isCorrect": false, "nextMessageId": "ON_FAIL_ID" }
-]
-* Note: Use literal "ON_PASS_ID" and "ON_FAIL_ID" in the prompt; the manager will fix these during pool hydration.
-** Choices must be presented as actual answers to the message. The examples above are content hint not style hints.
 
 Use locale: ${config.locale}. Make it challenging, believable, and completely IMMERSIVE.`;
 
@@ -349,16 +288,6 @@ Use locale: ${config.locale}. Make it challenging, believable, and completely IM
         logEntries: Array.isArray(finalContent.logEntries)
           ? (finalContent.logEntries as LogEntry[])
           : [],
-        // Temporary storage for pool hydration:
-        socialEngineeringDMs: [
-          ...(finalContent.dmIntro ? [finalContent.dmIntro as DMMessage] : []),
-          ...(Array.isArray(finalContent.dmScenarios)
-            ? (finalContent.dmScenarios as DMMessage[])
-            : [])
-        ],
-        npcBadAdvice: Array.isArray(finalContent.npcBadAdvice)
-          ? (finalContent.npcBadAdvice as DMMessage[])
-          : [],
         lolbins: Array.isArray(finalContent.lolbins)
           ? (finalContent.lolbins as LOLBin[])
           : [],
@@ -425,8 +354,8 @@ CRITICAL COMPLIANCE & 2026 STANDARDS CHECK:
    - REJECT any "correct" choice that relies on outdated "Hacklore" or suggests that merely resetting a password without revoking session tokens will stop an AiTM attack.
 3. TELEMETRIC ACCURACY (LOGS & LOLBINS):
    - Logs MUST utilize realistic, accurate artifacts (e.g., Windows Event IDs 4624, 4625, 4688, 7045 or AWS CloudTrail). If a log claims to show lateral movement but uses an incorrect Event ID or illogical port, score a CRITICAL FAIL.
-4. HACKLORE IDENTIFICATION (NPC_ADVICE):
-   - The NPC Advice is bad practice by design. The NPC dialogue MUST represent a pervasive cybersecurity myth (e.g., juice jacking, frequent password expiration). The scenario is only valid if the 'isCorrect: true' choice actively debunks the myth and redirects to a data-driven practice.
+4. HACKLORE IDENTIFICATION:
+   - NPC advice scenarios test rejection of cybersecurity myths. The scenario is only valid if the correct choice actively debunks the myth and redirects to a data-driven practice.
 
 SCORING (1-10):
 - 1-3: CRITICAL FAIL (e.g., technically inaccurate Event IDs, suggests password resets stop session hijacking, or "correct" action violates ISO 27001/NIS2 timelines). REJECT.

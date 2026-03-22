@@ -1,11 +1,9 @@
-import type { Email, LogEntry, DMMessage, LOLBin, WiFiNetwork } from '@/content/types';
+import type { Email, LogEntry, LOLBin, WiFiNetwork } from '@/content/types';
 
 export interface GeneratedContent {
   preBreachEmails: Email[];
   breachEmails: Email[];
   logEntries: LogEntry[];
-  socialEngineeringDMs: DMMessage[];
-  npcBadAdvice: DMMessage[];
   lolbins: LOLBin[];
   wifi: WiFiNetwork[];
   expectedIOCs: unknown[];

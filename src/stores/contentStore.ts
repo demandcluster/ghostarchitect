@@ -1,13 +1,11 @@
 import { create } from 'zustand';
-import type { Email, LogEntry, DMMessage, LOLBin, WiFiNetwork, IOCIndicator } from '@/content/types';
+import type { Email, LogEntry, LOLBin, WiFiNetwork, IOCIndicator } from '@/content/types';
 
 export interface ContentStoreState {
   // Generated content
   preBreachEmails: Email[];
   breachEmails: Email[];
   logEntries: LogEntry[];
-  socialEngineeringDMs: DMMessage[];
-  npcBadAdvice: DMMessage[];
   lolbins: LOLBin[];
   wifi: WiFiNetwork[];
   expectedIOCs: IOCIndicator[];
@@ -24,8 +22,6 @@ interface ContentStore extends ContentStoreState {
   setPreBreachEmails(emails: Email[]): void;
   setBreachEmails(emails: Email[]): void;
   setLogEntries(logs: LogEntry[]): void;
-  setSocialEngineeringDMs(dms: DMMessage[]): void;
-  setNPCBadAdvice(dms: DMMessage[]): void;
   setLOLBins(bins: LOLBin[]): void;
   setWiFi(networks: WiFiNetwork[]): void;
   setExpectedIOCs(iocs: IOCIndicator[]): void;
@@ -41,14 +37,11 @@ interface ContentStore extends ContentStoreState {
 }
 
 const LOCAL_STORAGE_KEY = 'ghost-architect-content';
-const SESSION_ID_KEY = 'ghost-architect-session-id';
 
 export const useContentStore = create<ContentStore>((set, get) => ({
   preBreachEmails: [],
   breachEmails: [],
   logEntries: [],
-  socialEngineeringDMs: [],
-  npcBadAdvice: [],
   lolbins: [],
   wifi: [],
   expectedIOCs: [],
@@ -63,8 +56,6 @@ export const useContentStore = create<ContentStore>((set, get) => ({
   setPreBreachEmails: (emails) => set({ preBreachEmails: emails }),
   setBreachEmails: (emails) => set({ breachEmails: emails }),
   setLogEntries: (logs) => set({ logEntries: logs }),
-  setSocialEngineeringDMs: (dms) => set({ socialEngineeringDMs: dms }),
-  setNPCBadAdvice: (dms) => set({ npcBadAdvice: dms }),
   setLOLBins: (bins) => set({ lolbins: bins }),
   setWiFi: (networks) => set({ wifi: networks }),
   setExpectedIOCs: (iocs) => set({ expectedIOCs: iocs }),
@@ -73,19 +64,10 @@ export const useContentStore = create<ContentStore>((set, get) => ({
 
   isContentReady: () => {
     const state = get();
-    const ready = (
+    return (
       state.preBreachEmails.length > 0 &&
-      state.breachEmails.length > 0 &&
-      state.socialEngineeringDMs.length > 0
+      state.breachEmails.length > 0
     );
-    if (!ready) {
-      console.log("[ContentStore] Not ready:", 
-        "pre:", state.preBreachEmails.length, 
-        "breach:", state.breachEmails.length, 
-        "dms:", state.socialEngineeringDMs.length
-      );
-    }
-    return ready;
   },
 
   persistToStorage: () => {
@@ -95,8 +77,6 @@ export const useContentStore = create<ContentStore>((set, get) => ({
       preBreachEmails: state.preBreachEmails,
       breachEmails: state.breachEmails,
       logEntries: state.logEntries,
-      socialEngineeringDMs: state.socialEngineeringDMs,
-      npcBadAdvice: state.npcBadAdvice,
       lolbins: state.lolbins,
       wifi: state.wifi,
       expectedIOCs: state.expectedIOCs,
@@ -115,8 +95,6 @@ export const useContentStore = create<ContentStore>((set, get) => ({
         preBreachEmails: data.preBreachEmails || [],
         breachEmails: data.breachEmails || [],
         logEntries: data.logEntries || [],
-        socialEngineeringDMs: data.socialEngineeringDMs || [],
-        npcBadAdvice: data.npcBadAdvice || [],
         lolbins: data.lolbins || [],
         wifi: data.wifi || [],
         expectedIOCs: data.expectedIOCs || [],
@@ -132,8 +110,6 @@ export const useContentStore = create<ContentStore>((set, get) => ({
       preBreachEmails: [],
       breachEmails: [],
       logEntries: [],
-      socialEngineeringDMs: [],
-      npcBadAdvice: [],
       lolbins: [],
       wifi: [],
       expectedIOCs: [],

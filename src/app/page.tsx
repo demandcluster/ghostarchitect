@@ -75,8 +75,6 @@ export default function Home() {
     preBreachEmails,
     breachEmails,
     logEntries,
-    socialEngineeringDMs,
-    npcBadAdvice,
     lolbins,
     wifi,
     expectedIOCs
@@ -84,8 +82,6 @@ export default function Home() {
     preBreachEmails: s.preBreachEmails,
     breachEmails: s.breachEmails,
     logEntries: s.logEntries,
-    socialEngineeringDMs: s.socialEngineeringDMs,
-    npcBadAdvice: s.npcBadAdvice,
     lolbins: s.lolbins,
     wifi: s.wifi,
     expectedIOCs: s.expectedIOCs as IOCIndicator[]
@@ -96,7 +92,7 @@ export default function Home() {
     ready: isContentReady(),
     preCount: preBreachEmails.length,
     breachCount: breachEmails.length,
-    dmCount: socialEngineeringDMs.length,
+    dmCount: SOCIAL_ENGINEERING_DM.length,
     step
   });
 
@@ -249,8 +245,6 @@ export default function Home() {
 
         contentStoreRef.current.setPreBreachEmails(initialResult.preBreachEmails);
         contentStoreRef.current.setBreachEmails(initialResult.breachEmails);
-        contentStoreRef.current.setSocialEngineeringDMs(initialResult.socialEngineeringDMs);
-        
         // Clear blocking UI once initial content is ready
         clearInterval(progressInterval);
         clearInterval(barInterval);
@@ -269,7 +263,6 @@ export default function Home() {
           playerHandle: playerHandle || "User"
         }).then(secondaryResult => {
           contentStoreRef.current.setLogEntries(secondaryResult.logEntries);
-          contentStoreRef.current.setNPCBadAdvice(secondaryResult.npcBadAdvice);
           contentStoreRef.current.setLOLBins(secondaryResult.lolbins);
           contentStoreRef.current.setWiFi(secondaryResult.wifi);
           contentStoreRef.current.setExpectedIOCs(secondaryResult.expectedIOCs as IOCIndicator[]);
@@ -329,7 +322,7 @@ export default function Home() {
     if (revealedDmIds.length === 0) return;
 
     const lastId = revealedDmIds[revealedDmIds.length - 1];
-    const dms = isContentReady() && socialEngineeringDMs.length > 0 ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
+    const dms = SOCIAL_ENGINEERING_DM;
     const currentMsg = dms.find(m => m.id === lastId);
 
     // If it's an informational message (no choices) and points to another message
@@ -343,11 +336,11 @@ export default function Home() {
         return () => clearTimeout(timer);
       }
     }
-  }, [revealedDmIds, step, isContentReady, socialEngineeringDMs]);
+  }, [revealedDmIds, step]);
 
   const handleDMChoice = useCallback(
     (messageId: string, choice: DMChoice) => {
-      const dms = isContentReady() && socialEngineeringDMs.length > 0 ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
+      const dms = SOCIAL_ENGINEERING_DM;
       const currentMsg = dms.find(m => m.id === messageId);
       const complexity = currentMsg?.complexity || 5;
       const complexityMultiplier = complexity / 5;
@@ -402,14 +395,12 @@ export default function Home() {
       addTimelineEntry,
       setRevealedDmIds,
       setDmDone,
-      isContentReady,
-      socialEngineeringDMs
     ]
   );
 
   const handleNpcChoice = useCallback(
     (messageId: string, choice: DMChoice) => {
-      const npcDms = isContentReady() && npcBadAdvice.length > 0 ? npcBadAdvice : NPC_BAD_ADVICE;
+      const npcDms = NPC_BAD_ADVICE;
       const currentMsg = npcDms.find(m => m.id === messageId);
       const complexity = currentMsg?.complexity || 5;
       const complexityMultiplier = complexity / 5;
@@ -438,7 +429,7 @@ export default function Home() {
 
       // Reveal next NPC after delay
       setTimeout(() => {
-        const npcDms = isContentReady() && npcBadAdvice.length > 0 ? npcBadAdvice : NPC_BAD_ADVICE;
+        const npcDms = NPC_BAD_ADVICE;
         if (npcDmIndex < npcDms.length - 1) {
           setNpcDmIndex((i) => i + 1);
           setNpcDmReveal((r) => r + 1);
@@ -454,8 +445,6 @@ export default function Home() {
       addFlag,
       addTimelineEntry,
       npcDmIndex,
-      isContentReady,
-      npcBadAdvice
     ]
   );
 
@@ -526,7 +515,7 @@ export default function Home() {
           
           // Initial DM reveal sequence: Show the first message (intro) after a delay
           setTimeout(() => {
-            const dms = isContentReady() && socialEngineeringDMs.length > 0 ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM;
+            const dms = SOCIAL_ENGINEERING_DM;
             if (dms.length > 0) {
               setRevealedDmIds([dms[0].id]);
             }
@@ -847,7 +836,7 @@ export default function Home() {
   }
 
   if (step === "investigation-lolbins") {
-    const npcDms = isContentReady() && npcBadAdvice.length > 0 ? npcBadAdvice : NPC_BAD_ADVICE;
+    const npcDms = NPC_BAD_ADVICE;
     const allNpcMessagesAnswered = npcDmIndex >= npcDms.length;
 
     windows.push({
@@ -931,14 +920,14 @@ export default function Home() {
     step === "onboarding-portal" ? (
       <DMSidebar
         messages={
-          isContentReady() && socialEngineeringDMs.length > 0 ? socialEngineeringDMs : SOCIAL_ENGINEERING_DM
+          SOCIAL_ENGINEERING_DM
         }
         onChoice={handleDMChoice}
         revealedIds={revealedDmIds}
       />
     ) : isInvestigation ? (
       <DMSidebar
-        messages={(isContentReady() && npcBadAdvice.length > 0 ? npcBadAdvice : NPC_BAD_ADVICE).slice(
+        messages={(NPC_BAD_ADVICE).slice(
           0,
           npcDmIndex + 1
         )}

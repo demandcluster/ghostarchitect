@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useContentStore } from './contentStore';
-import type { Email, LogEntry, DMMessage, LOLBin, WiFiNetwork } from '@/content/types';
+import type { Email, LogEntry, LOLBin, WiFiNetwork } from '@/content/types';
 
 describe('contentStore', () => {
   beforeEach(() => {
@@ -31,8 +31,6 @@ describe('contentStore', () => {
       preBreachEmails: [],
       breachEmails: [{ id: '1', from: 'a@test.com', to: 'b@test.com', subject: 'Test', date: '2026-03-10', body: 'Test', headers: { returnPath: 'a@test.com', spf: 'pass', dkim: 'pass', dmarc: 'pass' }, isPhishing: false, indicators: [], difficulty: 'easy' }],
       logEntries: [],
-      socialEngineeringDMs: [],
-      npcBadAdvice: [],
       lolbins: [],
       wifi: [],
       generatedAt: null,
@@ -60,11 +58,6 @@ describe('contentStore', () => {
     const store = useContentStore.getState();
     store.setPreBreachEmails([{} as Email, {} as Email]);
     store.setBreachEmails([{} as Email, {} as Email]);
-    store.setLogEntries([{} as LogEntry, {} as LogEntry]);
-    store.setSocialEngineeringDMs([{} as DMMessage, {} as DMMessage, {} as DMMessage, {} as DMMessage]);
-    store.setNPCBadAdvice([{} as DMMessage, {} as DMMessage, {} as DMMessage]);
-    store.setLOLBins([{} as LOLBin, {} as LOLBin, {} as LOLBin, {} as LOLBin, {} as LOLBin, {} as LOLBin]);
-    store.setWiFi([{} as WiFiNetwork, {} as WiFiNetwork, {} as WiFiNetwork, {} as WiFiNetwork, {} as WiFiNetwork]);
 
     expect(store.isContentReady()).toBe(true);
   });
