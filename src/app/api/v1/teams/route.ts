@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const result = await requireTrainer(request);
     if (result instanceof NextResponse) return result;
 
-    const { name, expiresAt } = await request.json();
+    const { name, expiresAt, fakeDomain, logoUrl } = await request.json();
 
     if (!name || typeof name !== 'string') {
       return NextResponse.json({ error: 'Team name is required' }, { status: 400 });
@@ -22,6 +22,8 @@ export async function POST(request: NextRequest) {
         trainerId: result.sub,
         name,
         inviteCode,
+        fakeDomain: fakeDomain || null,
+        logoUrl: logoUrl || null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
       },
     });

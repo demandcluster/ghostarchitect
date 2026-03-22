@@ -65,11 +65,15 @@ function validateLogEntries(aiLogs: LogEntry[], staticLogs: LogEntry[]): LogEntr
  */
 function brandEmails<T extends Email>(emails: T[], teamName: string, fakeDomain: string, playerHandle: string): T[] {
   if (teamName === "NexusCorp" && fakeDomain === "nexuscorp.com") return emails;
+  const fakeBase = fakeDomain.split(".")[0];
   return emails.map(e => {
     const json = JSON.stringify(e);
     const branded = json
+      .replace(/nexuscorp-servicedesk\.com/gi, `${fakeBase}-servicedesk.com`)
+      .replace(/nexuscorp-security\.com/gi, `${fakeBase}-security.com`)
+      .replace(/nexuscorp-it\.com/gi, `${fakeBase}-it.com`)
+      .replace(/nexuscorp\.com/gi, fakeDomain)
       .replace(/NexusCorp/g, teamName)
-      .replace(/nexuscorp\.com/g, fakeDomain)
       .replace(/you@/g, `${playerHandle}@`);
     return JSON.parse(branded) as T;
   });
@@ -145,6 +149,7 @@ export default function Home() {
     preCount: preBreachEmails.length,
     breachCount: breachEmails.length,
     dmCount: SOCIAL_ENGINEERING_DM.length,
+    teamName, fakeDomain, playerHandle,
     step
   });
 
