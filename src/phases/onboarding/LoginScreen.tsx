@@ -87,9 +87,9 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center px-6 py-12 overflow-hidden bg-[var(--bg-primary)]">
-      {/* Background elements to match Landing Page */}
+      {/* Background grid */}
       <div className="absolute inset-0 pointer-events-none opacity-20">
-        <div 
+        <div
           className="absolute inset-0"
           style={{
             backgroundImage: 'linear-gradient(rgba(0,229,51,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,51,0.05) 1px, transparent 1px)',

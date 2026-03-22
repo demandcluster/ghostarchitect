@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { OSShell } from "@/shared/components/OSShell";
 import { DMSidebar } from "@/shared/components/DMSidebar";
 import { useBreachTransition } from "@/shared/components/TransitionOverlay";
@@ -28,7 +28,7 @@ import { PRE_BREACH_EMAILS, BREACH_EMAILS } from "@/content/emails";
 import { SOCIAL_ENGINEERING_DM, NPC_BAD_ADVICE } from "@/content/dmScripts";
 import { LOG_ENTRIES } from "@/content/logEntries";
 import { LOLBINS } from "@/content/fileListings";
-import type { DMChoice, LogEntry, LOLBin, IOCIndicator } from "@/content/types";
+import type { DMChoice, Email, LogEntry, LOLBin, IOCIndicator } from "@/content/types";
 import { ContentLoadingScreen } from "@/components/ContentLoadingScreen";
 import { createContentGenerator } from "@/services/contentGenerator";
 import { useContentStore } from "@/stores/contentStore";
@@ -56,6 +56,23 @@ function validateLogEntries(aiLogs: LogEntry[], staticLogs: LogEntry[]): LogEntr
   // Need at least 2 legitimate and 3 malicious for meaningful scoring
   if (leg < 2 || mal < 3) return staticLogs;
   return aiLogs;
+}
+
+/**
+ * Replace hardcoded "NexusCorp"/"nexuscorp.com" in static content with the
+ * current team branding from the game store. This ensures the static fallback
+ * content matches the team identity when no AI/pool content is available.
+ */
+function brandEmails<T extends Email>(emails: T[], teamName: string, fakeDomain: string, playerHandle: string): T[] {
+  if (teamName === "NexusCorp" && fakeDomain === "nexuscorp.com") return emails;
+  return emails.map(e => {
+    const json = JSON.stringify(e);
+    const branded = json
+      .replace(/NexusCorp/g, teamName)
+      .replace(/nexuscorp\.com/g, fakeDomain)
+      .replace(/you@/g, `${playerHandle}@`);
+    return JSON.parse(branded) as T;
+  });
 }
 
 type GameStep =
@@ -111,6 +128,17 @@ export default function Home() {
     expectedIOCs: s.expectedIOCs as IOCIndicator[]
   })));
   const isContentReady = useContentStore(s => s.isContentReady);
+  const playerHandle = useGameStore((s) => s.playerHandle) || "User";
+
+  // Brand static fallback emails with current team identity
+  const brandedPreEmails = useMemo(
+    () => brandEmails(PRE_BREACH_EMAILS, teamName, fakeDomain, playerHandle),
+    [teamName, fakeDomain, playerHandle]
+  );
+  const brandedBreachEmails = useMemo(
+    () => brandEmails(BREACH_EMAILS, teamName, fakeDomain, playerHandle),
+    [teamName, fakeDomain, playerHandle]
+  );
 
   console.log("[DEBUG] Content State:", {
     ready: isContentReady(),
@@ -342,7 +370,7 @@ export default function Home() {
 
   // Auto-reveal informational DMs in a chain
   useEffect(() => {
-    if (step !== "onboarding-portal") return;
+    if (!["onboarding-portal", "breach-email", "breach-password", "breach-wifi"].includes(step)) return;
     if (revealedDmIds.length === 0) return;
 
     const lastId = revealedDmIds[revealedDmIds.length - 1];
@@ -474,7 +502,7 @@ export default function Home() {
 
   const handleEmailComplete = useCallback(
     async (results: Record<string, string>) => {
-      const emails = isContentReady() ? breachEmails : BREACH_EMAILS;
+      const emails = isContentReady() ? breachEmails : brandedBreachEmails;
       console.log("[handleEmailComplete] emails count:", emails.length);
       const phishingEmails = emails.filter((e) => e.isPhishing);
       const correctPhishing = phishingEmails.filter(
@@ -558,7 +586,7 @@ export default function Home() {
       title: `${teamName} Mail`,
       content: (
         <EmailClient
-          emails={isContentReady() ? preBreachEmails : PRE_BREACH_EMAILS}
+          emails={isContentReady() ? preBreachEmails : brandedPreEmails}
           onComplete={() => {}}
         />
       )
@@ -686,7 +714,7 @@ export default function Home() {
       title: `${teamName} Mail — INCIDENT MODE`,
       content: (
         <EmailClient
-          emails={isContentReady() ? breachEmails : BREACH_EMAILS}
+          emails={isContentReady() ? breachEmails : brandedBreachEmails}
           onComplete={handleEmailComplete}
         />
       )

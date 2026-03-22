@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/stores/gameStore";
 import { getGameService } from "@/services/config/serviceConfig";
+import { NetworkBackground } from "@/shared/components/NetworkBackground";
 
 const PRIVACY_ACK_KEY = "ghost-architect:privacyAck";
 
@@ -92,28 +93,6 @@ function BreachLogo() {
         />
       </div>
       
-      {/* VHS-style tracking noise and scanlines */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
-        {/* Primary Scanline */}
-        <motion.div
-          className="w-full h-[2px] bg-[var(--accent)] shadow-[0_0_10px_var(--accent)] opacity-50"
-          initial={{ top: "-10%" }}
-          animate={{ top: "110%" }}
-          transition={{ duration: 3.5, repeat: Infinity, ease: "linear" }}
-          style={{ position: 'absolute' }}
-        />
-        {/* Secondary faint scanline */}
-        <motion.div
-          className="w-full h-[1px] bg-white opacity-20"
-          initial={{ top: "-10%" }}
-          animate={{ top: "110%" }}
-          transition={{ duration: 5, repeat: Infinity, ease: "linear", delay: 2 }}
-          style={{ position: 'absolute' }}
-        />
-        {/* Fixed 'tracking' noise lines */}
-        <div className="absolute top-1/3 w-full h-[1px] bg-[var(--accent)] opacity-10" />
-        <div className="absolute top-2/3 w-full h-[1px] bg-[var(--accent)] opacity-10" />
-      </div>
 
       {/* Subtle Noise Texture */}
       <div 
@@ -356,6 +335,9 @@ export function StartScreen({ onStart }: StartScreenProps) {
       </AnimatePresence>
 
       <div className="relative flex flex-col items-center min-h-screen bg-[var(--bg-primary)] overflow-hidden px-6 pt-12 md:pt-24 pb-32">
+        {/* Animated network background */}
+        <NetworkBackground />
+
         {/* Technical Background */}
         <div 
           className="absolute inset-0 pointer-events-none overflow-hidden"
