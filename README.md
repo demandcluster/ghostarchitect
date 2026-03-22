@@ -178,13 +178,9 @@ When `NEXT_PUBLIC_BACKEND_ENABLED=true`, the game connects to a backend for:
 
 ### Development
 
-**Developed and Designed by:**
-- **Demandcluster BV** - https://demandcluster.com
+Designed and developed as a hobby project by **Ron van Etten**
+Used Claude to vibe code this (had no time) and OpenAI for the content fillers.
 
-### Security Consultation
-
-**Cybersecurity Specialist:**
-- **Ron van Etten** - Security advisor and consultant
 
 ### License
 
