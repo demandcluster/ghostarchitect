@@ -28,11 +28,35 @@ import { PRE_BREACH_EMAILS, BREACH_EMAILS } from "@/content/emails";
 import { SOCIAL_ENGINEERING_DM, NPC_BAD_ADVICE } from "@/content/dmScripts";
 import { LOG_ENTRIES } from "@/content/logEntries";
 import { LOLBINS } from "@/content/fileListings";
-import type { DMChoice, LogEntry, IOCIndicator } from "@/content/types";
+import type { DMChoice, LogEntry, LOLBin, IOCIndicator } from "@/content/types";
 import { ContentLoadingScreen } from "@/components/ContentLoadingScreen";
 import { createContentGenerator } from "@/services/contentGenerator";
 import { useContentStore } from "@/stores/contentStore";
 import { useShallow } from "zustand/react/shallow";
+
+/**
+ * Validate AI-generated content meets scoring requirements.
+ * Falls back to static content if the AI set is too small or has a broken ratio.
+ * Scoring formulas are ratio-based, so count matters less than having both
+ * malicious AND legitimate items present.
+ */
+function validateLOLBins(aiLolbins: LOLBin[], staticLolbins: LOLBin[]): LOLBin[] {
+  if (aiLolbins.length < 6 || !aiLolbins[0]?.processName) return staticLolbins;
+  const mal = aiLolbins.filter(l => l.isMalicious).length;
+  const leg = aiLolbins.length - mal;
+  // Need at least 2 legitimate (for over_quarantine trap) and 3 malicious
+  if (leg < 2 || mal < 3) return staticLolbins;
+  return aiLolbins;
+}
+
+function validateLogEntries(aiLogs: LogEntry[], staticLogs: LogEntry[]): LogEntry[] {
+  if (aiLogs.length < 8) return staticLogs;
+  const mal = aiLogs.filter(l => l.isMalicious).length;
+  const leg = aiLogs.length - mal;
+  // Need at least 2 legitimate and 3 malicious for meaningful scoring
+  if (leg < 2 || mal < 3) return staticLogs;
+  return aiLogs;
+}
 
 type GameStep =
   | "start"
@@ -720,7 +744,7 @@ export default function Home() {
       title: "Log Analysis Terminal",
       content: (
         <LogTerminal
-          entries={isContentReady() && logEntries.length > 0 ? logEntries : LOG_ENTRIES}
+          entries={isContentReady() ? validateLogEntries(logEntries, LOG_ENTRIES) : LOG_ENTRIES}
           onFlaggedChange={setFlaggedLogs}
         />
       )
@@ -791,9 +815,8 @@ export default function Home() {
             ) : (
               <button
                 onClick={() => {
-                  const malicious = (
-                    isContentReady() ? logEntries : LOG_ENTRIES
-                  ).filter((e) => e.isMalicious);
+                  const validatedLogs = isContentReady() ? validateLogEntries(logEntries, LOG_ENTRIES) : LOG_ENTRIES;
+                  const malicious = validatedLogs.filter((e) => e.isMalicious);
                   const correctFlags = flaggedLogs.filter(
                     (f) => f.isMalicious
                   ).length;
@@ -846,7 +869,7 @@ export default function Home() {
         <div className="h-full flex flex-col">
           <div className="flex-1 overflow-auto">
             <TaskManagerView
-              processes={isContentReady() && lolbins.length > 0 && lolbins[0]?.processName ? lolbins : LOLBINS}
+              processes={isContentReady() ? validateLOLBins(lolbins, LOLBINS) : LOLBINS}
               onComplete={() => changeStep("investigation-ioc")}
             />
           </div>

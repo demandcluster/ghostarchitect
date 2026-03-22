@@ -44,6 +44,139 @@ export interface GeneratedContent {
   isOfflineContent: boolean;
 }
 
+// ─── Shared prompt fragments ───────────────────────────────────────────
+
+const PLACEHOLDER_RULES = `IMPORTANT: Use these EXACT placeholders in all generated text:
+- "[teamName]" for the company name
+- "[fakeDomain]" for the corporate domain
+- "[playerHandle]" for the user's name
+- "[phishing-link]" for malicious links/payloads`;
+
+const INITIAL_PROMPT = `You are generating content for a cybersecurity training simulation aimed at skilled IT professionals.
+
+${PLACEHOLDER_RULES}
+
+CONTENT: EMAILS (onboarding + breach phase)
+
+preBreachEmails — EXACTLY 5 legitimate corporate emails.
+  These set the scene before a breach is detected. Topics should reflect modern corporate IT:
+  Entra ID conditional access policy rollouts, ISO 27001 audit prep, EDR deployment notices,
+  MFA migration announcements, or IT change-management approvals.
+  ALL headers MUST pass (spf/dkim/dmarc = "pass"). No suspicious links.
+
+breachEmails — EXACTLY 8 emails. EXACTLY 4 LEGITIMATE + 4 PHISHING.
+  The player must distinguish real emails from sophisticated phishing.
+  - LEGITIMATE emails: passing headers, no suspicious links, realistic corporate content.
+  - PHISHING emails: MUST reflect 2024-2026 attack vectors — Adversary-in-the-Middle (AiTM),
+    Evilginx proxy pages, Device Code Phishing (OAuth), session cookie theft, or MFA fatigue/push bombing.
+    Each phishing email MUST have at least one header failure (spf/dkim/dmarc = "fail") or a
+    domain spoofing artifact (e.g., returnPath domain ≠ from domain).
+    DO NOT use obvious typos, "Nigerian prince" lures, or generic .exe attachments.
+    Use "[phishing-link]" as the malicious URL placeholder.
+
+  "indicators" field: array of 2-4 short strings a trained analyst would notice.
+  For phishing: e.g., "SPF fail from external domain", "returnPath mismatch", "urgency + credential request".
+  For legitimate: e.g., "SPF/DKIM/DMARC all pass", "internal domain only", "no action required".
+
+  "difficulty": phishing emails should have a mix — 1 "easy", 2 "medium", 1 "hard".
+  Legitimate emails should all be "medium" (they are decoys that might trick trigger-happy players).`;
+
+const SECONDARY_PROMPT = `You are generating investigation-phase content for a cybersecurity training simulation aimed at skilled IT professionals.
+
+${PLACEHOLDER_RULES}
+
+CONTENT: INVESTIGATION (logs, LOLBins, WiFi, IOCs)
+
+1. logEntries — EXACTLY 20 log entries. EXACTLY 14 LEGITIMATE (70%) + 6 MALICIOUS (30%).
+   Logs MUST tell a coherent MITRE ATT&CK kill chain story:
+   - Initial Access: Azure AD / Entra ID sign-in anomalies (AiTM token theft, impossible travel, residential proxy IPs)
+   - Execution: LOLBin abuse with accurate Windows Event IDs (4688 for process creation)
+   - Persistence: Event ID 7045 (new service) with suspicious binary paths in user-writable dirs
+   - Lateral Movement: Event ID 4624 Type 3 to a Domain Controller, or CloudTrail AssumeRole
+   - Exfiltration/C2: DNS beaconing, unusual outbound on port 443 to non-CDN IPs
+
+   LEGITIMATE logs: routine AD authentications, scheduled tasks, Windows Update, AV scans, backup jobs.
+   They must look boring and normal — the player needs realistic noise to filter through.
+
+   FIELD FORMAT (exact keys):
+   { "id": "gen-log-N", "timestamp": "2026-03-22T14:32:01Z", "level": "INFO|WARN|ERROR|CRITICAL",
+     "source": "process or service name", "message": "single human-readable log line",
+     "isMalicious": true/false }
+   The "message" MUST be a single descriptive string (not split into sub-fields).
+   Include Event IDs, source/destination IPs, and command lines inline within the message.
+   Optional: "attackTechnique" (string), "mitreId" (e.g., "T1059.001").
+
+2. lolbins — EXACTLY 10 processes. EXACTLY 5 LEGITIMATE + 5 MALICIOUS.
+   The player sees a Task Manager view and must decide quarantine vs. ignore for each.
+   - MALICIOUS: real LOLBin abuse — certutil downloading payloads, powershell with encoded commands,
+     mshta executing remote HTA, regsvr32 /s /n /u /i: proxy execution, bitsadmin transfers.
+     Command lines must be realistic and specific (full paths, actual flags, plausible C2 IPs).
+   - LEGITIMATE: normal Windows processes — explorer.exe, svchost.exe with valid service flags,
+     Windows Update (wuauclt.exe), Microsoft Teams updater, OneDrive sync.
+     These are decoys — quarantining a legitimate process penalizes the player.
+
+   FIELD FORMAT (exact keys):
+   { "id": "gen-lolbin-N", "processName": "certutil.exe", "pid": 4872,
+     "commandLine": "full command with args", "isMalicious": true/false,
+     "description": "what this process is doing", "mitreId": "T1105" }
+   Every process MUST have a unique pid (integer, 1000-65000 range).
+
+3. wifi — EXACTLY 6 networks. EXACTLY 1 EVIL TWIN + 5 LEGITIMATE/BACKGROUND.
+   The player must identify the safe corporate network vs. the evil twin.
+   - CORPORATE (1): SSID = "[teamName]-Secure", authType = "802.1X", signal = -45 to -55, isEvilTwin = false.
+   - EVIL TWIN (1): SSID similar to corporate (e.g., "[teamName]-Secure" or "[teamName]-Guest"),
+     authType = "WPA2-PSK" (weaker than 802.1X!), signal = -25 to -35 (suspiciously strong),
+     isEvilTwin = true, indicators = ["Stronger signal than corporate AP", "WPA2-PSK instead of 802.1X"].
+   - BACKGROUND (4): random neighbor/public networks (e.g., "NETGEAR-5G", "Airport_FreeWiFi",
+     "HP-Print-LaserJet", "xfinitywifi"). Mix of "WPA2-PSK", "Open". isEvilTwin = false.
+
+   FIELD FORMAT (exact keys):
+   { "id": "gen-wifi-N", "ssid": "...", "bssid": "AA:BB:CC:DD:EE:FF",
+     "signalStrength": -45, "authType": "WPA2-PSK" | "802.1X" | "Open",
+     "isEvilTwin": true/false, "indicators": ["hint 1", "hint 2"] }
+   BSSIDs must be valid MAC format. Signal strength in dBm (negative integer, -25 to -85).
+
+4. expectedIOCs — EXACTLY 6 IOCs extracted from the malicious log entries.
+   Each IOC MUST correspond to a specific malicious log entry — if a log shows C2 traffic to
+   185.234.72.19, then an IOC with value "185.234.72.19" must exist.
+   Types: "Attacker IP", "C2 Domain", "Malicious File Path", "Compromised Account", "File Hash", "Suspicious Token".
+
+   FIELD FORMAT (exact keys):
+   { "type": "Attacker IP", "value": "185.234.72.19", "hint": "Source of lateral movement in log gen-log-7" }`;
+
+// ─── JSON structure appendix (appended to all prompts) ─────────────────
+
+const JSON_STRUCTURE_RULES = `
+IMPORTANT: Return ONLY a valid JSON object with the EXACT top-level keys listed above. No markdown, no commentary.
+
+MANDATORY RULES:
+1. Every object in every array MUST have a unique "id" field.
+2. Use ID prefixes: "gen-email-N" for emails, "gen-log-N" for logs, "gen-lolbin-N" for LOLBins, "gen-wifi-N" for WiFi.
+3. Boolean fields (isPhishing, isMalicious, isEvilTwin) MUST be actual booleans (true/false), not strings.
+4. The malicious/legitimate ratio specified above is MANDATORY for scoring balance. Do not deviate.
+
+EMAIL JSON STRUCTURE:
+{
+  "id": "gen-email-1",
+  "from": "Jane Smith <jane.smith@[fakeDomain]>",
+  "to": "[playerHandle]@[fakeDomain]",
+  "subject": "...",
+  "date": "2026-03-22 09:15",
+  "body": "multi-line email body text",
+  "isPhishing": false,
+  "indicators": ["SPF/DKIM/DMARC all pass", "internal sender"],
+  "difficulty": "medium",
+  "headers": {
+    "returnPath": "<jane.smith@[fakeDomain]>",
+    "spf": "pass",
+    "dkim": "pass",
+    "dmarc": "pass"
+  }
+}
+Headers spf/dkim/dmarc MUST be exactly "pass" or "fail" — never empty strings.`;
+
+// ─── OpenAI Client ─────────────────────────────────────────────────────
+
 export class OpenAIClient {
   private config: OpenAIConfig;
 
@@ -61,159 +194,25 @@ export class OpenAIClient {
     const temperature = config.temperature ?? 0.9;
     const section = config.section ?? "all";
 
-    // For pool generation, we use placeholders instead of specific team data
-    const teamName = "[teamName]";
-    const fakeDomain = "[fakeDomain]";
-
     let sectionPrompt = "";
     let requiredFields: string[] = [];
 
     if (section === "initial") {
-      requiredFields = [
-        "preBreachEmails",
-        "breachEmails"
-      ];
-      sectionPrompt = `ACT AS A SENIOR CYBERSECURITY GRC & THREAT INTELLIGENCE ARCHITECT.
-The target audience consists of highly skilled CYBERSECURITY PROFESSIONALS.
-IMPORTANT: Use these EXACT placeholders:
-- "[teamName]" for the company name
-- "[fakeDomain]" for the corporate domain
-- "[playerHandle]" for the user's name
-- "[phishing-link]" for malicious payloads
-
-CRITICAL ROLEPLAY & TECHNICAL RULES:
-1. DIALOGUE MUST BE HIGH-FIDELITY. Characters use accurate 2026 terminology (e.g., AiTM, session tokens, EDR telemetry, IAM conditional access, ZTNA).
-2. "CORRECT" ANSWERS MUST ALIGN WITH ISO 27001:2022 AND NIS2/GDPR. Correct choices must involve formal Incident Response (A.5.24), Event Reporting (A.6.8), Log Monitoring (A.8.16), or escalating to the CSIRT/NCSC within mandatory 24-72 hour regulatory windows.
-3. "INCORRECT" ANSWERS MUST REPRESENT DANGEROUS SHORTCUTS. These include unauthorized active defense (hack back), resetting passwords without revoking session tokens (which is ineffective against AiTM), or attempting to cover up breaches to avoid regulatory fines.
-
-INITIAL CONTENT FOCUS (ONBOARDING & BREACH EMAILS):
-- preBreachEmails (EXACTLY 4-6 high-fidelity legitimate emails. Must reflect modern corporate workflows, e.g., Azure AD conditional access policy updates, or ISO 27001 audit preparation).
-- breachEmails (EXACTLY 6-8 emails. MANDATORY: 50% LEGITIMATE, 50% SOPHISTICATED PHISHING).
-
-2026 PEDAGOGICAL PHISHING RULES (MANDATORY):
-- LEGITIMATE EMAILS: MUST have passing SPF/DKIM/DMARC headers. No malicious links.
-- PHISHING EMAILS: MUST reflect Adversary-in-the-Middle (AiTM), Evilginx, or Device Code Phishing. Lures MUST impersonate legitimate infrastructure (e.g., a shared document hosted on an attacker-controlled SharePoint tenant or a fake Microsoft Authentication Broker) designed to steal session cookies and bypass legacy MFA. MUST include at least one header failure or domain spoofing artifact. DO NOT use obvious typos or generic malware attachments.`;
+      requiredFields = ["preBreachEmails", "breachEmails"];
+      sectionPrompt = INITIAL_PROMPT;
     } else if (section === "secondary") {
-      requiredFields = [
-        "logEntries",
-        "expectedIOCs",
-        "lolbins",
-        "wifi"
-      ];
-      sectionPrompt = `ACT AS A SENIOR SOC ANALYST AND DIGITAL FORENSICS EXPERT.
-The target audience is CYBERSECURITY PROFESSIONALS conducting advanced log analysis.
-IMPORTANT: Use these EXACT placeholders:
-- "[teamName]" for the company name
-- "[fakeDomain]" for the corporate domain
-- "[playerHandle]" for the user's name
-
-SECONDARY CONTENT FOCUS (INVESTIGATION):
-- logEntries (EXACTLY 25-30 logs. MANDATORY: 70% LEGITIMATE traffic, 30% MALICIOUS attack indicators).
-- expectedIOCs (EXACTLY 6 specific strings found in the malicious logs: IP addresses, file paths, or tokens. MUST be an array of {type, value, hint}).
-- lolbins (EXACTLY 8-12 processes. MANDATORY: 50% LEGITIMATE usage, 50% MALICIOUS exploitation).
-  Each LOLBin MUST have: 'id' (unique string), 'processName' (e.g. "powershell.exe"), 'pid' (unique integer), 'commandLine' (full command with args), 'isMalicious' (boolean), 'description' (what this process does), 'mitreId' (optional MITRE ATT&CK ID like "T1059.001").
-- wifi (EXACTLY 5-8 networks. MANDATORY: 60% CORPORATE/HOME, 40% EVIL TWIN/SUSPICIOUS).
-
-TECHNICAL LOG DEPTH & KILL CHAIN (MANDATORY):
-Logs MUST follow a coherent MITRE ATT&CK kill chain, utilizing precise SIEM artifacts:
-1. Recon/Initial Access: Azure AD sign-in anomalies indicating AiTM token theft (e.g., successful MFA followed by impossible travel or residential proxy IPs).
-2. Execution: Malicious LOLBin usage. MUST include specific Windows Event IDs (e.g., Event ID 4688 for process creation, showing 'powershell.exe' or 'certutil.exe' executing obfuscated command lines).
-3. Persistence: Windows Event ID 7045 (Service Installation) with binary paths pointing to user-writable directories, or Event ID 4672 anomalies.
-4. Lateral Movement: Windows Event ID 4624 (Network Logon Type 3) moving from a workstation to a Domain Controller, or AWS CloudTrail 'AssumeRole' API calls.
-Each log entry MUST include: 'timestamp', 'level' (INFO/WARN/ERROR/CRITICAL), 'source' (process or service name), 'message' (human-readable log line including eventID, destination, processName, commandLine details), and 'isMalicious' (boolean).
-
-IOC EXTRACTION (MANDATORY):
-The 'expectedIOCs' array must correspond EXACTLY to the 'logEntries' generated. If a log shows an SSH brute force from 1.2.3.4, then an IOC of type "Attacker IP" with value "1.2.3.4" must exist.`;
+      requiredFields = ["logEntries", "expectedIOCs", "lolbins", "wifi"];
+      sectionPrompt = SECONDARY_PROMPT;
     } else {
-      requiredFields = [
-        "preBreachEmails",
-        "breachEmails",
-        "logEntries",
-        "expectedIOCs",
-        "lolbins",
-        "wifi"
-      ];
-
-      const initialPrompt = `ACT AS A SENIOR CYBERSECURITY GRC & THREAT INTELLIGENCE ARCHITECT.
-The target audience consists of highly skilled CYBERSECURITY PROFESSIONALS.
-IMPORTANT: Use these EXACT placeholders:
-- "[teamName]" for the company name
-- "[fakeDomain]" for the corporate domain
-- "[playerHandle]" for the user's name
-- "[phishing-link]" for malicious payloads
-
-CRITICAL ROLEPLAY & TECHNICAL RULES:
-1. DIALOGUE MUST BE HIGH-FIDELITY. Characters use accurate 2026 terminology (e.g., AiTM, session tokens, EDR telemetry, IAM conditional access, ZTNA).
-2. "CORRECT" ANSWERS MUST ALIGN WITH ISO 27001:2022 AND NIS2/GDPR. Correct choices must involve formal Incident Response (A.5.24), Event Reporting (A.6.8), Log Monitoring (A.8.16), or escalating to the CSIRT/NCSC within mandatory 24-72 hour regulatory windows.
-3. "INCORRECT" ANSWERS MUST REPRESENT DANGEROUS SHORTCUTS. These include unauthorized active defense (hack back), resetting passwords without revoking session tokens (which is ineffective against AiTM), or attempting to cover up breaches to avoid regulatory fines.
-
-INITIAL CONTENT FOCUS (ONBOARDING & BREACH EMAILS):
-- preBreachEmails (EXACTLY 4-6 high-fidelity legitimate emails. Must reflect modern corporate workflows, e.g., Azure AD conditional access policy updates, or ISO 27001 audit preparation).
-- breachEmails (EXACTLY 6-8 emails. MANDATORY: 50% LEGITIMATE, 50% SOPHISTICATED PHISHING).
-
-2026 PEDAGOGICAL PHISHING RULES (MANDATORY):
-- LEGITIMATE EMAILS: MUST have passing SPF/DKIM/DMARC headers. No malicious links.
-- PHISHING EMAILS: MUST reflect Adversary-in-the-Middle (AiTM), Evilginx, or Device Code Phishing. Lures MUST impersonate legitimate infrastructure (e.g., a shared document hosted on an attacker-controlled SharePoint tenant or a fake Microsoft Authentication Broker) designed to steal session cookies and bypass legacy MFA. MUST include at least one header failure or domain spoofing artifact. DO NOT use obvious typos or generic malware attachments.`;
-
-      const secondaryPrompt = `ACT AS A SENIOR SOC ANALYST AND DIGITAL FORENSICS EXPERT.
-The target audience is CYBERSECURITY PROFESSIONALS conducting advanced log analysis.
-IMPORTANT: Use these EXACT placeholders:
-- "[teamName]" for the company name
-- "[fakeDomain]" for the corporate domain
-- "[playerHandle]" for the user's name
-
-SECONDARY CONTENT FOCUS (INVESTIGATION):
-- logEntries (EXACTLY 25-30 logs. MANDATORY: 70% LEGITIMATE traffic, 30% MALICIOUS attack indicators).
-- expectedIOCs (EXACTLY 6 specific strings found in the malicious logs: IP addresses, file paths, or tokens. MUST be an array of {type, value, hint}).
-- lolbins (EXACTLY 8-12 processes. MANDATORY: 50% LEGITIMATE usage, 50% MALICIOUS exploitation).
-  Each LOLBin MUST have: 'id' (unique string), 'processName' (e.g. "powershell.exe"), 'pid' (unique integer), 'commandLine' (full command with args), 'isMalicious' (boolean), 'description' (what this process does), 'mitreId' (optional MITRE ATT&CK ID like "T1059.001").
-- wifi (EXACTLY 5-8 networks. MANDATORY: 60% CORPORATE/HOME, 40% EVIL TWIN/SUSPICIOUS).
-
-TECHNICAL LOG DEPTH & KILL CHAIN (MANDATORY):
-Logs MUST follow a coherent MITRE ATT&CK kill chain, utilizing precise SIEM artifacts:
-1. Recon/Initial Access: Azure AD sign-in anomalies indicating AiTM token theft (e.g., successful MFA followed by impossible travel or residential proxy IPs).
-2. Execution: Malicious LOLBin usage. MUST include specific Windows Event IDs (e.g., Event ID 4688 for process creation, showing 'powershell.exe' or 'certutil.exe' executing obfuscated command lines).
-3. Persistence: Windows Event ID 7045 (Service Installation) with binary paths pointing to user-writable directories, or Event ID 4672 anomalies.
-4. Lateral Movement: Windows Event ID 4624 (Network Logon Type 3) moving from a workstation to a Domain Controller, or AWS CloudTrail 'AssumeRole' API calls.
-Each log entry MUST include: 'timestamp', 'level' (INFO/WARN/ERROR/CRITICAL), 'source' (process or service name), 'message' (human-readable log line including eventID, destination, processName, commandLine details), and 'isMalicious' (boolean).
-
-IOC EXTRACTION (MANDATORY):
-The 'expectedIOCs' array must correspond EXACTLY to the 'logEntries' generated. If a log shows an SSH brute force from 1.2.3.4, then an IOC of type "Attacker IP" with value "1.2.3.4" must exist.`;
-
-      sectionPrompt = `${initialPrompt}\n\n---\n\n${secondaryPrompt}`;
+      requiredFields = ["preBreachEmails", "breachEmails", "logEntries", "expectedIOCs", "lolbins", "wifi"];
+      sectionPrompt = `${INITIAL_PROMPT}\n\n---\n\n${SECONDARY_PROMPT}`;
     }
 
-    // Create a comprehensive prompt for batch generation with explicit structure
-    const batchPrompt = `${sectionPrompt} 
+    const batchPrompt = `${sectionPrompt}
 
-IMPORTANT: Return ONLY a JSON object with THESE EXACT top-level keys:
+REQUIRED TOP-LEVEL KEYS:
 ${requiredFields.map((f) => `- ${f}`).join("\n")}
-
-MANDATORY DATA RULES:
-1. Every object in EVERY array (emails, logEntries, lolbins, wifi, etc.) MUST have a unique "id" field.
-2. For emails, use IDs like "gen-email-1", "gen-email-2", etc.
-3. For logs, use IDs like "gen-log-1", "gen-log-2", etc.
-
-EMAIL JSON STRUCTURE (MANDATORY):
-Each email MUST have:
-{
-  "id": "...",
-  "from": "...",
-  "to": "...",
-  "subject": "...",
-  "date": "YYYY-MM-DD HH:mm",
-  "body": "...",
-  "isPhishing": true/false,
-  "indicators": ["indicator 1", ...],
-  "difficulty": "easy/medium/hard",
-  "headers": {
-    "returnPath": "<sender@domain.com>",
-    "spf": "pass" or "fail",
-    "dkim": "pass" or "fail",
-    "dmarc": "pass" or "fail"
-  }
-}
-* IMPORTANT: Headers MUST NOT be empty strings. Use "pass" or "fail" explicitly.
+${JSON_STRUCTURE_RULES}
 
 Use locale: ${config.locale}. Make it challenging, believable, and completely IMMERSIVE.`;
 
@@ -323,15 +322,17 @@ Use locale: ${config.locale}. Make it challenging, believable, and completely IM
   }
 }
 
+// ─── Audit Client ──────────────────────────────────────────────────────
+
 /**
  * Client for auditing generated content quality.
- * Uses a more powerful model to ensure technical accuracy and roleplay fidelity.
+ * Uses a reasoning model to ensure technical accuracy.
  */
 export class AuditClient {
   private apiKey: string;
   private model: string;
 
-  constructor(apiKey: string, model: string = "gpt-5.2") {
+  constructor(apiKey: string, model: string = "o3-pro") {
     this.apiKey = apiKey;
     this.model = model;
   }
@@ -341,28 +342,45 @@ export class AuditClient {
     content: unknown
   ): Promise<{ score: number; feedback: string }> {
     try {
-      const prompt = `AUDIT this cybersecurity game content for an advanced professional audience.
-Type: ${type}
+      const prompt = `You are auditing content generated for a cybersecurity training simulation.
+The target audience is skilled IT professionals. Content must be technically accurate and challenging.
+
+Content type: ${type}
 Content: ${JSON.stringify(content)}
 
-CRITICAL COMPLIANCE & 2026 STANDARDS CHECK:
-1. ADVANCED THREAT FIDELITY (EMAILS):
-   - IF isPhishing is FALSE: Content MUST NOT have suspicious links and headers MUST pass.
-   - IF isPhishing is TRUE: Reject generic "Nigerian prince" scams, obvious typos, or generic '.exe' attachments. APPROVE sophisticated 2026 vectors (e.g., AiTM, session cookie theft, Device Code Phishing, MFA fatigue, abused SharePoint infrastructure).
-2. INCIDENT RESPONSE INTEGRITY (DMs):
-   - "isCorrect: true" choices MUST align with formal ISO 27001:2022 controls (e.g., A.5.24 Incident Management, A.8.16 Monitoring) and regulatory realism (e.g., NIS2 24-hour early warning, GDPR 72-hour reporting windows).
-   - REJECT any "correct" choice that relies on outdated "Hacklore" or suggests that merely resetting a password without revoking session tokens will stop an AiTM attack.
-3. TELEMETRIC ACCURACY (LOGS & LOLBINS):
-   - Logs MUST utilize realistic, accurate artifacts (e.g., Windows Event IDs 4624, 4625, 4688, 7045 or AWS CloudTrail). If a log claims to show lateral movement but uses an incorrect Event ID or illogical port, score a CRITICAL FAIL.
-4. HACKLORE IDENTIFICATION:
-   - NPC advice scenarios test rejection of cybersecurity myths. The scenario is only valid if the correct choice actively debunks the myth and redirects to a data-driven practice.
+AUDIT CRITERIA BY TYPE:
+
+FOR EMAILS (EMAIL_PRE, EMAIL_BREACH):
+- Legitimate emails (isPhishing=false): headers MUST all pass, no suspicious links, realistic corporate tone.
+- Phishing emails (isPhishing=true): MUST use sophisticated 2024-2026 vectors (AiTM, session theft, Device Code Phishing, MFA fatigue). REJECT generic scams, obvious typos, or .exe attachments. MUST have at least one header failure or domain mismatch.
+- "indicators" array must contain analyst-useful observations, not player-facing hints.
+- Ratio check: breachEmails should be exactly 50% legitimate / 50% phishing.
+
+FOR LOGS (LOG_BATCH):
+- Logs MUST use accurate Windows Event IDs (4624, 4625, 4688, 7045) or cloud equivalents.
+- If a log claims lateral movement but uses wrong Event ID or illogical port → CRITICAL FAIL.
+- "message" must be a single readable string with Event IDs, IPs, and commands inline.
+- Ratio check: MUST be approximately 70% legitimate / 30% malicious.
+- Malicious logs must tell a coherent kill chain (recon → execution → persistence → lateral movement).
+
+FOR LOLBINS (LOLBIN_BATCH):
+- Malicious LOLBins must have realistic, specific command lines (not generic placeholders).
+- processName must be a real Windows binary (certutil.exe, powershell.exe, mshta.exe, etc.).
+- Legitimate processes must look genuinely normal (svchost.exe with valid flags, explorer.exe).
+- Ratio check: MUST be approximately 50% legitimate / 50% malicious. If <40% legitimate → FAIL.
+
+FOR WIFI (WIFI_BATCH):
+- Must have exactly 1 evil twin with isEvilTwin=true.
+- Evil twin must use WPA2-PSK (weaker) vs corporate 802.1X, and have stronger signal.
+- authType must be exactly "WPA2-PSK", "802.1X", or "Open" — not free-form strings.
+- Background networks should be realistic public/neighbor SSIDs.
 
 SCORING (1-10):
-- 1-3: CRITICAL FAIL (e.g., technically inaccurate Event IDs, suggests password resets stop session hijacking, or "correct" action violates ISO 27001/NIS2 timelines). REJECT.
-- 4-6: Accurate but overly basic (relies on legacy phishing indicators or generic IT advice).
-- 7-10: High-fidelity. Exhibits deep understanding of AiTM, MITRE ATT&CK, precise SIEM telemetry, and modern European regulatory frameworks.
+1-3: CRITICAL FAIL — technically inaccurate (wrong Event IDs, broken ratios, generic phishing).
+4-6: Accurate but basic — relies on legacy indicators or has minor ratio/format issues.
+7-10: High-fidelity — accurate MITRE ATT&CK telemetry, sophisticated phishing vectors, correct ratios.
 
-Return ONLY a JSON object: { "score": number, "feedback": "string" }`;
+Return ONLY: { "score": number, "feedback": "string with specific issues found" }`;
 
       const response = await fetch(
         "https://api.openai.com/v1/chat/completions",
@@ -409,7 +427,7 @@ export function createOpenAIClient(): OpenAIClient | null {
     return null;
   }
 
-  const model = process.env.OPENAI_MODEL || "gpt-4.1";
+  const model = process.env.OPENAI_MODEL || "gpt-5.4";
 
   return new OpenAIClient({ apiKey, model });
 }
