@@ -166,13 +166,28 @@ export function IncidentReport({ ending, verdict, color, teamName, playerHandle,
         Play Again
       </motion.button>
 
-      {/* Credits */}
+      {/* Credits with spotlight sweep */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.5, duration: 0.8 }}
-        className="text-center mt-4 space-y-1.5"
+        className="text-center mt-4 space-y-1.5 relative overflow-hidden"
       >
+        {/* Spotlight sweep */}
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%)`,
+            backgroundSize: "200% 100%",
+            animation: "spotlight-sweep 6s ease-in-out 3s infinite",
+          }}
+        />
+        <style>{`
+          @keyframes spotlight-sweep {
+            0%, 100% { background-position: 200% 0; }
+            50% { background-position: -100% 0; }
+          }
+        `}</style>
         <div style={{ color: "rgba(255,255,255,0.2)" }} className="text-[10px] uppercase tracking-[3px]">
           A contribution to the cybersecurity community
         </div>
