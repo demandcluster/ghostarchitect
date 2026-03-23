@@ -360,6 +360,11 @@ export default function Home() {
     [addAction, addFlag, addTimelineEntry, changeStep, brandedBreachEmails]
   );
 
+  const mergedRevealedIds = useMemo(
+    () => revealedWithFiller(revealedDmIds, mergedSocialDMs),
+    [revealedDmIds, mergedSocialDMs]
+  );
+
   // Start screen (full screen, no OS shell)
   if (step === "start") {
     return <StartScreen onStart={() => changeStep("login")} />;
@@ -776,10 +781,6 @@ export default function Home() {
 
   // DM sidebar — onboarding uses social engineering, investigation uses NPC bad advice
   const isInvestigation = step.startsWith("investigation-");
-  const mergedRevealedIds = useMemo(
-    () => revealedWithFiller(revealedDmIds, mergedSocialDMs),
-    [revealedDmIds, mergedSocialDMs]
-  );
   const dmSidebar =
     step === "onboarding-portal" ? (
       <DMSidebar
