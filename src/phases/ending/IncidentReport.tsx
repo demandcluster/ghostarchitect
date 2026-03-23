@@ -179,7 +179,7 @@ export function IncidentReport({ ending, verdict, color, teamName, playerHandle,
           style={{
             background: `linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.12) 50%, transparent 60%)`,
             backgroundSize: "200% 100%",
-            animation: "spotlight-sweep 6s ease-in-out 3s infinite",
+            animation: "spotlight-sweep 11s ease-in-out 3s infinite",
           }}
         />
         <style>{`
