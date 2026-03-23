@@ -26,9 +26,11 @@ type Phase = "typewriter" | "stamp" | "report";
 const TYPEWRITER_LINE = "Incident #GA-2026-0847 \u2014 Final disposition pending...";
 
 export function EndingPage({ onPlayAgain }: EndingPageProps) {
-  const { teamName, playerHandle } = useGameStore((s) => ({ teamName: s.teamName, playerHandle: s.playerHandle }));
+  const teamName = useGameStore((s) => s.teamName);
+  const playerHandle = useGameStore((s) => s.playerHandle);
   const categoryScores = useScoreStore((s) => s.categoryScores);
-  const { decisions, flags } = useNarrativeStore((s) => ({ decisions: s.decisions, flags: s.flags }));
+  const decisions = useNarrativeStore((s) => s.decisions);
+  const flags = useNarrativeStore((s) => s.flags);
   const { ending } = deriveFlags(decisions, flags);
   const config = VERDICT_CONFIG[ending];
 
