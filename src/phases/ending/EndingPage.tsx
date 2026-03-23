@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import confetti from "canvas-confetti";
 import { deriveFlags, type Ending } from "@/engine/rules";
@@ -9,7 +9,7 @@ import { useScoreStore } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
 import { ClassifiedStamp } from "./ClassifiedStamp";
 import { IncidentReport } from "./IncidentReport";
-import { getStaticRemark } from "./analystRemarks";
+import { getStaticRemark, getCachedRemark } from "./analystRemarks";
 
 interface EndingPageProps {
   onPlayAgain: () => void;
@@ -36,20 +36,8 @@ export function EndingPage({ onPlayAgain }: EndingPageProps) {
   const [typedChars, setTypedChars] = useState(0);
   const [cursorVisible, setCursorVisible] = useState(true);
 
-  const [remark, setRemark] = useState<string | null>(null);
-  const remarkResolved = useRef(false);
-
-  useEffect(() => {
-    const flagList = Array.from(flags).join(",");
-    fetch(`/api/v1/content/analyst-remark?flags=${encodeURIComponent(flagList)}&handle=${encodeURIComponent(playerHandle || "Analyst")}&verdict=${ending}`)
-      .then((r) => r.ok ? r.json() : { remark: "" })
-      .then((data) => {
-        if (data.remark) { remarkResolved.current = true; setRemark(data.remark); }
-      })
-      .catch(() => {});
-  }, [flags, playerHandle, ending]);
-
-  const resolvedRemark = remark || getStaticRemark(flags);
+  // Read AI remark from cache (prefetched during debrief), fall back to static
+  const resolvedRemark = getCachedRemark() || getStaticRemark(flags);
 
   const prefersReduced = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 

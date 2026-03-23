@@ -16,3 +16,34 @@ export function getStaticRemark(flags: Set<string>): string {
   }
   return GENERIC_REMARK;
 }
+
+// Module-level cache for AI remark prefetching.
+// DebriefPage calls prefetchRemark(), EndingPage calls getCachedRemark().
+let cachedRemark: string | null = null;
+let fetchPromise: Promise<string> | null = null;
+
+export function prefetchRemark(flags: Set<string>, playerHandle: string, ending: string): void {
+  if (fetchPromise) return; // already in flight
+  const flagList = Array.from(flags).join(",");
+  fetchPromise = fetch(
+    `/api/v1/content/analyst-remark?flags=${encodeURIComponent(flagList)}&handle=${encodeURIComponent(playerHandle || "Analyst")}&verdict=${ending}`
+  )
+    .then((r) => (r.ok ? r.json() : { remark: "" }))
+    .then((data) => {
+      cachedRemark = data.remark || null;
+      return cachedRemark || "";
+    })
+    .catch(() => {
+      cachedRemark = null;
+      return "";
+    });
+}
+
+export function getCachedRemark(): string | null {
+  return cachedRemark;
+}
+
+export function resetRemarkCache(): void {
+  cachedRemark = null;
+  fetchPromise = null;
+}

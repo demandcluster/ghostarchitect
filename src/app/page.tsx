@@ -24,6 +24,7 @@ import { IOCExtraction } from "@/phases/investigation/IOCExtraction";
 import { CredentialRotation } from "@/phases/investigation/CredentialRotation";
 import { DebriefPage } from "@/phases/debrief/DebriefPage";
 import { EndingPage } from "@/phases/ending/EndingPage";
+import { resetRemarkCache } from "@/phases/ending/analystRemarks";
 import { PRE_BREACH_EMAILS, BREACH_EMAILS, FILLER_EMAILS } from "@/content/emails";
 import { SOCIAL_ENGINEERING_DM, NPC_BAD_ADVICE, OFFICE_CHATTER_DMS } from "@/content/dmScripts";
 import { intersperseFiller, revealedWithFiller } from "@/content/fillerDMs";
@@ -814,6 +815,7 @@ export default function Home() {
             useScoreStore.getState().reset();
             useNarrativeStore.getState().reset();
             useGameStore.getState().reset();
+            resetRemarkCache();
             setStep("start");
           }}
         />

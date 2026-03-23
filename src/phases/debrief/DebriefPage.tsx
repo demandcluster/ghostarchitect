@@ -10,6 +10,8 @@ import { useScoreStore, ScoreCategory, ScoreAction } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
 import { deriveFlags } from "@/engine/rules";
 import { TrophyBadge } from "@/shared/components/TrophyBadge";
+import { prefetchRemark } from "@/phases/ending/analystRemarks";
+import { useGameStore } from "@/stores/gameStore";
 
 const CATEGORY_LABELS: Record<ScoreCategory, string> = {
   phishingIQ: "Phishing IQ",
@@ -57,7 +59,13 @@ export function DebriefPage({ onContinue }: DebriefPageProps) {
   const actions = useScoreStore((s) => s.actions);
   const categoryScores = useScoreStore((s) => s.categoryScores);
 
+  const playerHandle = useGameStore((s) => s.playerHandle);
   const derived = deriveFlags(decisions, flags);
+
+  // Prefetch AI analyst remark while player reviews debrief
+  useEffect(() => {
+    prefetchRemark(flags, playerHandle || "Analyst", derived.ending);
+  }, [flags, playerHandle, derived.ending]);
 
   // Show trophy after debrief has rendered, only once
   useEffect(() => {
