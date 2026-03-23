@@ -84,6 +84,144 @@ Mike added a comment:
   },
 ];
 
+export const FILLER_EMAILS: Email[] = [
+  {
+    id: "filler-1",
+    from: "derek.hoffman@nexuscorp.com",
+    to: "all-staff@nexuscorp.com",
+    subject: "RE: RE: RE: RE: Who keeps taking my yogurt from the fridge",
+    date: "2026-03-10 08:31",
+    body: `Team,
+
+This is now the FOURTH time my clearly labeled Greek yogurt has vanished from the 3rd floor fridge. I have started writing my name in Sharpie on all six sides of the container.
+
+If the yogurt bandit is reading this: I know you exist. I have submitted a facilities ticket to install a webcam. This is not a joke.
+
+Derek Hoffman
+Network Engineering`,
+    headers: {
+      returnPath: "<derek.hoffman@nexuscorp.com>",
+      spf: "pass",
+      dkim: "pass",
+      dmarc: "pass (p=reject)",
+    },
+    isPhishing: false,
+    indicators: [],
+    difficulty: "easy",
+  },
+  {
+    id: "filler-2",
+    from: "lisa.park@nexuscorp.com",
+    to: "all-staff@nexuscorp.com",
+    subject: "Lost cat spotted in parking garage B2",
+    date: "2026-03-10 09:14",
+    body: `Hi everyone,
+
+There is an orange tabby cat living in parking garage B2 near the stairwell. He is very friendly and appears to be well-fed (probably from the vending machine crumbs).
+
+If this is your cat, please come collect him. If this is not your cat, please do not feed him more tuna from the break room. He is getting bold and tried to badge into the building this morning.
+
+I have named him "Firewall" until his owner is found.
+
+Thanks,
+Lisa Park
+Help Desk`,
+    headers: {
+      returnPath: "<lisa.park@nexuscorp.com>",
+      spf: "pass",
+      dkim: "pass",
+      dmarc: "pass (p=reject)",
+    },
+    isPhishing: false,
+    indicators: [],
+    difficulty: "easy",
+  },
+  {
+    id: "filler-3",
+    from: "events@nexuscorp.com",
+    to: "all-staff@nexuscorp.com",
+    subject: "Spring Potluck - Sign up by Friday!",
+    date: "2026-03-10 10:05",
+    body: `Hello NexusCorp!
+
+The annual spring potluck is next Wednesday in the cafeteria. Please sign up on the shared spreadsheet:
+
+https://docs.nexuscorp.com/potluck-spring-2026
+
+Current situation:
+- 14 people have signed up to bring dessert
+- 0 people have signed up to bring actual food
+- Dave from Accounting is bringing "a surprise" (last year it was a watermelon carved into a swan, so expectations are high)
+
+Please bring something savory. We cannot survive on brownies alone (although some of us are willing to try).
+
+Best,
+Events Committee`,
+    headers: {
+      returnPath: "<events@nexuscorp.com>",
+      spf: "pass",
+      dkim: "pass",
+      dmarc: "pass (p=reject)",
+    },
+    isPhishing: false,
+    indicators: [],
+    difficulty: "easy",
+  },
+  {
+    id: "filler-4",
+    from: "raj.patel@nexuscorp.com",
+    to: "all-staff@nexuscorp.com",
+    subject: "Apologies for the reply-all",
+    date: "2026-03-10 11:22",
+    body: `Hi everyone,
+
+I am so sorry for the reply-all I just sent. The message "lol yeah she's the worst" was meant for one person and was about a character on a TV show. Specifically, it was about Cersei Lannister.
+
+I would like to formally confirm that I think all of my coworkers are wonderful.
+
+Please disregard and have a great day.
+
+Raj Patel
+Cloud Infrastructure`,
+    headers: {
+      returnPath: "<raj.patel@nexuscorp.com>",
+      spf: "pass",
+      dkim: "pass",
+      dmarc: "pass (p=reject)",
+    },
+    isPhishing: false,
+    indicators: [],
+    difficulty: "easy",
+  },
+  {
+    id: "filler-5",
+    from: "facilities@nexuscorp.com",
+    to: "all-staff@nexuscorp.com",
+    subject: "Please stop microwaving fish",
+    date: "2026-03-10 12:47",
+    body: `Dear colleagues,
+
+Following 17 complaints this week alone, we are formally requesting that employees stop microwaving fish in the 4th floor break room.
+
+We understand that salmon is healthy. We understand that meal prep is important. We are simply asking that you consider the olfactory experience of everyone within a 50-meter radius.
+
+The 4th floor ventilation system was not designed for this. Facilities has received a quote for an industrial-grade air purifier and we are not happy about it.
+
+Thank you for your cooperation.
+
+Facilities Management`,
+    headers: {
+      returnPath: "<facilities@nexuscorp.com>",
+      spf: "pass",
+      dkim: "pass",
+      dmarc: "pass (p=reject)",
+    },
+    isPhishing: false,
+    indicators: [],
+    difficulty: "easy",
+  },
+];
+
 export const BREACH_EMAILS: Email[] = [
   {
     id: "breach-1",

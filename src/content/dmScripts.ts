@@ -1,5 +1,76 @@
 import type { DMMessage } from "./types";
 
+/**
+ * Ambient office chatter DMs — non-scoring filler messages that make the
+ * DM sidebar feel alive. No choices, no flags, purely cosmetic.
+ */
+export const OFFICE_CHATTER_DMS: DMMessage[] = [
+  {
+    id: "chatter-1",
+    sender: "Dave from Accounting",
+    senderRole: "Accounting",
+    avatar: "DA",
+    text: "Anyone know whose lunch exploded in the breakroom microwave? Asking for the fire marshal.",
+    timestamp: -1,
+  },
+  {
+    id: "chatter-2",
+    sender: "Priya Sharma",
+    senderRole: "Marketing Intern",
+    avatar: "PS",
+    text: "WiFi password changed AGAIN? This is the third time this month. Is someone stress-testing us?",
+    timestamp: -1,
+  },
+  {
+    id: "chatter-3",
+    sender: "Tom Nguyen",
+    senderRole: "DevOps",
+    avatar: "TN",
+    text: "Meeting that could've been an email count: 47. And it's only Wednesday.",
+    timestamp: -1,
+  },
+  {
+    id: "chatter-4",
+    sender: "Rachel Kim",
+    senderRole: "HR Coordinator",
+    avatar: "RK",
+    text: "Friendly reminder: the office fridge gets cleaned out every Friday. Label your stuff or it becomes communal property.",
+    timestamp: -1,
+  },
+  {
+    id: "chatter-5",
+    sender: "Jake Morrison",
+    senderRole: "Sales",
+    avatar: "JM",
+    text: "Does anyone else's badge not work on the 3rd floor? Or is that just a me problem?",
+    timestamp: -1,
+  },
+  {
+    id: "chatter-6",
+    sender: "Lin Chen",
+    senderRole: "QA Engineer",
+    avatar: "LC",
+    text: "The printer on floor 2 is making sounds like a fax machine from 1997. Should I call IT or an exorcist?",
+    timestamp: -1,
+  },
+  {
+    id: "chatter-7",
+    sender: "Dave from Accounting",
+    senderRole: "Accounting",
+    avatar: "DA",
+    text: "Someone left a passive-aggressive note on the coffee machine. I respect the font choice though.",
+    timestamp: -1,
+  },
+  {
+    id: "chatter-8",
+    sender: "Priya Sharma",
+    senderRole: "Marketing Intern",
+    avatar: "PS",
+    text: "Is the VPN supposed to be this slow or am I downloading the entire internet by accident?",
+    timestamp: -1,
+  },
+];
+
 export const SOCIAL_ENGINEERING_DM: DMMessage[] = [
   {
     id: "se-0",

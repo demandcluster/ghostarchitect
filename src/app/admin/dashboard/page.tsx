@@ -612,206 +612,6 @@ function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id
 }
 
 // ---------------------------------------------------------------------------
-// Content Pool Panel
-// ---------------------------------------------------------------------------
-
-function ContentPoolPanel({ authFetch }: { authFetch: (url: string, options?: RequestInit) => Promise<Response> }) {
-  const [data, setData] = useState<{ counts: { type: string; count: number }[]; summary: { total: number; audited: number; pending: number } } | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-
-  const fetchCounts = useCallback(async () => {
-    try {
-      const res = await authFetch('/api/admin/content');
-      if (res.ok) {
-        setData(await res.json());
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
-  }, [authFetch]);
-
-  useEffect(() => {
-    fetchCounts();
-    const interval = setInterval(fetchCounts, 10000); // Refresh every 10s
-    return () => clearInterval(interval);
-  }, [fetchCounts]);
-
-  const triggerRefill = async (section: string) => {
-    setActionLoading(section);
-    try {
-      await authFetch('/api/admin/content', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ section })
-      });
-      // Poll until counts change (generation is async on server)
-      const before = data?.summary.total ?? 0;
-      let attempts = 0;
-      const poll = async () => {
-        attempts++;
-        try {
-          const res = await authFetch('/api/admin/content');
-          if (res.ok) {
-            const fresh = await res.json();
-            setData(fresh);
-            if (fresh.summary.total !== before || attempts >= 30) {
-              setActionLoading(null);
-              return;
-            }
-          }
-        } catch { /* ignore */ }
-        if (attempts < 30) {
-          setTimeout(poll, 3000);
-        } else {
-          setActionLoading(null);
-        }
-      };
-      setTimeout(poll, 3000);
-    } catch (e) {
-      console.error(e);
-      setActionLoading(null);
-    }
-  };
-
-  const clearPool = async () => {
-    if (!confirm('Are you sure you want to clear the entire content pool? This will delete all generated content.')) {
-      return;
-    }
-
-    setActionLoading('clear');
-    try {
-      await authFetch('/api/admin/content', {
-        method: 'DELETE'
-      });
-      await fetchCounts();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  if (loading && !data) return null;
-
-  return (
-    <div style={{ marginBottom: 40 }}>
-      <div style={{ marginBottom: 16 }}>
-        <div style={labelStyle}>System Health</div>
-        <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--text-primary)' }}>
-          AI Content Pool
-        </h2>
-      </div>
-
-      {actionLoading && (
-        <div style={{
-          background: 'var(--warning-subtle, rgba(234,179,8,0.1))',
-          border: '1px solid var(--warning, #eab308)',
-          borderRadius: 8,
-          padding: '10px 16px',
-          marginBottom: 16,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 10,
-          fontSize: 12,
-          color: 'var(--warning, #eab308)',
-          fontWeight: 600
-        }}>
-          <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: 'var(--warning, #eab308)' }} />
-          {actionLoading === 'clear' ? 'Clearing pool...' : `Generating content (${actionLoading})... This may take a minute.`}
-        </div>
-      )}
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
-        {/* Summary Card */}
-        <div style={{ 
-          background: 'var(--bg-secondary)', 
-          border: '1px solid var(--border)', 
-          borderRadius: 8, 
-          padding: 16,
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between'
-        }}>
-          <div>
-            <div style={labelStyle}>Pool Status</div>
-            <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--accent)' }}>
-              {data?.summary.total || 0}
-            </div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 4 }}>
-              {data?.summary.audited || 0} Audited / {data?.summary.pending || 0} Pending
-            </div>
-          </div>
-          <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-            <button
-              onClick={() => triggerRefill('all')}
-              disabled={!!actionLoading}
-              style={{ ...primaryBtnStyle(!!actionLoading), padding: '6px 0', fontSize: 10, flex: 1 }}
-            >
-              {actionLoading === 'all' ? 'REFILLING...' : 'REFILL ALL'}
-            </button>
-            <button
-              onClick={clearPool}
-              disabled={!!actionLoading}
-              style={{ ...dangerBtnStyle(!!actionLoading), padding: '6px 0', fontSize: 10, flex: 1 }}
-            >
-              {actionLoading === 'clear' ? 'CLEARING...' : 'CLEAR POOL'}
-            </button>
-          </div>
-        </div>
-
-        {/* Breakdown Card */}
-        <div style={{ 
-          background: 'var(--bg-secondary)', 
-          border: '1px solid var(--border)', 
-          borderRadius: 8, 
-          padding: 16,
-          gridColumn: 'span 2'
-        }}>
-          <div style={labelStyle}>Pool Breakdown</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', marginTop: 8 }}>
-            {[
-              'EMAIL_PRE', 'EMAIL_BREACH', 'LOG_BATCH', 'LOLBIN_BATCH', 'WIFI_BATCH'
-            ].map(type => {
-              const item = data?.counts.find(c => c.type === type);
-              const count = item ? item.count : 0;
-              return (
-                <div key={type} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 4 }}>
-                  <span style={{ fontSize: 11, color: count > 0 ? 'var(--text-secondary)' : 'var(--danger)' }}>
-                    {type}{count === 0 ? ' (MISSING)' : ''}
-                  </span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: count > 0 ? 'var(--text-primary)' : 'var(--danger)' }}>
-                    {count}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ marginTop: 16, display: 'flex', gap: 8 }}>
-            <button
-              onClick={() => triggerRefill('initial')}
-              disabled={!!actionLoading}
-              style={{ ...primaryBtnStyle(!!actionLoading), padding: '6px 0', fontSize: 10, flex: 1 }}
-            >
-              {actionLoading === 'initial' ? 'REFILLING...' : 'REFILL STAGE 1'}
-            </button>
-            <button
-              onClick={() => triggerRefill('secondary')}
-              disabled={!!actionLoading}
-              style={{ ...primaryBtnStyle(!!actionLoading), padding: '6px 0', fontSize: 10, flex: 1 }}
-            >
-              {actionLoading === 'secondary' ? 'REFILLING...' : 'REFILL STAGE 2'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Inner dashboard — uses AdminAuthProvider context
 // ---------------------------------------------------------------------------
 
@@ -825,7 +625,7 @@ function AdminDashboard() {
   const { accessToken, adminUsername, logout, authFetch, isLoading } = useAdminAuth();
   const router = useRouter();
 
-  const [activeTab, setActiveTab] = useState<'trainers' | 'pool'>('trainers');
+
   const [trainers, setTrainers] = useState<TrainerRow[]>([]);
   const [loadingTrainers, setLoadingTrainers] = useState(true);
   const [modal, setModal] = useState<ModalState>({ type: 'none' });
@@ -1011,46 +811,7 @@ function AdminDashboard() {
           margin: '0 auto',
         }}
       >
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 24, marginBottom: 24, borderBottom: '1px solid var(--border)' }}>
-          <button
-            onClick={() => setActiveTab('trainers')}
-            style={{
-              padding: '8px 4px',
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              color: activeTab === 'trainers' ? 'var(--accent)' : 'var(--text-muted)',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 'trainers' ? '2px solid var(--accent)' : '2px solid transparent',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            TRAINERS
-          </button>
-          <button
-            onClick={() => setActiveTab('pool')}
-            style={{
-              padding: '8px 4px',
-              fontSize: 12,
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              color: activeTab === 'pool' ? 'var(--accent)' : 'var(--text-muted)',
-              background: 'transparent',
-              border: 'none',
-              borderBottom: activeTab === 'pool' ? '2px solid var(--accent)' : '2px solid transparent',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            SYSTEM HEALTH
-          </button>
-        </div>
-
-        {activeTab === 'trainers' ? (
-          <>
+        <>
             {/* Panel header */}
             <div
               style={{
@@ -1326,9 +1087,6 @@ function AdminDashboard() {
               )}
             </div>
           </>
-        ) : (
-          <ContentPoolPanel authFetch={authFetch} />
-        )}
       </main>
 
       {/* ── Modals ── */}

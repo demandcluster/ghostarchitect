@@ -359,14 +359,14 @@ export class ContentPoolManager {
       }).map((r, idx) => {
         // Direct normalization — skip brand() to avoid field mangling
         const processName = String(r.processName || r.process || r.name || r.executable || r.binary || 'unknown.exe');
-        const pid = typeof r.pid === 'number' ? r.pid : (typeof r.PID === 'number' ? r.PID : Math.floor(Math.random() * 60000) + 1000 + idx);
+        const pid = typeof r.pid === 'number' ? r.pid : (typeof r.PID === 'number' ? r.PID : Math.floor(Math.random() * 60000) + 1000);
         const commandLine = String(r.commandLine || r.command || r.cmd || r.args || processName);
         const description = String(r.description || r.desc || r.details || r.info || r.text || r.message || '');
         const mal = r.isMalicious ?? r.malicious ?? r.suspicious ?? false;
         return {
-          id: String(r.id || `lolbin-${idx}`),
+          id: String(r.id || `lolbin-${crypto.randomUUID().slice(0, 8)}`),
           processName,
-          pid: typeof pid === 'number' ? pid : parseInt(String(pid), 10) || (1000 + idx),
+          pid: typeof pid === 'number' ? pid : parseInt(String(pid), 10) || (Math.floor(Math.random() * 60000) + 1000),
           commandLine,
           description,
           isMalicious: mal === true || String(mal) === 'true',

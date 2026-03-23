@@ -5,12 +5,10 @@ import { motion } from "framer-motion";
 import { useScoreStore } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
 import { LOG_ENTRIES } from "@/content/logEntries";
-import type { IOCIndicator, LogEntry } from "@/content/types";
+import type { IOCIndicator } from "@/content/types";
 
 interface IOCExtractionProps {
   onComplete: () => void;
-  expectedIOCs?: IOCIndicator[];
-  logEntries?: LogEntry[];
 }
 
 const DEFAULT_IOCS: IOCIndicator[] = [
@@ -29,7 +27,7 @@ const LEVEL_COLORS: Record<string, string> = {
   CRITICAL: "text-[var(--danger)]",
 };
 
-export function IOCExtraction({ onComplete, expectedIOCs, logEntries }: IOCExtractionProps) {
+export function IOCExtraction({ onComplete }: IOCExtractionProps) {
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [shownHints, setShownHints] = useState<Set<string>>(new Set());
@@ -37,8 +35,8 @@ export function IOCExtraction({ onComplete, expectedIOCs, logEntries }: IOCExtra
   const addAction = useScoreStore((s) => s.addAction);
   const addFlag = useNarrativeStore((s) => s.addFlag);
 
-  const iocsToUse = expectedIOCs && expectedIOCs.length > 0 ? expectedIOCs : DEFAULT_IOCS;
-  const logsToUse = logEntries && logEntries.length > 0 ? logEntries : LOG_ENTRIES;
+  const iocsToUse = DEFAULT_IOCS;
+  const logsToUse = LOG_ENTRIES;
 
   const showHint = (iocType: string) => {
     setShownHints((prev) => new Set(prev).add(iocType));
