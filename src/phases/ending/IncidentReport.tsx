@@ -165,6 +165,33 @@ export function IncidentReport({ ending, verdict, color, teamName, playerHandle,
         style={{ background: `${color}18`, color, border: `1px solid ${color}30` }}>
         Play Again
       </motion.button>
+
+      {/* Credits */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 1.5, duration: 0.8 }}
+        className="text-center mt-4 space-y-1.5"
+      >
+        <div style={{ color: "rgba(255,255,255,0.2)" }} className="text-[10px] uppercase tracking-[3px]">
+          A contribution to the cybersecurity community
+        </div>
+        <div style={{ color: "rgba(255,255,255,0.3)" }} className="text-xs">
+          Brought to you by{" "}
+          <a
+            href="https://demandcluster.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 transition-colors hover:text-white"
+            style={{ color: "rgba(255,255,255,0.5)" }}
+          >
+            Demandcluster
+          </a>
+        </div>
+        <div style={{ color: "rgba(255,255,255,0.2)" }} className="text-[11px]">
+          Developed by Ron van Etten &middot; Tested by Mendel Douma
+        </div>
+      </motion.div>
     </div>
   );
 }
