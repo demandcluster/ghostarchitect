@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { OSShell } from "@/shared/components/OSShell";
 import { DMSidebar } from "@/shared/components/DMSidebar";
@@ -24,40 +24,12 @@ import { IOCExtraction } from "@/phases/investigation/IOCExtraction";
 import { CredentialRotation } from "@/phases/investigation/CredentialRotation";
 import { DebriefPage } from "@/phases/debrief/DebriefPage";
 import { EndingPage } from "@/phases/ending/EndingPage";
-import { deriveFlags } from "@/engine/rules";
-import { PRE_BREACH_EMAILS, BREACH_EMAILS } from "@/content/emails";
-import { SOCIAL_ENGINEERING_DM, NPC_BAD_ADVICE } from "@/content/dmScripts";
+import { PRE_BREACH_EMAILS, BREACH_EMAILS, FILLER_EMAILS } from "@/content/emails";
+import { SOCIAL_ENGINEERING_DM, NPC_BAD_ADVICE, OFFICE_CHATTER_DMS } from "@/content/dmScripts";
+import { intersperseFiller, revealedWithFiller } from "@/content/fillerDMs";
 import { LOG_ENTRIES } from "@/content/logEntries";
 import { LOLBINS } from "@/content/fileListings";
-import type { DMChoice, Email, LogEntry, LOLBin, IOCIndicator } from "@/content/types";
-import { ContentLoadingScreen } from "@/components/ContentLoadingScreen";
-import { createContentGenerator } from "@/services/contentGenerator";
-import { useContentStore } from "@/stores/contentStore";
-import { useShallow } from "zustand/react/shallow";
-
-/**
- * Validate AI-generated content meets scoring requirements.
- * Falls back to static content if the AI set is too small or has a broken ratio.
- * Scoring formulas are ratio-based, so count matters less than having both
- * malicious AND legitimate items present.
- */
-function validateLOLBins(aiLolbins: LOLBin[], staticLolbins: LOLBin[]): LOLBin[] {
-  if (aiLolbins.length < 6 || !aiLolbins[0]?.processName) return staticLolbins;
-  const mal = aiLolbins.filter(l => l.isMalicious).length;
-  const leg = aiLolbins.length - mal;
-  // Need at least 2 legitimate (for over_quarantine trap) and 3 malicious
-  if (leg < 2 || mal < 3) return staticLolbins;
-  return aiLolbins;
-}
-
-function validateLogEntries(aiLogs: LogEntry[], staticLogs: LogEntry[]): LogEntry[] {
-  if (aiLogs.length < 8) return staticLogs;
-  const mal = aiLogs.filter(l => l.isMalicious).length;
-  const leg = aiLogs.length - mal;
-  // Need at least 2 legitimate and 3 malicious for meaningful scoring
-  if (leg < 2 || mal < 3) return staticLogs;
-  return aiLogs;
-}
+import type { DMChoice, Email, LogEntry } from "@/content/types";
 
 /**
  * Replace hardcoded "NexusCorp"/"nexuscorp.com" in static content with the
@@ -116,32 +88,15 @@ export default function Home() {
   const gameStore = useGameStore();
   const { trigger: triggerBreach } = useBreachTransition();
 
-  // Content store state
-  const {
-    preBreachEmails,
-    breachEmails,
-    logEntries,
-    lolbins,
-    wifi,
-    expectedIOCs
-  } = useContentStore(useShallow((s) => ({
-    preBreachEmails: s.preBreachEmails,
-    breachEmails: s.breachEmails,
-    logEntries: s.logEntries,
-    lolbins: s.lolbins,
-    wifi: s.wifi,
-    expectedIOCs: s.expectedIOCs as IOCIndicator[]
-  })));
-  const isContentReady = useContentStore(s => s.isContentReady);
   const playerHandle = useGameStore((s) => s.playerHandle) || "User";
 
-  // Brand static fallback emails with current team identity
+  // Brand static emails with current team identity
   const brandedPreEmails = useMemo(
-    () => brandEmails(PRE_BREACH_EMAILS, teamName, fakeDomain, playerHandle),
+    () => brandEmails([...PRE_BREACH_EMAILS, ...FILLER_EMAILS.slice(0, 2)], teamName, fakeDomain, playerHandle),
     [teamName, fakeDomain, playerHandle]
   );
   const brandedBreachEmails = useMemo(
-    () => brandEmails(BREACH_EMAILS, teamName, fakeDomain, playerHandle),
+    () => brandEmails([...BREACH_EMAILS, ...FILLER_EMAILS.slice(2)], teamName, fakeDomain, playerHandle),
     [teamName, fakeDomain, playerHandle]
   );
 
@@ -163,14 +118,6 @@ export default function Home() {
       .catch(() => {});
   }, [teamId, teamName, fakeDomain, setTeamName, setFakeDomain, setLogoUrl]);
 
-  console.log("[DEBUG] Content State:", {
-    ready: isContentReady(),
-    preCount: preBreachEmails.length,
-    breachCount: breachEmails.length,
-    dmCount: SOCIAL_ENGINEERING_DM.length,
-    teamName, fakeDomain, playerHandle,
-    step
-  });
 
   const adjustTrust = useScoreStore((s) => s.adjustTrust);
   const addAction = useScoreStore((s) => s.addAction);
@@ -193,190 +140,30 @@ export default function Home() {
   const [npcDmDone, setNpcDmDone] = useState(false);
   const { isTransitioning, changeStep } = useStepTransition(setStep);
 
-  // Content generation state
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [fakeProgress, setFakeProgress] = useState(0);
-  const [generationProgress, setGenerationProgress] = useState({
-    current: "",
-    total: 0
-  });
-  const [retryState, setRetryState] = useState<
-    { attempt: number; max: number } | undefined
-  >();
-  const [generationError, setGenerationError] = useState<string | null>(null);
-  const [generationDisabled, setGenerationDisabled] = useState(false);
-  const contentStore = useContentStore();
-  const generator = createContentGenerator();
-  const generationInProgressRef = useRef(false);
-  const generationAttemptCountRef = useRef(0);
-  const userInteractedRef = useRef(false);
-  const contentStoreRef = useRef(contentStore); // Ref to prevent infinite loops
-
-  // Keep ref in sync with store
+  // Filler DMs: merge office chatter into DM streams
+  const [aiChatterDMs, setAiChatterDMs] = useState<typeof OFFICE_CHATTER_DMS>([]);
   useEffect(() => {
-    contentStoreRef.current = contentStore;
-  }, [contentStore]);
+    fetch("/api/v1/content/chatter")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((dms) => { if (Array.isArray(dms) && dms.length > 0) setAiChatterDMs(dms); })
+      .catch(() => {});
+  }, []);
+  const fillerPool = aiChatterDMs.length > 0 ? aiChatterDMs : OFFICE_CHATTER_DMS;
+  const mergedSocialDMs = useMemo(
+    () => intersperseFiller(SOCIAL_ENGINEERING_DM, fillerPool),
+    [fillerPool]
+  );
+  const mergedNpcDMs = useMemo(
+    () => intersperseFiller(NPC_BAD_ADVICE, fillerPool.slice(3)),
+    [fillerPool]
+  );
 
-  // Initialize content generation (start during Login/MFA to save time)
+  // Generate a session ID on first interaction
   useEffect(() => {
-    // Don't generate content on start step
-    if (step === "start") {
-      return;
-    }
-
-    // Prevent duplicate generation
-    if (generationInProgressRef.current) {
-      return;
-    }
-
-    // Check if generation was disabled due to rate limits
-    if (generationDisabled) {
-      console.warn('Content generation disabled for this session');
-      return;
-    }
-
-    // Prevent too many generation attempts
-    if (generationAttemptCountRef.current > 5) {
-      console.warn(`Generation already attempted ${generationAttemptCountRef.current} times, disabling for this session`);
-      setGenerationDisabled(true);
-      return;
-    }
-
-    const initContent = async () => {
-      // Check for cached content from previous sessions
-      if (contentStoreRef.current.isContentReady()) {
-        // Content already cached, skip generation
-        setIsGenerating(false);
-        return;
-      }
-
-      // Try to restore from localStorage first
-      contentStoreRef.current.restoreFromStorage();
-
-      if (contentStoreRef.current.isContentReady()) {
-        // Content restored from storage, skip generation
-        setIsGenerating(false);
-        return;
-      }
-
-      // Generate new session ID
-      const sessionId = crypto.randomUUID();
-      contentStoreRef.current.setSessionId(sessionId);
-      gameStore.setSessionId(sessionId);
-
-      if (!generator) {
-        console.log('Generator not available, using fallback content');
-        // Fallback to offline content
-        contentStoreRef.current.setIsOfflineContent(true);
-        setIsGenerating(false);
-        return;
-      }
-
-      // Stage 1: Initial Content (Emails and DMs)
-      // Set flag to prevent duplicate requests
-      generationInProgressRef.current = true;
-      generationAttemptCountRef.current++;
-      setIsGenerating(true);
-      setFakeProgress(0);
-      setGenerationProgress({ current: "Pre-breach emails", total: 0 });
-
-      // Start simulating step transitions for UI feedback (Initial Section)
-      const initialSteps = [
-        'Pre-breach emails',
-        'Breach phishing emails',
-        'Social engineering DMs',
-      ];
-      let stepIdx = 0;
-      const progressInterval = setInterval(() => {
-        if (stepIdx < initialSteps.length - 1) {
-          stepIdx++;
-          setGenerationProgress({ current: initialSteps[stepIdx], total: stepIdx + 1 });
-        }
-      }, 2500); 
-
-      // Start the progress bar timer (accumulates even during Login/MFA)
-      const barInterval = setInterval(() => {
-        setFakeProgress((prev) => {
-          if (prev >= 98) return prev;
-          const increment = Math.random() * 2 + 0.2;
-          return Math.min(98, prev + increment);
-        });
-      }, 300);
-
-      try {
-        const { contentLocale, teamName, fakeDomain, playerHandle } = useGameStore.getState();
-        console.log(`Starting INITIAL content generation (attempt ${generationAttemptCountRef.current})`);
-        
-        const initialResult = await generator.generateAll({
-          sessionId,
-          locale: contentLocale,
-          temperature: 0.9,
-          section: 'initial',
-          teamName,
-          fakeDomain,
-          playerHandle: playerHandle || "User"
-        });
-
-        console.log("[DEBUG] initialResult:", initialResult.preBreachEmails.length, "pre,", initialResult.breachEmails.length, "breach");
-
-        contentStoreRef.current.setPreBreachEmails(initialResult.preBreachEmails);
-        contentStoreRef.current.setBreachEmails(initialResult.breachEmails);
-        // Clear blocking UI once initial content is ready
-        clearInterval(progressInterval);
-        clearInterval(barInterval);
-        setIsGenerating(false);
-        setGenerationError(null);
-
-        // Stage 2: Secondary Content (Background)
-        console.log('Starting SECONDARY content generation in background...');
-        generator.generateAll({
-          sessionId,
-          locale: contentLocale,
-          temperature: 0.8,
-          section: 'secondary',
-          teamName,
-          fakeDomain,
-          playerHandle: playerHandle || "User"
-        }).then(secondaryResult => {
-          contentStoreRef.current.setLogEntries(secondaryResult.logEntries);
-          contentStoreRef.current.setLOLBins(secondaryResult.lolbins);
-          contentStoreRef.current.setWiFi(secondaryResult.wifi);
-          contentStoreRef.current.setExpectedIOCs(secondaryResult.expectedIOCs as IOCIndicator[]);
-          contentStoreRef.current.persistToStorage();
-          console.log('Secondary content generation complete.');
-        }).catch(err => {
-          console.error('Secondary content generation failed (background):', err);
-          // Don't block the user, store will just use fallback/empty arrays for these fields
-        });
-
-      } catch (error: unknown) {
-        console.error("Content generation failed:", error);
-        clearInterval(progressInterval);
-        clearInterval(barInterval);
-        
-        const err = error as { message?: string };
-        // Check for rate limit errors and disable further generation
-        if (err.message && (
-          err.message.includes('Rate limit') ||
-          err.message.includes('Too Many Requests') ||
-          err.message.includes('Please wait') ||
-          err.message.includes('Too many errors')
-        )) {
-          setGenerationError(err.message);
-          setGenerationDisabled(true); 
-          console.warn('Rate limit hit, disabling content generation for this session');
-        }
-
-        // Fallback to offline content on error
-        contentStoreRef.current.setIsOfflineContent(true);
-      } finally {
-        setIsGenerating(false);
-        generationInProgressRef.current = false;
-      }
-    };
-
-    initContent();
-  }, [step, generator, generationDisabled, gameStore]);
+    if (step === "start") return;
+    if (gameStore.sessionId) return;
+    gameStore.setSessionId(crypto.randomUUID());
+  }, [step, gameStore]);
 
   // Dev shortcut: set breach visual mode when ?step= targets a post-breach phase
   useEffect(() => {
@@ -526,7 +313,7 @@ export default function Home() {
 
   const handleEmailComplete = useCallback(
     async (results: Record<string, string>) => {
-      const emails = isContentReady() ? breachEmails : brandedBreachEmails;
+      const emails = brandedBreachEmails;
       console.log("[handleEmailComplete] emails count:", emails.length);
       const phishingEmails = emails.filter((e) => e.isPhishing);
       const correctPhishing = phishingEmails.filter(
@@ -569,7 +356,7 @@ export default function Home() {
 
       await changeStep("breach-password");
     },
-    [addAction, addFlag, addTimelineEntry, changeStep, isContentReady, breachEmails]
+    [addAction, addFlag, addTimelineEntry, changeStep, brandedBreachEmails]
   );
 
   // Start screen (full screen, no OS shell)
@@ -586,7 +373,6 @@ export default function Home() {
     return (
       <MFAPuzzle
         onComplete={() => {
-          userInteractedRef.current = true; // Mark user as having interacted
           changeStep("onboarding-portal");
           
           // Initial DM reveal sequence: Show the first message (intro) after a delay
@@ -610,7 +396,7 @@ export default function Home() {
       title: `${teamName} Mail`,
       content: (
         <EmailClient
-          emails={isContentReady() ? preBreachEmails : brandedPreEmails}
+          emails={brandedPreEmails}
           onComplete={() => {}}
         />
       )
@@ -738,7 +524,7 @@ export default function Home() {
       title: `${teamName} Mail — INCIDENT MODE`,
       content: (
         <EmailClient
-          emails={isContentReady() ? breachEmails : brandedBreachEmails}
+          emails={brandedBreachEmails}
           onComplete={handleEmailComplete}
         />
       )
@@ -759,7 +545,7 @@ export default function Home() {
       title: "Network Connection",
       content: (
         <EvilTwinWiFi
-          networks={isContentReady() && wifi.length > 0 ? wifi : undefined}
+          networks={undefined}
           onComplete={async () => {
             addTimelineEntry({
               id: "breach-complete",
@@ -796,7 +582,7 @@ export default function Home() {
       title: "Log Analysis Terminal",
       content: (
         <LogTerminal
-          entries={isContentReady() ? validateLogEntries(logEntries, LOG_ENTRIES) : LOG_ENTRIES}
+          entries={LOG_ENTRIES}
           onFlaggedChange={setFlaggedLogs}
         />
       )
@@ -867,7 +653,7 @@ export default function Home() {
             ) : (
               <button
                 onClick={() => {
-                  const validatedLogs = isContentReady() ? validateLogEntries(logEntries, LOG_ENTRIES) : LOG_ENTRIES;
+                  const validatedLogs = LOG_ENTRIES;
                   const malicious = validatedLogs.filter((e) => e.isMalicious);
                   const correctFlags = flaggedLogs.filter(
                     (f) => f.isMalicious
@@ -921,7 +707,7 @@ export default function Home() {
         <div className="h-full flex flex-col">
           <div className="flex-1 overflow-auto">
             <TaskManagerView
-              processes={isContentReady() ? validateLOLBins(lolbins, LOLBINS) : LOLBINS}
+              processes={LOLBINS}
               onComplete={() => changeStep("investigation-ioc")}
             />
           </div>
@@ -953,8 +739,6 @@ export default function Home() {
       title: "IOC Documentation",
       content: (
         <IOCExtraction 
-          expectedIOCs={isContentReady() && expectedIOCs?.length > 0 ? expectedIOCs : undefined}
-          logEntries={isContentReady() && logEntries.length > 0 ? logEntries : undefined}
           onComplete={() => changeStep("investigation-rotation")} 
         />
       )
@@ -991,23 +775,25 @@ export default function Home() {
 
   // DM sidebar — onboarding uses social engineering, investigation uses NPC bad advice
   const isInvestigation = step.startsWith("investigation-");
+  const mergedRevealedIds = useMemo(
+    () => revealedWithFiller(revealedDmIds, mergedSocialDMs),
+    [revealedDmIds, mergedSocialDMs]
+  );
   const dmSidebar =
     step === "onboarding-portal" ? (
       <DMSidebar
-        messages={
-          SOCIAL_ENGINEERING_DM
-        }
+        messages={mergedSocialDMs}
         onChoice={handleDMChoice}
-        revealedIds={revealedDmIds}
+        revealedIds={mergedRevealedIds}
       />
     ) : isInvestigation ? (
       <DMSidebar
-        messages={(NPC_BAD_ADVICE).slice(
+        messages={mergedNpcDMs.slice(
           0,
-          npcDmIndex + 1
+          npcDmIndex + 1 + Math.floor((npcDmIndex + 1) / 3)
         )}
         onChoice={handleNpcChoice}
-        revealUpTo={npcDmIndex + 1}
+        revealUpTo={npcDmIndex + 1 + Math.floor((npcDmIndex + 1) / 3)}
       />
     ) : undefined;
 
@@ -1022,32 +808,12 @@ export default function Home() {
 
   return (
     <>
-      {isGenerating && step === "onboarding-portal" && (
-        <ContentLoadingScreen
-          progress={generationProgress}
-          fakeProgress={fakeProgress}
-          retryState={retryState}
-          error={generationError}
-          onCancel={() => {
-            // Cancel generation and use fallback
-            contentStoreRef.current.setIsOfflineContent(true);
-            setIsGenerating(false);
-          }}
-        />
-      )}
       {step === "ending" ? (
         <EndingPage
-          ending={deriveFlags(
-            useNarrativeStore.getState().decisions,
-            useNarrativeStore.getState().flags
-          ).ending}
-          teamName={useGameStore.getState().teamName}
-          fakeDomain={useGameStore.getState().fakeDomain}
           onPlayAgain={() => {
             useScoreStore.getState().reset();
             useNarrativeStore.getState().reset();
             useGameStore.getState().reset();
-            useContentStore.getState().clearSession();
             setStep("start");
           }}
         />
