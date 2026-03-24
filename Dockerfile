@@ -18,6 +18,12 @@ COPY . .
 # Prisma schema lives at src/prisma/schema.prisma (non-default path)
 ENV PRISMA_SCHEMA_PATH=src/prisma/schema.prisma
 
+# NEXT_PUBLIC_* vars are inlined into the JS bundle at build time — runtime
+# env vars (e.g. Kubernetes ConfigMap) have NO effect on these values.
+# The production image always enables the API adapter.
+ARG NEXT_PUBLIC_BACKEND_ENABLED=true
+ENV NEXT_PUBLIC_BACKEND_ENABLED=${NEXT_PUBLIC_BACKEND_ENABLED}
+
 RUN npx prisma generate --schema=src/prisma/schema.prisma
 RUN npm run build
 
