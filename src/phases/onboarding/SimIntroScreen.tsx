@@ -59,11 +59,14 @@ export function SimIntroScreen({ onComplete }: SimIntroScreenProps) {
       setCurrentLineText(next);
       if (charIndexRef.current >= line.length) {
         clearInterval(interval);
-        setVisibleLines((prev) => [...prev, line]);
-        setCurrentLineText("");
-        setLineIndex((i) => i + 1);
+        // Pause on completed line before moving to next
+        setTimeout(() => {
+          setVisibleLines((prev) => [...prev, line]);
+          setCurrentLineText("");
+          setLineIndex((i) => i + 1);
+        }, 400);
       }
-    }, 28);
+    }, 45);
 
     return () => clearInterval(interval);
   }, [lineIndex, phase, prefersReduced]);
@@ -86,11 +89,9 @@ export function SimIntroScreen({ onComplete }: SimIntroScreenProps) {
             {visibleLines.map((line, i) => (
               <div key={i}>{line}</div>
             ))}
-            {/* Current line being typed, or cursor held on last line */}
+            {/* Current line being typed, or bare cursor after last line */}
             <div>
-              {lineIndex < TYPEWRITER_LINES.length
-                ? currentLineText
-                : TYPEWRITER_LINES[TYPEWRITER_LINES.length - 1]}
+              {lineIndex < TYPEWRITER_LINES.length ? currentLineText : ""}
               <span style={{ opacity: showCursor ? 1 : 0 }}>█</span>
             </div>
           </motion.div>
@@ -122,7 +123,7 @@ export function SimIntroScreen({ onComplete }: SimIntroScreenProps) {
               </div>
               <h1
                 className="text-2xl font-black tracking-tight"
-                style={{ color: "var(--text-primary, #fff)" }}
+                style={{ color: "#ffffff" }}
               >
                 WELCOME TO {teamName.toUpperCase()}
               </h1>
@@ -131,10 +132,10 @@ export function SimIntroScreen({ onComplete }: SimIntroScreenProps) {
             {/* Body */}
             <p
               className="text-sm leading-relaxed"
-              style={{ color: "var(--text-secondary, rgba(255,255,255,0.6))" }}
+              style={{ color: "rgba(255,255,255,0.85)" }}
             >
               You&apos;ve been hired as a{" "}
-              <strong style={{ color: "var(--text-primary, #fff)" }}>
+              <strong style={{ color: "var(--accent)" }}>
                 Security Analyst
               </strong>
               . Report to the IT Security division immediately. Your credentials

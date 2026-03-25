@@ -59,17 +59,31 @@ Previously: `start → login`
 
 - `teamName` read from `useGameStore` inside `SimIntroScreen` (no prop drilling needed)
 - No new store state
+- `teamName` defaults to `"NexusCorp"` when no team is joined (offline/demo path). "WELCOME TO NEXUSCORP" is acceptable — no special fallback needed.
+
+## Badge Derivation
+
+Company initials badge uses `teamName.slice(0, 2).toUpperCase()` — consistent with the existing intranet portal badge in `page.tsx`.
+
+## Phase 1 Skippability
+
+Phase 1 is not skippable. There is no user interaction affordance during the typewriter sequence — the player cannot click through it early.
 
 ## Styling
 
 - Inherits existing CSS variables: `--bg-primary`, `--accent`, `--text-secondary`
 - Consistent with StartScreen dark hacker aesthetic
 - Framer Motion for phase transitions (opacity + y offset)
-- `prefers-reduced-motion`: skip typewriter animation, show Phase 2 immediately
+- `prefers-reduced-motion`: Phase 1 text is rendered instantly (all three lines visible at once, no typewriter animation), then auto-advances to Phase 2 immediately (no 500ms delay). Uses `window.matchMedia("(prefers-reduced-motion: reduce)").matches` check — same pattern as `IncidentReport.tsx`.
+
+## Dev URL Note
+
+The cast `return p as GameStep` on `page.tsx:79` handles `?step=sim-intro` automatically once `"sim-intro"` is added to the union type. No additional code needed.
 
 ## Testing
 
 - New test file: `src/phases/onboarding/__tests__/SimIntroScreen.test.tsx`
-- Test: Phase 2 content renders with correct teamName
+- Test: Phase 2 CTA and teamName render correctly (default "NexusCorp" is acceptable)
 - Test: `onComplete` fires when CTA is clicked
-- No animation testing needed (Framer Motion not easily testable in jsdom)
+- Test: with `prefers-reduced-motion` mocked to `true`, Phase 2 content is immediately visible
+- No animation/typewriter testing (not meaningful in jsdom)
