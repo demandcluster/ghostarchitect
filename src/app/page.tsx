@@ -14,6 +14,7 @@ import { LoginScreen } from "@/phases/onboarding/LoginScreen";
 import { Scoreboard } from "@/shared/components/Scoreboard";
 import { WikiPanel } from "@/shared/components/WikiPanel";
 import { MFAPuzzle } from "@/phases/onboarding/MFAPuzzle";
+import { SimIntroScreen } from "@/phases/onboarding/SimIntroScreen";
 import { EmailClient } from "@/phases/breach/EmailClient";
 import { PasswordPuzzle } from "@/phases/breach/PasswordPuzzle";
 import { EvilTwinWiFi } from "@/phases/breach/EvilTwinWiFi";
@@ -56,6 +57,7 @@ function brandEmails<T extends Email>(emails: T[], teamName: string, fakeDomain:
 type GameStep =
   | "start"
   | "login"
+  | "sim-intro"
   | "mfa"
   | "onboarding-portal"
   | "breach-email"
@@ -367,7 +369,11 @@ export default function Home() {
 
   // Start screen (full screen, no OS shell)
   if (step === "start") {
-    return <StartScreen onStart={() => changeStep("login")} />;
+    return <StartScreen onStart={() => changeStep("sim-intro")} />;
+  }
+
+  if (step === "sim-intro") {
+    return <SimIntroScreen onComplete={() => changeStep("login")} />;
   }
 
   // Login & MFA screens (full screen, no OS shell)
