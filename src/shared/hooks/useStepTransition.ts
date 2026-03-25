@@ -3,6 +3,7 @@ import { useState, useCallback } from "react";
 type GameStep =
   | "start"
   | "login"
+  | "sim-intro"
   | "mfa"
   | "onboarding-portal"
   | "breach-email"
