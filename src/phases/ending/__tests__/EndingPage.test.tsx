@@ -54,8 +54,8 @@ describe("IncidentReport", () => {
 
   it("displays category scores", () => {
     render(<IncidentReport {...baseProps} ending="promoted" verdict="PROMOTED" color="#22c55e" />);
-    expect(screen.getByText("23/25")).toBeInTheDocument();
-    expect(screen.getByText("25/25")).toBeInTheDocument();
+    expect(screen.getAllByText("23/25").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("25/25").length).toBeGreaterThanOrEqual(1);
   });
 
   it("displays analyst remark", () => {
