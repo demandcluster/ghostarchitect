@@ -102,8 +102,37 @@ export function useBreachTransition() {
 
       const overlay = document.createElement("div");
       overlay.style.cssText =
-        "position:fixed;inset:0;z-index:9999;overflow:hidden;";
+        "position:fixed;inset:0;z-index:9999;overflow:hidden;background:transparent;";
       document.body.appendChild(overlay);
+
+      // --- Layer 1: Video background (always visible) ---
+      const video = document.createElement("video");
+      video.src = "/ghostvideo.mp4";
+      video.muted = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.setAttribute("muted", "");
+      video.style.cssText =
+        "position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:1;";
+      overlay.appendChild(video);
+
+      // --- Layer 2: Glitch layer (bands animate here) ---
+      const glitchLayer = document.createElement("div");
+      glitchLayer.style.cssText = "position:absolute;inset:0;z-index:2;";
+      overlay.appendChild(glitchLayer);
+
+      // --- Layer 3: Dark tint (replaces hard blackout, video bleeds through) ---
+      const darkTint = document.createElement("div");
+      darkTint.style.cssText =
+        "position:absolute;inset:0;z-index:3;background:rgba(0,0,0,0);pointer-events:none;";
+      overlay.appendChild(darkTint);
+
+      // --- Layer 4: POST screen text (readable dark bg, sits over video) ---
+      const postLayer = document.createElement("div");
+      postLayer.style.cssText =
+        "position:absolute;inset:0;z-index:4;background:rgba(10,14,20,0);padding:20px;" +
+        'font-family:"JetBrains Mono",monospace;font-size:13px;overflow-y:auto;opacity:0;';
+      overlay.appendChild(postLayer);
 
       const tl = gsap.timeline({
         onComplete: () => {
@@ -113,7 +142,7 @@ export function useBreachTransition() {
         },
       });
 
-      // Phase 1: Glitch bands (800ms) — alternating bg colors, mix-blend-mode difference
+      // Phase 1: Glitch bands (800ms) over video — alternating bg colors, mix-blend-mode difference
       // with RGB shift and screen shake
       const bandCount = 8;
       const bandBgs = [
@@ -161,7 +190,7 @@ export function useBreachTransition() {
         // Continuously update RGB shift during glitch
         const rgbInterval = setInterval(updateRGBShift, 50);
 
-        overlay.appendChild(band);
+        glitchLayer.appendChild(band);
 
         tl.to(
           band,
@@ -178,9 +207,9 @@ export function useBreachTransition() {
         );
       }
 
-      // Phase 2: Blackout (400ms) - stop screen shake
-      tl.to(overlay, {
-        backgroundColor: "#000",
+      // Phase 2: Dark tint + cursor blink (video visible through tint) — stop screen shake
+      tl.to(darkTint, {
+        background: "rgba(0,0,0,0.72)",
         duration: 0.1,
         onStart: () => {
           clearInterval(shakeInterval);
@@ -188,13 +217,14 @@ export function useBreachTransition() {
           if (overlayEl) {
             overlayEl.style.transform = "none";
           }
-          removeAllChildren(overlay);
+          // Clear glitch bands
+          while (glitchLayer.firstChild) glitchLayer.removeChild(glitchLayer.firstChild);
         },
       });
 
       const cursor = document.createElement("div");
       cursor.style.cssText =
-        "position:absolute;top:50%;left:50%;width:10px;height:20px;background:var(--accent,#00e533);";
+        "position:absolute;top:50%;left:50%;width:10px;height:20px;z-index:5;background:var(--accent,#00e533);";
       overlay.appendChild(cursor);
 
       tl.to(cursor, {
@@ -204,15 +234,13 @@ export function useBreachTransition() {
         duration: 0.1,
       });
 
-      // Phase 3: Fake POST screen (1200ms) with faster typewriter effect and blinking cursor
+      // Phase 3: Fade in POST layer (dark tint fades back, POST bg provides contrast over video)
       tl.call(() => {
         cursor.remove();
-        overlay.style.background = "#0a0e14";
-        overlay.style.padding = "20px";
-        overlay.style.fontFamily = '"JetBrains Mono", monospace';
-        overlay.style.fontSize = "13px";
-        overlay.style.overflowY = "auto";
       });
+
+      tl.to(darkTint, { background: "rgba(0,0,0,0)", duration: 0.2 });
+      tl.to(postLayer, { opacity: 1, background: "rgba(10,14,20,0.88)", duration: 0.2 }, "<");
 
       const postLines = getPostLines(fakeDomain);
       let cursorEl: HTMLSpanElement | null = null;
@@ -229,7 +257,7 @@ export function useBreachTransition() {
                 ? "var(--warning, #ffb800)"
                 : "var(--accent, #00e533)";
           el.style.color = color;
-          overlay.appendChild(el);
+          postLayer.appendChild(el);
 
           // Create blinking cursor for this line
           cursorEl = document.createElement("span");
@@ -252,9 +280,9 @@ export function useBreachTransition() {
         }
       });
 
-      tl.to({}, { duration: 0.4 });
+      tl.to({}, { duration: 0.3 });
 
-      // Phase 4: Switch theme — white flash then reveal (800ms)
+      // Phase 4: Switch theme — white flash then reveal (~0.5s, total ≈ 5s)
       tl.call(() => {
         setVisualMode("breach");
         setPhase("breach");
@@ -269,7 +297,7 @@ export function useBreachTransition() {
 
       tl.to(overlay, {
         opacity: 0,
-        duration: 0.8,
+        duration: 0.4,
         ease: "power3.inOut",
       });
     });
