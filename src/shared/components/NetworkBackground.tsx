@@ -35,7 +35,16 @@ export function NetworkBackground() {
     const camera = new PerspectiveCamera(60, w / h, 0.1, 100);
     camera.position.z = 8;
 
-    const renderer = new WebGLRenderer({ alpha: true, antialias: true });
+    let renderer: WebGLRenderer;
+    try {
+      // Suppress Three.js's own console.error during context creation
+      const origError = console.error;
+      console.error = () => {};
+      renderer = new WebGLRenderer({ alpha: true, antialias: true });
+      console.error = origError;
+    } catch {
+      return; // WebGL unavailable — skip decorative background silently
+    }
     renderer.setSize(w, h);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.domElement.style.display = "block";

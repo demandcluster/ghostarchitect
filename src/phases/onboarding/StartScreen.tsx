@@ -489,6 +489,15 @@ export function StartScreen({ onStart }: StartScreenProps) {
           
           <div className="text-center font-mono text-[9px] tracking-widest text-white/20 uppercase">
             &copy; 2026 GHOST ARCHITECT &middot; DEMANDCLUSTER &middot; TECHNICAL SIMULATION v2.4.0
+            &nbsp;&middot;&nbsp;
+            <a
+              href="/about"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-white/50 transition-colors underline underline-offset-2"
+            >
+              ABOUT
+            </a>
           </div>
         </div>
       </div>
