@@ -3,6 +3,27 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { DMMessage, DMChoice } from "@/content/types";
+import { useGameStore } from "@/stores/gameStore";
+
+// Official Slack logo paths
+const SlackLogo = ({ size = 16 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 240 240" fill="none">
+    <path d="M99.4 151.2c0 7.1-5.8 12.9-12.9 12.9-7.1 0-12.9-5.8-12.9-12.9 0-7.1 5.8-12.9 12.9-12.9H99.4v12.9z" fill="#E01E5A"/>
+    <path d="M105.9 151.2c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9v32.3c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9v-32.3z" fill="#E01E5A"/>
+    <path d="M118.8 99.4c-7.1 0-12.9-5.8-12.9-12.9 0-7.1 5.8-12.9 12.9-12.9 7.1 0 12.9 5.8 12.9 12.9V99.4h-12.9z" fill="#36C5F0"/>
+    <path d="M118.8 105.9c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H86.5c-7.1 0-12.9-5.8-12.9-12.9s5.8-12.9 12.9-12.9h32.3z" fill="#36C5F0"/>
+    <path d="M170.6 118.8c0-7.1 5.8-12.9 12.9-12.9 7.1 0 12.9 5.8 12.9 12.9 0 7.1-5.8 12.9-12.9 12.9h-12.9v-12.9z" fill="#2EB67D"/>
+    <path d="M164.1 118.8c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V86.5c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9v32.3z" fill="#2EB67D"/>
+    <path d="M151.2 170.6c7.1 0 12.9 5.8 12.9 12.9 0 7.1-5.8 12.9-12.9 12.9-7.1 0-12.9-5.8-12.9-12.9v-12.9h12.9z" fill="#ECB22E"/>
+    <path d="M151.2 164.1c-7.1 0-12.9-5.8-12.9-12.9s5.8-12.9 12.9-12.9h32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9h-32.3z" fill="#ECB22E"/>
+  </svg>
+);
+
+function formatTime(ts: number): string {
+  if (!ts) return "";
+  const d = new Date(ts);
+  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
 
 interface DMSidebarProps {
   messages: DMMessage[];
@@ -18,6 +39,8 @@ export function DMSidebar({
   revealedIds = [],
 }: DMSidebarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const visualMode = useGameStore((s) => s.visualMode);
+  const isBreach = visualMode === "breach";
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -29,52 +52,108 @@ export function DMSidebar({
     (m, i) => i < revealUpTo || revealedIds.includes(m.id)
   );
 
-  console.log('[DMSidebar] total:', messages.length, 'visible:', visibleMessages.length, 'revealUpTo:', revealUpTo, 'revealedIds:', revealedIds);
+  const firstSender = visibleMessages[0]?.sender ?? "";
 
+  if (isBreach) {
+    return (
+      <div className="flex flex-col h-full" style={{ background: "var(--bg-secondary)" }}>
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-5 scroll-smooth">
+          <AnimatePresence mode="popLayout">
+            {visibleMessages.map((msg) => (
+              <DMBubbleTerminal key={msg.id} message={msg} onChoice={onChoice} />
+            ))}
+          </AnimatePresence>
+        </div>
+      </div>
+    );
+  }
+
+  // Corporate: Slack-style
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-secondary)]">
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-6 scroll-smooth"
-      >
+    <div className="flex flex-col h-full" style={{ background: "#1A1D21" }}>
+      {/* Direct Messages section */}
+      <div style={{
+        padding: "10px 10px 6px",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+      }}>
+        <div className="flex items-center gap-1.5 mb-2 px-1">
+          <svg width="9" height="9" viewBox="0 0 9 9" style={{ opacity: 0.4, flexShrink: 0 }}>
+            <polygon points="0,0 9,4.5 0,9" fill="white" />
+          </svg>
+          <span style={{
+            color: "rgba(255,255,255,0.45)",
+            fontSize: "11px",
+            fontWeight: "700",
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+          }}>
+            Direct Messages
+          </span>
+        </div>
+
+        {firstSender && (
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded" style={{ background: "rgba(255,255,255,0.1)" }}>
+            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#2BAC76", flexShrink: 0 }} />
+            <span style={{ color: "rgba(255,255,255,0.9)", fontSize: "13px", fontWeight: "500" }}>
+              {firstSender}
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* Messages feed */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto scroll-smooth" style={{ paddingTop: "6px", paddingBottom: "4px" }}>
         <AnimatePresence mode="popLayout">
           {visibleMessages.map((msg) => (
-            <DMBubble key={msg.id} message={msg} onChoice={onChoice} />
+            <DMBubbleSlack key={msg.id} message={msg} onChoice={onChoice} />
           ))}
         </AnimatePresence>
+      </div>
+
+      {/* Decorative input bar */}
+      <div style={{ padding: "8px 10px 10px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{
+          background: "rgba(255,255,255,0.05)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: "6px",
+          padding: "7px 10px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+        }}>
+          <span style={{ color: "rgba(255,255,255,0.22)", fontSize: "12px", flex: 1 }}>
+            {firstSender ? `Message ${firstSender}` : "Send a message"}
+          </span>
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2L2 8l5 2 2 5 5-13z" />
+          </svg>
+        </div>
       </div>
     </div>
   );
 }
 
-function DMBubble({
+// Slack-style flat message
+function DMBubbleSlack({
   message,
-  onChoice
+  onChoice,
 }: {
   message: DMMessage;
   onChoice: (messageId: string, choice: DMChoice) => void;
 }) {
   const [chosen, setChosen] = useState<string | null>(null);
   const [imgError, setImgError] = useState(false);
-  
-  // Use a secondary state + effect to ensure the shuffle happens once
   const [shuffledChoices, setShuffledChoices] = useState<DMChoice[]>([]);
+  const [hovered, setHovered] = useState(false);
 
   useEffect(() => {
     let active = true;
-    
-    // Use microtask to avoid cascading render warning
     Promise.resolve().then(() => {
       if (!active) return;
-      if (message.choices) {
-        setShuffledChoices([...message.choices].sort(() => Math.random() - 0.5));
-      } else {
-        setShuffledChoices([]);
-      }
+      setShuffledChoices(message.choices ? [...message.choices].sort(() => Math.random() - 0.5) : []);
       setChosen(null);
       setImgError(false);
     });
-
     return () => { active = false; };
   }, [message.id, message.choices]);
 
@@ -84,9 +163,196 @@ function DMBubble({
     onChoice(message.id, choice);
   };
 
-  const isUrl = message.avatar && 
+  const isUrl = message.avatar &&
     (message.avatar.startsWith("http") || message.avatar.startsWith("/")) &&
-    message.avatar.length > 4 && 
+    message.avatar.length > 4 &&
+    !imgError;
+
+  // Consistent avatar color per sender
+  const AVATAR_COLORS = ["#E01E5A", "#36C5F0", "#2EB67D", "#ECB22E", "#7B68EE", "#FF6B6B", "#1264A3"];
+  const avatarBg = AVATAR_COLORS[message.sender.charCodeAt(0) % AVATAR_COLORS.length];
+  const displayInitial = message.avatar && message.avatar.length <= 3
+    ? message.avatar
+    : (message.sender?.charAt(0)?.toUpperCase() || "?");
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25 }}
+    >
+      <div
+        className="flex items-start gap-2.5 px-3 py-1.5 transition-colors"
+        style={{ background: hovered ? "rgba(255,255,255,0.03)" : "transparent" }}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+      >
+        {/* 32px Slack-style avatar */}
+        <div className="shrink-0" style={{ width: "32px", height: "32px", marginTop: "3px" }}>
+          {isUrl ? (
+            <img
+              src={message.avatar}
+              alt={message.sender}
+              onError={() => setImgError(true)}
+              style={{ width: "32px", height: "32px", borderRadius: "6px", objectFit: "cover" }}
+            />
+          ) : (
+            <div style={{
+              width: "32px", height: "32px", borderRadius: "6px",
+              background: avatarBg,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "white", fontSize: "13px", fontWeight: "700",
+            }}>
+              {displayInitial}
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {/* Name + role + time */}
+          <div style={{ display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap", marginBottom: "2px" }}>
+            <span style={{ color: "white", fontSize: "14px", fontWeight: "700", lineHeight: 1.2 }}>
+              {message.sender}
+            </span>
+            <span style={{
+              color: "rgba(255,255,255,0.38)",
+              fontSize: "10px",
+              fontWeight: "600",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+            }}>
+              {message.senderRole}
+            </span>
+            {message.timestamp ? (
+              <span style={{ color: "rgba(255,255,255,0.22)", fontSize: "11px", marginLeft: "auto" }}>
+                {formatTime(message.timestamp)}
+              </span>
+            ) : null}
+          </div>
+
+          {/* Message text */}
+          <p style={{
+            color: "rgba(255,255,255,0.82)",
+            fontSize: "13px",
+            lineHeight: "1.5",
+            margin: 0,
+            wordBreak: "break-word",
+          }}>
+            {message.text}
+          </p>
+
+          {/* Interactive choices — Slack action buttons */}
+          {shuffledChoices.length > 0 && !chosen && (
+            <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
+              {shuffledChoices.map((choice) => (
+                <motion.button
+                  key={choice.id}
+                  onClick={() => handleChoice(choice)}
+                  whileHover={{ scale: 1.01, borderColor: "rgba(74,158,255,0.5)" }}
+                  whileTap={{ scale: 0.99 }}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.14)",
+                    borderRadius: "4px",
+                    padding: "7px 10px",
+                    color: "#4A9EFF",
+                    fontSize: "12px",
+                    fontWeight: "500",
+                    textAlign: "left",
+                    cursor: "pointer",
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {choice.label}
+                </motion.button>
+              ))}
+            </div>
+          )}
+
+          {/* Post-choice feedback */}
+          <AnimatePresence>
+            {chosen && (() => {
+              const choice = message.choices?.find(c => c.id === chosen);
+              if (!choice) return null;
+              const delta = choice.scoreEffect?.points ?? 0;
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  style={{ marginTop: "8px" }}
+                >
+                  <div style={{
+                    background: choice.isCorrect ? "rgba(43,172,118,0.12)" : "rgba(224,30,90,0.12)",
+                    border: `1px solid ${choice.isCorrect ? "rgba(43,172,118,0.25)" : "rgba(224,30,90,0.25)"}`,
+                    borderRadius: "4px",
+                    padding: "6px 10px",
+                    fontSize: "12px",
+                    color: choice.isCorrect ? "#2BAC76" : "#E01E5A",
+                    marginBottom: "4px",
+                    lineHeight: 1.4,
+                  }}>
+                    {choice.label}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ fontSize: "11px", color: choice.isCorrect ? "#2BAC76" : "#E01E5A", fontWeight: "500" }}>
+                      {choice.isCorrect ? "✓ Correct response" : "✗ Incorrect response"}
+                    </span>
+                    {delta !== 0 && (
+                      <span style={{
+                        fontSize: "10px", fontWeight: "700",
+                        padding: "1px 5px", borderRadius: "3px",
+                        background: delta > 0 ? "rgba(43,172,118,0.2)" : "rgba(224,30,90,0.2)",
+                        color: delta > 0 ? "#2BAC76" : "#E01E5A",
+                      }}>
+                        {delta > 0 ? `+${delta}` : delta} trust
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })()}
+          </AnimatePresence>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
+// Terminal-style message for breach mode
+function DMBubbleTerminal({
+  message,
+  onChoice,
+}: {
+  message: DMMessage;
+  onChoice: (messageId: string, choice: DMChoice) => void;
+}) {
+  const [chosen, setChosen] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
+  const [shuffledChoices, setShuffledChoices] = useState<DMChoice[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    Promise.resolve().then(() => {
+      if (!active) return;
+      setShuffledChoices(message.choices ? [...message.choices].sort(() => Math.random() - 0.5) : []);
+      setChosen(null);
+      setImgError(false);
+    });
+    return () => { active = false; };
+  }, [message.id, message.choices]);
+
+  const handleChoice = (choice: DMChoice) => {
+    if (chosen) return;
+    setChosen(choice.id);
+    onChoice(message.id, choice);
+  };
+
+  const isUrl = message.avatar &&
+    (message.avatar.startsWith("http") || message.avatar.startsWith("/")) &&
+    message.avatar.length > 4 &&
     !imgError;
 
   return (
@@ -112,8 +378,8 @@ function DMBubble({
             style={{ background: "var(--accent)", border: "1px solid rgba(255,255,255,0.2)" }}
             whileHover={{ scale: 1.1 }}
           >
-            {message.avatar && message.avatar.length <= 3 
-              ? message.avatar 
+            {message.avatar && message.avatar.length <= 3
+              ? message.avatar
               : message.sender?.charAt(0) || "?"}
           </motion.div>
         )}
@@ -138,15 +404,12 @@ function DMBubble({
       >
         {message.text}
 
-        {/* Choices */}
         {shuffledChoices.length > 0 && (
           <div className="mt-4 space-y-2">
             {shuffledChoices.map((choice) => {
               const isSelected = chosen === choice.id;
               const isOtherSelected = chosen && !isSelected;
-
               if (isOtherSelected) return null;
-
               return (
                 <motion.button
                   key={choice.id}
@@ -155,12 +418,11 @@ function DMBubble({
                   whileHover={!chosen ? { x: 4 } : {}}
                   className={`
                     w-full p-2.5 rounded-xl text-left transition-all relative border
-                    ${
-                      isSelected
-                        ? choice.isCorrect
-                          ? "bg-[var(--success-subtle)] border-[var(--success)]/40 text-[var(--success)]"
-                          : "bg-[var(--danger-subtle)] border-[var(--danger)]/40 text-[var(--danger)]"
-                        : "bg-[var(--bg-window-sunken)] border-[var(--border)] hover:border-[var(--accent)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    ${isSelected
+                      ? choice.isCorrect
+                        ? "bg-[var(--success-subtle)] border-[var(--success)]/40 text-[var(--success)]"
+                        : "bg-[var(--danger-subtle)] border-[var(--danger)]/40 text-[var(--danger)]"
+                      : "bg-[var(--bg-window-sunken)] border-[var(--border)] hover:border-[var(--accent)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                     }
                   `}
                 >

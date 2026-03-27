@@ -569,7 +569,7 @@ export default function Home() {
           </div>
           {/*Next steps*/}
           <div>
-            <h2 class="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">
               Next steps
             </h2>
             For now, check your Slack messages!
