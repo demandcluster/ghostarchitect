@@ -26,8 +26,16 @@ import { CredentialRotation } from "@/phases/investigation/CredentialRotation";
 import { DebriefPage } from "@/phases/debrief/DebriefPage";
 import { EndingPage } from "@/phases/ending/EndingPage";
 import { resetRemarkCache } from "@/phases/ending/analystRemarks";
-import { PRE_BREACH_EMAILS, BREACH_EMAILS, FILLER_EMAILS } from "@/content/emails";
-import { SOCIAL_ENGINEERING_DM, NPC_BAD_ADVICE, OFFICE_CHATTER_DMS } from "@/content/dmScripts";
+import {
+  PRE_BREACH_EMAILS,
+  BREACH_EMAILS,
+  FILLER_EMAILS
+} from "@/content/emails";
+import {
+  SOCIAL_ENGINEERING_DM,
+  NPC_BAD_ADVICE,
+  OFFICE_CHATTER_DMS
+} from "@/content/dmScripts";
 import { intersperseFiller, revealedWithFiller } from "@/content/fillerDMs";
 import { LOG_ENTRIES } from "@/content/logEntries";
 import { LOLBINS } from "@/content/fileListings";
@@ -38,10 +46,15 @@ import type { DMChoice, Email, LogEntry } from "@/content/types";
  * current team branding from the game store. This ensures the static fallback
  * content matches the team identity when no AI/pool content is available.
  */
-function brandEmails<T extends Email>(emails: T[], teamName: string, fakeDomain: string, playerHandle: string): T[] {
+function brandEmails<T extends Email>(
+  emails: T[],
+  teamName: string,
+  fakeDomain: string,
+  playerHandle: string
+): T[] {
   if (teamName === "NexusCorp" && fakeDomain === "nexuscorp.com") return emails;
   const fakeBase = fakeDomain.split(".")[0];
-  return emails.map(e => {
+  return emails.map((e) => {
     const json = JSON.stringify(e);
     const branded = json
       .replace(/nexuscorp-servicedesk\.com/gi, `${fakeBase}-servicedesk.com`)
@@ -95,11 +108,23 @@ export default function Home() {
 
   // Brand static emails with current team identity
   const brandedPreEmails = useMemo(
-    () => brandEmails([...PRE_BREACH_EMAILS, ...FILLER_EMAILS.slice(0, 2)], teamName, fakeDomain, playerHandle),
+    () =>
+      brandEmails(
+        [...PRE_BREACH_EMAILS, ...FILLER_EMAILS.slice(0, 2)],
+        teamName,
+        fakeDomain,
+        playerHandle
+      ),
     [teamName, fakeDomain, playerHandle]
   );
   const brandedBreachEmails = useMemo(
-    () => brandEmails([...BREACH_EMAILS, ...FILLER_EMAILS.slice(2)], teamName, fakeDomain, playerHandle),
+    () =>
+      brandEmails(
+        [...BREACH_EMAILS, ...FILLER_EMAILS.slice(2)],
+        teamName,
+        fakeDomain,
+        playerHandle
+      ),
     [teamName, fakeDomain, playerHandle]
   );
 
@@ -109,10 +134,11 @@ export default function Home() {
   const setFakeDomain = useGameStore((s) => s.setFakeDomain);
   const setLogoUrl = useGameStore((s) => s.setLogoUrl);
   useEffect(() => {
-    if (!teamId || (teamName !== "NexusCorp" && fakeDomain !== "nexuscorp.com")) return;
+    if (!teamId || (teamName !== "NexusCorp" && fakeDomain !== "nexuscorp.com"))
+      return;
     fetch(`/api/v1/teams/${teamId}/info`)
-      .then(r => r.ok ? r.json() : null)
-      .then(team => {
+      .then((r) => (r.ok ? r.json() : null))
+      .then((team) => {
         if (!team) return;
         if (team.name) setTeamName(team.name);
         if (team.fakeDomain) setFakeDomain(team.fakeDomain);
@@ -121,37 +147,44 @@ export default function Home() {
       .catch(() => {});
   }, [teamId, teamName, fakeDomain, setTeamName, setFakeDomain, setLogoUrl]);
 
-
   const adjustTrust = useScoreStore((s) => s.adjustTrust);
   const addAction = useScoreStore((s) => s.addAction);
   const addFlag = useNarrativeStore((s) => s.addFlag);
   const addTimelineEntry = useNarrativeStore((s) => s.addTimelineEntry);
   const [showWiki, setShowWiki] = useState(false);
   const [wikiTab, setWikiTab] = useState<
-    | "social-engineering"
-    | "network-security"
-    | "incident-response"
+    "social-engineering" | "network-security" | "incident-response"
   >("social-engineering");
 
   const [revealedDmIds, setRevealedDmIds] = useState<string[]>([]);
   const [dmInteractionsDone, setDmInteractionsDone] = useState(0);
   const [dmDone, setDmDone] = useState(false);
   const [flaggedLogs, setFlaggedLogs] = useState<LogEntry[]>([]);
-  const [logAnalysisResult, setLogAnalysisResult] = useState<{ correctFlags: number; falseFlags: number; missed: number; points: number } | null>(null);
+  const [logAnalysisResult, setLogAnalysisResult] = useState<{
+    correctFlags: number;
+    falseFlags: number;
+    missed: number;
+    points: number;
+  } | null>(null);
   const [npcDmReveal, setNpcDmReveal] = useState(0);
   const [npcDmIndex, setNpcDmIndex] = useState(0);
   const [npcDmDone, setNpcDmDone] = useState(false);
   const { isTransitioning, changeStep } = useStepTransition(setStep);
 
   // Filler DMs: merge office chatter into DM streams
-  const [aiChatterDMs, setAiChatterDMs] = useState<typeof OFFICE_CHATTER_DMS>([]);
+  const [aiChatterDMs, setAiChatterDMs] = useState<typeof OFFICE_CHATTER_DMS>(
+    []
+  );
   useEffect(() => {
     fetch("/api/v1/content/chatter")
       .then((r) => (r.ok ? r.json() : []))
-      .then((dms) => { if (Array.isArray(dms) && dms.length > 0) setAiChatterDMs(dms); })
+      .then((dms) => {
+        if (Array.isArray(dms) && dms.length > 0) setAiChatterDMs(dms);
+      })
       .catch(() => {});
   }, []);
-  const fillerPool = aiChatterDMs.length > 0 ? aiChatterDMs : OFFICE_CHATTER_DMS;
+  const fillerPool =
+    aiChatterDMs.length > 0 ? aiChatterDMs : OFFICE_CHATTER_DMS;
   const mergedSocialDMs = useMemo(
     () => intersperseFiller(SOCIAL_ENGINEERING_DM, fillerPool),
     [fillerPool]
@@ -184,20 +217,39 @@ export default function Home() {
 
   // Auto-reveal informational DMs in a chain
   useEffect(() => {
-    if (!["onboarding-portal", "breach-email", "breach-password", "breach-wifi"].includes(step)) return;
+    if (
+      ![
+        "onboarding-portal",
+        "breach-email",
+        "breach-password",
+        "breach-wifi"
+      ].includes(step)
+    )
+      return;
     if (revealedDmIds.length === 0) return;
 
     const lastId = revealedDmIds[revealedDmIds.length - 1];
     const dms = SOCIAL_ENGINEERING_DM;
-    const currentMsg = dms.find(m => m.id === lastId);
+    const currentMsg = dms.find((m) => m.id === lastId);
 
     // If it's an informational message (no choices) and points to another message
-    if (currentMsg && (!currentMsg.choices || currentMsg.choices.length === 0) && (currentMsg as { nextMessageId?: string }).nextMessageId) {
+    if (
+      currentMsg &&
+      (!currentMsg.choices || currentMsg.choices.length === 0) &&
+      (currentMsg as { nextMessageId?: string }).nextMessageId
+    ) {
       const nextId = (currentMsg as { nextMessageId?: string }).nextMessageId;
-      console.log('[DM Auto-reveal] last msg:', lastId, 'has no choices, chaining to:', nextId, 'msg choices:', currentMsg.choices);
+      console.log(
+        "[DM Auto-reveal] last msg:",
+        lastId,
+        "has no choices, chaining to:",
+        nextId,
+        "msg choices:",
+        currentMsg.choices
+      );
       if (nextId && !revealedDmIds.includes(nextId)) {
         const timer = setTimeout(() => {
-          setRevealedDmIds(prev => [...prev, nextId]);
+          setRevealedDmIds((prev) => [...prev, nextId]);
         }, 2500); // Delay for reading
         return () => clearTimeout(timer);
       }
@@ -207,7 +259,7 @@ export default function Home() {
   const handleDMChoice = useCallback(
     (messageId: string, choice: DMChoice) => {
       const dms = SOCIAL_ENGINEERING_DM;
-      const currentMsg = dms.find(m => m.id === messageId);
+      const currentMsg = dms.find((m) => m.id === messageId);
       const complexity = currentMsg?.complexity || 5;
       const complexityMultiplier = complexity / 5;
 
@@ -220,7 +272,9 @@ export default function Home() {
           id: `dm-${messageId}-${choice.id}`,
           category: choice.scoreEffect.category,
           points: Math.round(choice.scoreEffect.points * complexityMultiplier),
-          maxPoints: Math.round(choice.scoreEffect.maxPoints * complexityMultiplier),
+          maxPoints: Math.round(
+            choice.scoreEffect.maxPoints * complexityMultiplier
+          ),
           label: choice.label
         });
       }
@@ -236,12 +290,26 @@ export default function Home() {
       // Threading fix: Add the reply ID to revealed IDs immediately.
       // This preserves chronological discovery order.
       if (choice.nextMessageId) {
-        console.log('[DM Choice] Revealing response:', choice.nextMessageId, 'from choice isCorrect:', choice.isCorrect);
-        const responseMsg = dms.find(m => m.id === choice.nextMessageId);
-        console.log('[DM Choice] Response msg found:', !!responseMsg, 'nextMessageId:', responseMsg?.nextMessageId);
-        setRevealedDmIds((prev) => prev.includes(choice.nextMessageId!) ? prev : [...prev, choice.nextMessageId!]);
+        console.log(
+          "[DM Choice] Revealing response:",
+          choice.nextMessageId,
+          "from choice isCorrect:",
+          choice.isCorrect
+        );
+        const responseMsg = dms.find((m) => m.id === choice.nextMessageId);
+        console.log(
+          "[DM Choice] Response msg found:",
+          !!responseMsg,
+          "nextMessageId:",
+          responseMsg?.nextMessageId
+        );
+        setRevealedDmIds((prev) =>
+          prev.includes(choice.nextMessageId!)
+            ? prev
+            : [...prev, choice.nextMessageId!]
+        );
       } else {
-        console.log('[DM Choice] No nextMessageId on choice:', choice);
+        console.log("[DM Choice] No nextMessageId on choice:", choice);
       }
 
       // Track completion
@@ -260,14 +328,14 @@ export default function Home() {
       addFlag,
       addTimelineEntry,
       setRevealedDmIds,
-      setDmDone,
+      setDmDone
     ]
   );
 
   const handleNpcChoice = useCallback(
     (messageId: string, choice: DMChoice) => {
       const npcDms = NPC_BAD_ADVICE;
-      const currentMsg = npcDms.find(m => m.id === messageId);
+      const currentMsg = npcDms.find((m) => m.id === messageId);
       const complexity = currentMsg?.complexity || 5;
       const complexityMultiplier = complexity / 5;
 
@@ -280,7 +348,9 @@ export default function Home() {
           id: `npc-${messageId}-${choice.id}`,
           category: choice.scoreEffect.category,
           points: Math.round(choice.scoreEffect.points * complexityMultiplier),
-          maxPoints: Math.round(choice.scoreEffect.maxPoints * complexityMultiplier),
+          maxPoints: Math.round(
+            choice.scoreEffect.maxPoints * complexityMultiplier
+          ),
           label: choice.label
         });
       }
@@ -305,13 +375,7 @@ export default function Home() {
         }
       }, 1000);
     },
-    [
-      adjustTrust,
-      addAction,
-      addFlag,
-      addTimelineEntry,
-      npcDmIndex,
-    ]
+    [adjustTrust, addAction, addFlag, addTimelineEntry, npcDmIndex]
   );
 
   const handleEmailComplete = useCallback(
@@ -330,14 +394,19 @@ export default function Home() {
       const total = correctPhishing + correctSafe;
       const max = emails.length;
       const wrongCount = max - total;
-      
+
       // Calculate average complexity
-      const avgComplexity = emails.length > 0 
-        ? emails.reduce((sum, e) => sum + (e.complexity || 5), 0) / emails.length 
-        : 5;
+      const avgComplexity =
+        emails.length > 0
+          ? emails.reduce((sum, e) => sum + (e.complexity || 5), 0) /
+            emails.length
+          : 5;
       const complexityMultiplier = avgComplexity / 5;
 
-      const points = Math.max(0, Math.round((total * 12 - wrongCount * 8) * complexityMultiplier));
+      const points = Math.max(
+        0,
+        Math.round((total * 12 - wrongCount * 8) * complexityMultiplier)
+      );
 
       addAction({
         id: "email-triage",
@@ -386,7 +455,7 @@ export default function Home() {
       <MFAPuzzle
         onComplete={() => {
           changeStep("onboarding-portal");
-          
+
           // Initial DM reveal sequence: Show the first message (intro) after a delay
           setTimeout(() => {
             const dms = SOCIAL_ENGINEERING_DM;
@@ -406,12 +475,7 @@ export default function Home() {
     windows.push({
       id: "email",
       title: `${teamName} Mail`,
-      content: (
-        <EmailClient
-          emails={brandedPreEmails}
-          onComplete={() => {}}
-        />
-      )
+      content: <EmailClient emails={brandedPreEmails} onComplete={() => {}} />
     });
     windows.push({
       id: "welcome",
@@ -439,7 +503,7 @@ export default function Home() {
             <h2 className="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">
               First Day Checklist
             </h2>
-            <ul className="space-y-1.5">
+            <ul className="space-y-1.5 line-through">
               {[
                 "Read welcome email",
                 "Review security policy",
@@ -502,6 +566,13 @@ export default function Home() {
                 </button>
               ))}
             </div>
+          </div>
+          {/*Next steps*/}
+          <div>
+            <h2 class="text-xs font-semibold uppercase tracking-wider text-secondary mb-2">
+              Next steps
+            </h2>
+            For now, check your Slack messages!
           </div>
 
           {/* Continue button */}
@@ -593,10 +664,7 @@ export default function Home() {
       id: "terminal",
       title: "Log Analysis Terminal",
       content: (
-        <LogTerminal
-          entries={LOG_ENTRIES}
-          onFlaggedChange={setFlaggedLogs}
-        />
+        <LogTerminal entries={LOG_ENTRIES} onFlaggedChange={setFlaggedLogs} />
       )
     });
     // Flagged events panel as second window
@@ -634,23 +702,41 @@ export default function Home() {
                       <span className="text-muted">{log.timestamp}</span>
                     </div>
                     <div className="text-primary mt-1 font-mono text-[11px]">
-                      {(log.message ?? '').slice(0, 100)}
-                      {(log.message ?? '').length > 100 ? "..." : ""}
+                      {(log.message ?? "").slice(0, 100)}
+                      {(log.message ?? "").length > 100 ? "..." : ""}
                     </div>
                   </div>
                 ))}
               </div>
             )}
             {logAnalysisResult && (
-              <div className={`mt-3 p-3 rounded text-xs border ${logAnalysisResult.correctFlags > logAnalysisResult.falseFlags ? 'bg-[var(--success-subtle)] border-[var(--success)]/40' : 'bg-[var(--danger-subtle)] border-[var(--danger)]/40'}`}>
-                <p className="font-bold" style={{ color: logAnalysisResult.correctFlags > logAnalysisResult.falseFlags ? 'var(--success)' : 'var(--danger)' }}>
-                  {logAnalysisResult.correctFlags > logAnalysisResult.falseFlags ? 'Good analysis!' : 'Needs improvement'}
+              <div
+                className={`mt-3 p-3 rounded text-xs border ${logAnalysisResult.correctFlags > logAnalysisResult.falseFlags ? "bg-[var(--success-subtle)] border-[var(--success)]/40" : "bg-[var(--danger-subtle)] border-[var(--danger)]/40"}`}
+              >
+                <p
+                  className="font-bold"
+                  style={{
+                    color:
+                      logAnalysisResult.correctFlags >
+                      logAnalysisResult.falseFlags
+                        ? "var(--success)"
+                        : "var(--danger)"
+                  }}
+                >
+                  {logAnalysisResult.correctFlags > logAnalysisResult.falseFlags
+                    ? "Good analysis!"
+                    : "Needs improvement"}
                 </p>
                 <p className="mt-1 text-[var(--text-secondary)]">
-                  {logAnalysisResult.correctFlags} malicious entries correctly flagged, {logAnalysisResult.falseFlags} false positive{logAnalysisResult.falseFlags !== 1 ? 's' : ''}.
-                  {logAnalysisResult.missed > 0 && ` ${logAnalysisResult.missed} malicious entries missed.`}
+                  {logAnalysisResult.correctFlags} malicious entries correctly
+                  flagged, {logAnalysisResult.falseFlags} false positive
+                  {logAnalysisResult.falseFlags !== 1 ? "s" : ""}.
+                  {logAnalysisResult.missed > 0 &&
+                    ` ${logAnalysisResult.missed} malicious entries missed.`}
                 </p>
-                <p className="mt-1 font-mono text-[var(--accent)]">+{logAnalysisResult.points}/25 forensic skill</p>
+                <p className="mt-1 font-mono text-[var(--accent)]">
+                  +{logAnalysisResult.points}/25 forensic skill
+                </p>
               </div>
             )}
           </div>
@@ -677,7 +763,9 @@ export default function Home() {
                   const points = Math.max(
                     0,
                     Math.round(
-                      ((correctFlags - falseFlags) / Math.max(malicious.length, 1)) * 25
+                      ((correctFlags - falseFlags) /
+                        Math.max(malicious.length, 1)) *
+                        25
                     )
                   );
 
@@ -695,11 +783,18 @@ export default function Home() {
                     description: `Flagged ${flaggedLogs.length} log entries (${correctFlags} malicious)`
                   });
 
-                  setLogAnalysisResult({ correctFlags, falseFlags, missed, points });
+                  setLogAnalysisResult({
+                    correctFlags,
+                    falseFlags,
+                    missed,
+                    points
+                  });
                 }}
                 className="w-full py-2 bg-accent text-white rounded text-xs font-medium hover:bg-accent-hover"
               >
-                {flaggedLogs.length > 0 ? "Submit Flagged Events" : "Continue →"}
+                {flaggedLogs.length > 0
+                  ? "Submit Flagged Events"
+                  : "Continue →"}
               </button>
             )}
           </div>
@@ -724,16 +819,19 @@ export default function Home() {
             />
           </div>
           {allNpcMessagesAnswered && (
-            <div className="p-4 border-t" style={{ borderColor: 'var(--border)' }}>
+            <div
+              className="p-4 border-t"
+              style={{ borderColor: "var(--border)" }}
+            >
               <button
                 onClick={() => changeStep("investigation-ioc")}
                 className="w-full px-4 py-2 rounded text-sm font-semibold text-white transition-colors"
-                style={{ background: 'var(--accent)' }}
+                style={{ background: "var(--accent)" }}
                 onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = 'var(--accent-hover)')
+                  (e.currentTarget.style.background = "var(--accent-hover)")
                 }
                 onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = 'var(--accent)')
+                  (e.currentTarget.style.background = "var(--accent)")
                 }
               >
                 Continue to IOC Analysis
@@ -750,8 +848,8 @@ export default function Home() {
       id: "ioc",
       title: "IOC Documentation",
       content: (
-        <IOCExtraction 
-          onComplete={() => changeStep("investigation-rotation")} 
+        <IOCExtraction
+          onComplete={() => changeStep("investigation-rotation")}
         />
       )
     });
@@ -853,7 +951,9 @@ export default function Home() {
             className="fixed bottom-14 left-3 z-50 w-80 max-h-[60vh] rounded-lg border border-[var(--border)] bg-[var(--bg-window)] shadow-2xl overflow-hidden flex flex-col"
           >
             <div className="h-8 flex items-center justify-between px-3 border-b border-[var(--border)] bg-[var(--bg-secondary)] shrink-0">
-              <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--text-secondary)]">Scoreboard</span>
+              <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--text-secondary)]">
+                Scoreboard
+              </span>
               <button
                 onClick={() => setShowScoreboard(false)}
                 className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs transition-colors"

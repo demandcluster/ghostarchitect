@@ -46,13 +46,29 @@ function strengthLabel(entropy: number): {
   return { label: `Very Strong — cracked in ${time}`, color: "var(--success)" };
 }
 
+type Phase = "reveal" | "verify" | "reset";
+
 export function PasswordPuzzle({ onComplete }: PasswordPuzzleProps) {
   const [password, setPassword] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [verifyInput, setVerifyInput] = useState("");
+  const [verifyFailed, setVerifyFailed] = useState(false);
+
   const addAction = useScoreStore((s) => s.addAction);
   const addFlag = useNarrativeStore((s) => s.addFlag);
   const setDecision = useNarrativeStore((s) => s.setDecision);
+  const decisions = useNarrativeStore((s) => s.decisions);
   const teamName = useGameStore((s) => s.teamName);
+
+  const oldPassword = decisions["login_password"] ?? "";
+  const oldEntropy = useMemo(() => computeEntropy(oldPassword), [oldPassword]);
+  const oldCrack = useMemo(() => crackTime(oldEntropy), [oldEntropy]);
+  const oldWasStrong = oldEntropy >= 60;
+
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (!oldPassword) return "reset";
+    return oldWasStrong ? "verify" : "reveal";
+  });
 
   const entropy = useMemo(() => computeEntropy(password), [password]);
   const strength = useMemo(() => strengthLabel(entropy), [entropy]);
@@ -85,15 +101,147 @@ export function PasswordPuzzle({ onComplete }: PasswordPuzzleProps) {
     setSubmitted(true);
   };
 
+  // --- VERIFY phase (strong old password path) ---
+  if (phase === "verify") {
+    const isMatch = verifyInput === oldPassword;
+    return (
+      <div className="overflow-auto h-full">
+        <div className="p-6 max-w-lg mx-auto">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+              Verify Your Identity
+            </h2>
+            <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
+              Your credentials were exposed in the breach. Before rotating, confirm
+              you still know your current password.
+            </p>
+
+            <div className="space-y-4">
+              <input
+                type="password"
+                value={verifyInput}
+                onChange={(e) => { setVerifyInput(e.target.value); setVerifyFailed(false); }}
+                className="w-full px-3.5 py-2.5 bg-[var(--bg-window-sunken)] border border-[var(--border)] rounded-xl text-base font-mono text-[var(--text-primary)] focus:outline-none focus:border-[var(--accent)] focus:ring-2 focus:ring-[var(--accent-ring)]"
+                placeholder="Re-enter your current password"
+                autoComplete="current-password"
+              />
+
+              {verifyFailed && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="p-4 rounded-lg border bg-[var(--warning-subtle)] border-[var(--warning)]/35"
+                >
+                  <p className="text-sm text-[var(--warning)] leading-relaxed">
+                    Incorrect. If you can&apos;t remember it, that&apos;s a risk —
+                    strong passwords you can&apos;t recall are often written down
+                    insecurely. A password manager solves this.
+                  </p>
+                  <button
+                    onClick={() => setPhase("reset")}
+                    className="mt-3 text-sm underline text-[var(--warning)]"
+                  >
+                    Proceed to reset anyway
+                  </button>
+                </motion.div>
+              )}
+
+              <button
+                onClick={() => {
+                  if (isMatch) {
+                    const pts = oldEntropy >= 80 ? 50 : 35;
+                    addAction({
+                      id: "password-strength",
+                      category: "passwordHygiene",
+                      points: pts,
+                      maxPoints: 50,
+                      label: `Remembered strong password (${oldEntropy} bits) — no reset required`,
+                    });
+                    addFlag("chose_strong_password");
+                    addFlag("remembered_strong_password");
+                    onComplete();
+                  } else {
+                    setVerifyFailed(true);
+                  }
+                }}
+                disabled={verifyInput.length < 1}
+                className="w-full py-2 bg-accent text-white rounded text-sm font-medium hover:bg-accent-hover transition-colors disabled:opacity-50"
+              >
+                Confirm
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- REVEAL phase (weak/fair old password path) ---
+  if (phase === "reveal") {
+    const sl = strengthLabel(oldEntropy);
+    return (
+      <div className="overflow-auto h-full">
+        <div className="p-6 max-w-lg mx-auto">
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <h2 className="text-xl font-bold text-[var(--danger)] mb-2">
+              Compromised Credentials Detected
+            </h2>
+            <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
+              Forensic analysis recovered your credentials from the attacker&apos;s
+              exfiltration server.
+            </p>
+
+            <div className="p-4 bg-[var(--bg-window-sunken)] rounded-xl border border-[var(--danger)]/40 mb-6">
+              <div className="text-xs font-mono text-[var(--text-secondary)] uppercase tracking-widest mb-2">
+                Exposed Credential
+              </div>
+              <div className="font-mono text-base text-[var(--danger)] break-all mb-3">
+                {oldPassword}
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[var(--text-secondary)]">Entropy:</span>
+                <span className="font-mono font-semibold" style={{ color: sl.color }}>
+                  {oldEntropy} bits
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm mt-1">
+                <span className="text-[var(--text-secondary)]">Brute-force time:</span>
+                <span className="font-mono font-semibold" style={{ color: sl.color }}>
+                  {oldCrack}
+                </span>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg border bg-[var(--danger-subtle)] border-[var(--danger)]/35 mb-6">
+              <p className="text-sm text-[var(--danger)] leading-relaxed">
+                At {oldEntropy} bits, this password was trivial to crack once the
+                hash was obtained. Low entropy is one of the top entry points
+                attackers exploit post-breach.
+              </p>
+            </div>
+
+            <button
+              onClick={() => setPhase("reset")}
+              className="w-full py-2 bg-accent text-white rounded text-sm font-medium hover:bg-accent-hover transition-colors"
+            >
+              Set New Password
+            </button>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // --- RESET phase (all paths that need a new password) ---
   return (
     <div className="overflow-auto h-full">
     <div className="p-6 max-w-lg mx-auto">
       <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
-        Create Your {teamName} Password
+        Reset Your Credentials
       </h2>
       <p className="text-sm text-[var(--text-secondary)] mb-7 leading-relaxed max-w-[55ch]">
-        Your password must meet {teamName} security policy. Use the entropy meter
-        to gauge strength.
+        Your previous password has been invalidated. Set a replacement that meets{" "}
+        {teamName} security policy. Use the entropy meter to gauge strength.
       </p>
 
       <div className="space-y-4">

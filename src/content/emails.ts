@@ -305,20 +305,17 @@ ServiceNow Automation
 NexusCorp IT Service Management`,
     headers: {
       returnPath: "<notifications@nexuscorp-servicedesk.com>",
-      spf: "softfail (domain nexuscorp-servicedesk.com does not designate 185.234.72.14 as permitted sender)",
-      dkim: "fail (signature verification failed; body hash mismatch)",
-      dmarc: "fail (p=quarantine; dis=quarantine) header.from=nexuscorp.com",
-      xMailer: "PHPMailer 6.5.0",
+      spf: "pass (nexuscorp-servicedesk.com designates 185.234.72.14 as permitted sender)",
+      dkim: "pass (signature valid; d=nexuscorp-servicedesk.com)",
+      dmarc: "pass (p=reject; d=nexuscorp-servicedesk.com)",
       replyTo: "support@nexuscorp-servicedesk.com",
     },
     isPhishing: true,
     indicators: [
-      "Return-Path domain mismatch: nexuscorp-servicedesk.com vs nexuscorp.com",
-      "SPF softfail: sending IP not authorized",
-      "DKIM fail: body hash mismatch (email tampered after signing)",
-      "DMARC fail: delivered despite quarantine policy (mail gateway issue)",
-      "X-Mailer: PHPMailer 6.5.0 (not corporate mail system)",
-      "Reply-To mismatch: points to lookalike domain",
+      "Sender domain is nexuscorp-servicedesk.com — not nexuscorp.com (attacker-registered lookalike)",
+      "SPF/DKIM/DMARC all pass — but for the attacker's domain, not NexusCorp's",
+      "NexusCorp uses ServiceNow at nexuscorp.service-now.com, not a subdomain",
+      "Approval link leads to nexuscorp-servicedesk.com, not nexuscorp.com",
     ],
     difficulty: "hard",
   },
@@ -422,7 +419,7 @@ L&D Team`,
   },
   {
     id: "breach-7",
-    from: "mdm-compliance@nexuscorp.com",
+    from: "mdm-compliance@nexuscorp-it.com",
     to: "you@nexuscorp.com",
     subject: "MDM Compliance Agent: Device Policy Update Required",
     date: "2026-03-10 11:45",
@@ -444,22 +441,53 @@ If your device is already compliant, this message was sent in error. Contact IT 
 
 NexusCorp MDM System`,
     headers: {
-      returnPath: "<mdm@nexuscorp-it.com>",
-      spf: "softfail (domain nexuscorp-it.com does not designate 45.77.xx.xx as permitted sender)",
-      dkim: "fail (body hash mismatch)",
-      dmarc: "fail (p=quarantine; dis=none) header.from=nexuscorp.com",
-      xMailer: "Microsoft Outlook 16.0",
+      returnPath: "<mdm-compliance@nexuscorp-it.com>",
+      spf: "pass (nexuscorp-it.com designates 45.77.xx.xx as permitted sender)",
+      dkim: "pass (signature valid; d=nexuscorp-it.com)",
+      dmarc: "pass (p=reject; d=nexuscorp-it.com)",
     },
     isPhishing: true,
     indicators: [
-      "MDM compliance updates are pushed automatically, never via email download",
-      "Return-Path domain mismatch: nexuscorp-it.com vs nexuscorp.com",
-      "SPF softfail: sending IP not authorized",
-      "DKIM fail: body hash mismatch",
-      "DMARC fail with dis=none (not enforced)",
-      "Executable download link (.exe) in email — corporate MDM never does this",
+      "Sender domain is nexuscorp-it.com — not nexuscorp.com (attacker-registered lookalike)",
+      "SPF/DKIM/DMARC all pass — but for the attacker's domain, not NexusCorp's",
+      "MDM compliance agents are pushed silently by Intune — never emailed as a download",
+      "Executable download link (.exe) in email is a process violation regardless of sender",
     ],
-    difficulty: "medium",
+    difficulty: "hard",
+  },
+  {
+    id: "breach-7b",
+    from: "sarah.chen@nexuscorp.co",
+    to: "you@nexuscorp.com",
+    subject: "Re: VPN cert - need your admin creds for handover doc",
+    date: "2026-03-10 12:01",
+    body: `Hey,
+
+Sorry for the last-minute ask — I'm putting together the cert renewal handover doc before my PTO tomorrow and I realized I don't have your local admin password documented anywhere for the VPN gateway.
+
+Can you drop it in the shared doc? It's locked to IT only:
+
+https://docs.nexuscorp.co/cert-handover-vpn-2026
+
+Just need it so whoever covers while I'm out can handle any issues with the renewal. Should only take a sec.
+
+Thanks,
+Sarah`,
+    headers: {
+      returnPath: "<sarah.chen@nexuscorp.co>",
+      spf: "pass (nexuscorp.co designates 104.21.xx.xx as permitted sender)",
+      dkim: "pass (signature valid; d=nexuscorp.co)",
+      dmarc: "pass (p=reject; d=nexuscorp.co)",
+    },
+    isPhishing: true,
+    indicators: [
+      "Sender domain is nexuscorp.co — not nexuscorp.com (.co is a separate TLD, attacker-registered)",
+      "SPF/DKIM/DMARC all pass — but for nexuscorp.co, not NexusCorp's real domain",
+      "Passwords are never shared via documents — this violates credential handling policy",
+      "Link leads to docs.nexuscorp.co, not docs.nexuscorp.com",
+      "Request matches prior email thread context (VPN cert) — attacker did reconnaissance",
+    ],
+    difficulty: "hard",
   },
   {
     id: "breach-8",

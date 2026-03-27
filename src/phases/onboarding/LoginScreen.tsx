@@ -43,6 +43,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const addAction = useScoreStore((s) => s.addAction);
   const adjustTrust = useScoreStore((s) => s.adjustTrust);
   const addFlag = useNarrativeStore((s) => s.addFlag);
+  const setDecision = useNarrativeStore((s) => s.setDecision);
   const setPlayerHandle = useGameStore((s) => s.setPlayerHandle);
 
   const initials = teamName
@@ -82,6 +83,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       adjustTrust(-3);
     }
 
+    setDecision("login_password", password);
     onLogin();
   };
 
