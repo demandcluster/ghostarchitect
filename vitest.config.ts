@@ -9,6 +9,7 @@ export default defineConfig({
     testTimeout: 30000,
     pool: "forks",
     isolate: false,
+    exclude: ["**/node_modules/**", "**/.claude/worktrees/**"],
   },
   resolve: {
     alias: {

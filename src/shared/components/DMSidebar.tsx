@@ -233,37 +233,37 @@ function DMBubbleSlack({
 
           {/* Message text */}
           <p style={{
-            color: "rgba(255,255,255,0.82)",
-            fontSize: "13px",
-            lineHeight: "1.5",
+            color: "rgba(255,255,255,0.9)",
+            fontSize: "14px",
+            lineHeight: "1.55",
             margin: 0,
             wordBreak: "break-word",
           }}>
             {message.text}
           </p>
 
-          {/* Interactive choices — Slack action buttons */}
+          {/* Interactive choices */}
           {shuffledChoices.length > 0 && !chosen && (
-            <div style={{ marginTop: "10px", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "7px" }}>
               {shuffledChoices.map((choice) => (
                 <motion.button
                   key={choice.id}
                   onClick={() => handleChoice(choice)}
-                  whileHover={{ scale: 1.01, borderColor: "rgba(74,158,255,0.5)" }}
-                  whileTap={{ scale: 0.99 }}
+                  whileHover={{ backgroundColor: "rgba(255,255,255,0.1)", borderColor: "rgba(100,170,255,0.5)" }}
+                  whileTap={{ scale: 0.98 }}
                   style={{
                     display: "block",
                     width: "100%",
-                    background: "rgba(255,255,255,0.05)",
-                    border: "1px solid rgba(255,255,255,0.14)",
-                    borderRadius: "4px",
-                    padding: "7px 10px",
-                    color: "#4A9EFF",
-                    fontSize: "12px",
-                    fontWeight: "500",
+                    background: "rgba(255,255,255,0.07)",
+                    border: "1px solid rgba(255,255,255,0.18)",
+                    borderRadius: "6px",
+                    padding: "10px 12px",
+                    color: "rgba(255,255,255,0.9)",
+                    fontSize: "13px",
+                    fontWeight: "400",
                     textAlign: "left",
                     cursor: "pointer",
-                    lineHeight: 1.4,
+                    lineHeight: 1.5,
                   }}
                 >
                   {choice.label}
@@ -278,32 +278,39 @@ function DMBubbleSlack({
               const choice = message.choices?.find(c => c.id === chosen);
               if (!choice) return null;
               const delta = choice.scoreEffect?.points ?? 0;
+              const correct = choice.isCorrect;
               return (
                 <motion.div
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  style={{ marginTop: "8px" }}
+                  style={{ marginTop: "10px" }}
                 >
+                  {/* Chosen answer */}
                   <div style={{
-                    background: choice.isCorrect ? "rgba(43,172,118,0.12)" : "rgba(224,30,90,0.12)",
-                    border: `1px solid ${choice.isCorrect ? "rgba(43,172,118,0.25)" : "rgba(224,30,90,0.25)"}`,
-                    borderRadius: "4px",
-                    padding: "6px 10px",
-                    fontSize: "12px",
-                    color: choice.isCorrect ? "#2BAC76" : "#E01E5A",
-                    marginBottom: "4px",
-                    lineHeight: 1.4,
+                    background: correct ? "rgba(43,172,118,0.15)" : "rgba(224,30,90,0.15)",
+                    border: `1px solid ${correct ? "rgba(43,172,118,0.35)" : "rgba(224,30,90,0.35)"}`,
+                    borderRadius: "6px",
+                    padding: "8px 12px",
+                    fontSize: "13px",
+                    color: "rgba(255,255,255,0.85)",
+                    lineHeight: 1.5,
+                    marginBottom: "6px",
                   }}>
                     {choice.label}
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span style={{ fontSize: "11px", color: choice.isCorrect ? "#2BAC76" : "#E01E5A", fontWeight: "500" }}>
-                      {choice.isCorrect ? "✓ Correct response" : "✗ Incorrect response"}
+                  {/* Verdict row */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    <span style={{
+                      fontSize: "13px",
+                      fontWeight: "600",
+                      color: correct ? "#2BAC76" : "#E01E5A",
+                    }}>
+                      {correct ? "✓ Correct" : "✗ Incorrect"}
                     </span>
                     {delta !== 0 && (
                       <span style={{
-                        fontSize: "10px", fontWeight: "700",
-                        padding: "1px 5px", borderRadius: "3px",
+                        fontSize: "12px", fontWeight: "700",
+                        padding: "2px 7px", borderRadius: "4px",
                         background: delta > 0 ? "rgba(43,172,118,0.2)" : "rgba(224,30,90,0.2)",
                         color: delta > 0 ? "#2BAC76" : "#E01E5A",
                       }}>

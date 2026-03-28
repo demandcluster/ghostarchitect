@@ -90,8 +90,13 @@ export function WindowManager({
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1], layout: { duration: 0.3 } }}
                 className={`${outerClasses} ${widthClass}`}
                 style={{
-                  ...(isBreach && isActive ? { boxShadow: "var(--glow-green)" } : undefined),
-                  ...(isBreach || !isActive ? {} : { background: "linear-gradient(135deg, var(--window-header-from), var(--window-header-to))" })
+                  ...(isBreach && isActive
+                    ? { boxShadow: "var(--glow-green)" }
+                    : !isBreach
+                      ? { boxShadow: isActive ? "0 8px 32px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.3)" : "0 2px 8px rgba(0,0,0,0.2)" }
+                      : undefined
+                  ),
+                  ...(!isBreach && isActive ? { background: "linear-gradient(135deg, var(--window-header-from), var(--window-header-to))" } : {})
                 }}
                 onClick={() => handleFocus(win.id)}
                 whileHover={isActive ? {} : undefined}
@@ -163,21 +168,28 @@ export function WindowManager({
             animate={{ opacity: 1, width: dmCollapsed ? 40 : 280 }}
             exit={{ opacity: 0, width: 0 }}
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            className={`
-              shrink-0 border-l border-[var(--border)] bg-[var(--bg-secondary)] overflow-hidden
-            `}
+            className="shrink-0 border-l overflow-hidden"
+            style={{
+              borderColor: isBreach ? "var(--border)" : "rgba(255,255,255,0.08)",
+              background: isBreach ? "var(--bg-secondary)" : "#1A1D21",
+            }}
           >
             {dmCollapsed ? (
               <motion.button
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 onClick={onToggleDM}
-                className="w-full h-12 flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)] transition-colors"
+                className="w-full h-12 flex items-center justify-center hover:bg-[var(--bg-tertiary)] transition-colors"
                 title="Expand messages"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
+                style={{ color: isBreach ? "var(--accent)" : "rgba(255,255,255,0.5)" }}
               >
-                DM
+                {isBreach ? (
+                  <span className="text-[10px] font-mono uppercase tracking-widest">DM</span>
+                ) : (
+                  <SlackLogoSmall />
+                )}
               </motion.button>
             ) : (
               <motion.div
@@ -185,29 +197,53 @@ export function WindowManager({
                 animate={{ opacity: 1 }}
                 className="h-full flex flex-col"
               >
+                {/* Sidebar header — Slack workspace style (corporate) or terminal style (breach) */}
                 <div
-                  className={`h-10 flex items-center justify-between px-3 border-b text-xs font-medium`}
+                  className="h-10 flex items-center justify-between px-3 border-b shrink-0"
                   style={{
-                    borderColor: "var(--border)",
-                    ...(isBreach
-                      ? { background: "var(--window-header-from)" }
-                      : { background: "linear-gradient(135deg, var(--window-header-from), var(--window-header-to))" })
+                    borderColor: isBreach ? "var(--border)" : "rgba(255,255,255,0.08)",
+                    background: isBreach ? "var(--window-header-from)" : "#19171D",
                   }}
                 >
-                  <motion.span
-                    className={isBreach ? "text-[11px] uppercase tracking-[0.08em]" : ""}
-                    style={isBreach ? { color: "var(--accent)" } : { color: "white" }}
+                  {isBreach ? (
+                    <motion.span
+                      className="text-[11px] uppercase tracking-[0.08em]"
+                      style={{ color: "var(--accent)" }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                    >
+                      {`> Messages`}
+                    </motion.span>
+                  ) : (
+                    <motion.div
+                      className="flex items-center gap-2"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                    >
+                      <SlackLogoSmall />
+                      <span style={{ color: "white", fontSize: "13px", fontWeight: "700", lineHeight: 1 }}>
+                        {teamName}
+                      </span>
+                      <span style={{
+                        marginLeft: "2px",
+                        background: "#007a5a",
+                        color: "white",
+                        fontSize: "9px",
+                        fontWeight: "700",
+                        padding: "1px 4px",
+                        borderRadius: "3px",
+                      }}>
+                        FREE
+                      </span>
+                    </motion.div>
+                  )}
+                  <motion.button
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                  >
-                    {isBreach ? "> Messages" : "Messages"}
-                  </motion.span>
-                  <motion.button
-                    initial={{ opacity: 0, rotate: -90 }}
-                    animate={{ opacity: 1, rotate: 0 }}
                     onClick={onToggleDM}
-                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                    whileHover={{ scale: 1.1 }}
+                    className="transition-colors"
+                    style={{ color: isBreach ? "var(--text-muted)" : "rgba(255,255,255,0.4)" }}
+                    whileHover={{ scale: 1.1, color: isBreach ? "var(--text-primary)" : "white" }}
                     whileTap={{ scale: 0.9 }}
                   >
                     ×

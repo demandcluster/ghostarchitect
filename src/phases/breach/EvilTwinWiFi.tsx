@@ -151,6 +151,9 @@ export function EvilTwinWiFi({ onComplete, networks }: EvilTwinWiFiProps) {
   const handleConnect = (ap: WiFiAP) => {
     setSelectedAP(ap);
     setDecision("wifi_choice", ap.isEvil ? "evil_twin" : "legitimate");
+    setDecision("wifi_ssid", ap.ssid);
+    setDecision("wifi_signal", String(ap.signal));
+    setDecision("wifi_auth", ap.authType);
 
     if (ap.isEvil) {
       addAction({

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useGameStore } from "@/stores/gameStore";
+import { useNarrativeStore } from "@/stores/narrativeStore";
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -42,12 +43,35 @@ const IconTaskManager = () => (
   </svg>
 );
 
-const IconWiFi = () => (
-  <svg width="16" height="14" viewBox="0 0 16 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M1 4.5C3.8 2 7 .8 8 .8c1 0 4.2 1.2 7 3.7" />
-    <path d="M3.2 7C5 5.4 6.5 4.7 8 4.7c1.5 0 3 .7 4.8 2.3" />
-    <path d="M5.5 9.5C6.4 8.7 7.2 8.3 8 8.3c.8 0 1.6.4 2.5 1.2" />
-    <circle cx="8" cy="12.5" r="1" fill="currentColor" stroke="none" />
+function signalToBars(dbm: number): 1 | 2 | 3 | 4 {
+  if (dbm >= -50) return 4;
+  if (dbm >= -60) return 3;
+  if (dbm >= -70) return 2;
+  return 1;
+}
+
+function IconWiFiSignal({ bars = 3, color = "currentColor" }: { bars?: 1 | 2 | 3 | 4; color?: string }) {
+  const dim = "rgba(255,255,255,0.2)";
+  return (
+    <svg width="16" height="14" viewBox="0 0 16 14" fill="none" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 4.5C3.8 2 7 .8 8 .8c1 0 4.2 1.2 7 3.7"   stroke={bars >= 4 ? color : dim} strokeWidth="1.5" />
+      <path d="M3.2 7C5 5.4 6.5 4.7 8 4.7c1.5 0 3 .7 4.8 2.3" stroke={bars >= 3 ? color : dim} strokeWidth="1.5" />
+      <path d="M5.5 9.5C6.4 8.7 7.2 8.3 8 8.3c.8 0 1.6.4 2.5 1.2" stroke={bars >= 2 ? color : dim} strokeWidth="1.5" />
+      <circle cx="8" cy="12.5" r="1" fill={bars >= 1 ? color : dim} stroke="none" />
+    </svg>
+  );
+}
+
+const IconSlack = () => (
+  <svg width="15" height="15" viewBox="0 0 240 240" fill="none">
+    <path d="M99.4 151.2c0 7.1-5.8 12.9-12.9 12.9-7.1 0-12.9-5.8-12.9-12.9 0-7.1 5.8-12.9 12.9-12.9H99.4v12.9z" fill="#E01E5A"/>
+    <path d="M105.9 151.2c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9v32.3c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9v-32.3z" fill="#E01E5A"/>
+    <path d="M118.8 99.4c-7.1 0-12.9-5.8-12.9-12.9 0-7.1 5.8-12.9 12.9-12.9 7.1 0 12.9 5.8 12.9 12.9V99.4h-12.9z" fill="#36C5F0"/>
+    <path d="M118.8 105.9c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9H86.5c-7.1 0-12.9-5.8-12.9-12.9s5.8-12.9 12.9-12.9h32.3z" fill="#36C5F0"/>
+    <path d="M170.6 118.8c0-7.1 5.8-12.9 12.9-12.9 7.1 0 12.9 5.8 12.9 12.9 0 7.1-5.8 12.9-12.9 12.9h-12.9v-12.9z" fill="#2EB67D"/>
+    <path d="M164.1 118.8c0 7.1-5.8 12.9-12.9 12.9s-12.9-5.8-12.9-12.9V86.5c0-7.1 5.8-12.9 12.9-12.9s12.9 5.8 12.9 12.9v32.3z" fill="#2EB67D"/>
+    <path d="M151.2 170.6c7.1 0 12.9 5.8 12.9 12.9 0 7.1-5.8 12.9-12.9 12.9-7.1 0-12.9-5.8-12.9-12.9v-12.9h12.9z" fill="#ECB22E"/>
+    <path d="M151.2 164.1c-7.1 0-12.9-5.8-12.9-12.9s5.8-12.9 12.9-12.9h32.3c7.1 0 12.9 5.8 12.9 12.9s-5.8 12.9-12.9 12.9h-32.3z" fill="#ECB22E"/>
   </svg>
 );
 
@@ -55,19 +79,22 @@ interface TaskbarApp {
   id: string;
   label: string;
   icon: React.ReactNode;
+  /** panel = toggle on/off; window = focus only */
+  kind?: "window" | "panel";
 }
 
 const CORPORATE_APPS: TaskbarApp[] = [
-  { id: "email", label: "Email", icon: <IconEmail /> },
-  { id: "wiki", label: "Wiki", icon: <IconWiki /> },
-  { id: "scoreboard", label: "Scoreboard", icon: <IconScoreboard /> },
+  { id: "email",      label: "Email",      icon: <IconEmail />,      kind: "window" },
+  { id: "messages",   label: "Messages",   icon: <IconSlack />,      kind: "panel" },
+  { id: "wiki",       label: "Wiki",       icon: <IconWiki />,       kind: "panel" },
+  { id: "scoreboard", label: "Scoreboard", icon: <IconScoreboard />, kind: "panel" },
 ];
 
 const BREACH_APPS: TaskbarApp[] = [
-  { id: "email", label: "Email", icon: <IconEmail /> },
-  { id: "terminal", label: "Terminal", icon: <IconTerminal /> },
-  { id: "taskmanager", label: "Task Manager", icon: <IconTaskManager /> },
-  { id: "scoreboard", label: "Scoreboard", icon: <IconScoreboard /> },
+  { id: "email",       label: "Email",        icon: <IconEmail />,       kind: "window" },
+  { id: "terminal",    label: "Terminal",     icon: <IconTerminal />,    kind: "window" },
+  { id: "taskmanager", label: "Task Manager", icon: <IconTaskManager />, kind: "window" },
+  { id: "scoreboard",  label: "Scoreboard",   icon: <IconScoreboard />,  kind: "panel" },
 ];
 
 interface TaskbarProps {
@@ -81,7 +108,16 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
   const phase = useGameStore((s) => s.phase);
   const teamName = useGameStore((s) => s.teamName);
   const logoUrl = useGameStore((s) => s.logoUrl);
+  const decisions = useNarrativeStore((s) => s.decisions);
   const [time, setTime] = useState("");
+  const [showWifiTooltip, setShowWifiTooltip] = useState(false);
+
+  const wifiChoice = decisions.wifi_choice as "evil_twin" | "legitimate" | undefined;
+  const wifiSsid   = decisions.wifi_ssid;
+  const wifiAuth   = decisions.wifi_auth;
+  const wifiSignal = decisions.wifi_signal ? parseInt(decisions.wifi_signal, 10) : null;
+  const wifiBars   = wifiSignal !== null ? signalToBars(wifiSignal) : 3;
+  const wifiColor  = wifiChoice === "evil_twin" ? "var(--danger)" : wifiChoice === "legitimate" ? "var(--success)" : "currentColor";
 
   const isBreach = visualMode === "breach";
 
@@ -155,61 +191,139 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
       </div>
 
       {/* App icons */}
-      <div className="flex gap-1 flex-1">
-        {apps.map((app, index) => (
-          <motion.button
-            key={app.id}
-            onClick={() => onAppClick(app.id)}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{
-              opacity: 1,
-              scale: activeApp === app.id ? 1.1 : 1,
-              y: activeApp === app.id ? -2 : 0,
-            }}
-            whileHover={{ scale: 1.1, y: -2 }}
-            whileTap={{ scale: 0.95 }}
-            transition={{
-              delay: index * 0.05,
-              duration: 0.3,
-              type: "spring",
-              stiffness: 300,
-              damping: 25
-            }}
-            className={`
-              px-2.5 py-1.5 rounded-lg text-xs transition-colors ring-2 ring-transparent focus:ring-[var(--accent-ring)]
-              ${isBreach ? "font-mono" : ""}
-            `}
-            style={
-              activeApp === app.id
-                ? isBreach
-                  ? { background: "var(--accent-subtle)", border: "1px solid var(--border)", color: "var(--taskbar-text-active)" }
-                  : { background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)", color: "var(--taskbar-text-active)" }
-                : { background: "transparent", color: "var(--taskbar-text)" }
-            }
-            title={app.label}
-          >
-            <motion.span
-              className="inline-flex items-center justify-center w-4 h-4 text-center mr-1"
-              animate={activeApp === app.id}
-              transition={{ duration: 0.5 }}
-            >
-              {app.icon}
-            </motion.span>
-            <span className="hidden sm:inline">{app.label}</span>
-          </motion.button>
-        ))}
+      <div className="flex gap-1 flex-1 items-center">
+        {apps.map((app, index) => {
+          const isActive = activeApp === app.id;
+          const isPanel = app.kind === "panel";
+          // Insert a separator before the first panel app
+          const prevApp = apps[index - 1];
+          const showSeparator = isPanel && (!prevApp || prevApp.kind !== "panel");
+
+          return (
+            <React.Fragment key={app.id}>
+              {showSeparator && (
+                <div
+                  className="w-px h-5 mx-1 shrink-0"
+                  style={{ background: "rgba(255,255,255,0.12)" }}
+                />
+              )}
+              <motion.button
+                onClick={() => onAppClick(app.id)}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{
+                  opacity: 1,
+                  scale: isActive ? 1.1 : 1,
+                  y: isActive ? -2 : 0,
+                }}
+                whileHover={{ scale: 1.1, y: -2 }}
+                whileTap={{ scale: 0.95 }}
+                transition={{
+                  delay: index * 0.05,
+                  duration: 0.3,
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 25
+                }}
+                className={`
+                  px-2.5 py-1.5 rounded-lg text-xs transition-colors ring-2 ring-transparent focus:ring-[var(--accent-ring)]
+                  ${isBreach ? "font-mono" : ""}
+                `}
+                style={
+                  isActive
+                    ? isBreach
+                      ? { background: "var(--accent-subtle)", border: "1px solid var(--border)", color: "var(--taskbar-text-active)" }
+                      : { background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)", color: "#ffffff" }
+                    : { background: "transparent", color: "var(--taskbar-text)" }
+                }
+                title={app.label}
+              >
+                <motion.span
+                  className="inline-flex items-center justify-center w-4 h-4 text-center mr-1"
+                  transition={{ duration: 0.5 }}
+                >
+                  {app.icon}
+                </motion.span>
+                <span className="hidden sm:inline">{app.label}</span>
+              </motion.button>
+            </React.Fragment>
+          );
+        })}
       </div>
 
       {/* Right tray */}
       <div className="flex items-center gap-3 text-xs text-[var(--taskbar-text)]">
-        <motion.span
-          title="Wi-Fi"
-          className="opacity-70 cursor-pointer"
-          whileHover={{ scale: 1.1, opacity: 1 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <IconWiFi />
-        </motion.span>
+        {/* WiFi indicator with tooltip */}
+        <div className="relative">
+          <motion.span
+            className="opacity-70 cursor-default flex items-center"
+            whileHover={{ opacity: 1 }}
+            onMouseEnter={() => setShowWifiTooltip(true)}
+            onMouseLeave={() => setShowWifiTooltip(false)}
+            style={{ color: wifiColor }}
+          >
+            <IconWiFiSignal bars={wifiBars} color={wifiColor} />
+          </motion.span>
+
+          <AnimatePresence>
+            {showWifiTooltip && (
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{ duration: 0.15 }}
+                className="absolute bottom-8 right-0 z-50 min-w-[160px] rounded-lg border shadow-xl overflow-hidden"
+                style={{
+                  background: isBreach ? "#0a0e14" : "#1e293b",
+                  borderColor: isBreach ? "var(--border)" : "rgba(255,255,255,0.1)",
+                }}
+              >
+                {wifiSsid ? (
+                  <>
+                    <div className="px-3 pt-2.5 pb-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <IconWiFiSignal bars={wifiBars} color={wifiColor} />
+                        <span className="font-semibold text-white text-[12px] truncate">{wifiSsid}</span>
+                      </div>
+                      {wifiChoice === "evil_twin" && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded"
+                          style={{ background: "rgba(255,51,85,0.2)", color: "var(--danger)" }}>
+                          Evil Twin — Compromised
+                        </span>
+                      )}
+                      {wifiChoice === "legitimate" && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded"
+                          style={{ background: "rgba(0,229,51,0.12)", color: "var(--success)" }}>
+                          Secure
+                        </span>
+                      )}
+                    </div>
+                    <div className="px-3 pb-2.5 space-y-0.5 border-t mt-1.5"
+                      style={{ borderColor: "rgba(255,255,255,0.07)" }}>
+                      <div className="flex justify-between text-[11px] pt-1.5">
+                        <span style={{ color: "rgba(255,255,255,0.4)" }}>Signal</span>
+                        <span className="font-mono" style={{ color: "rgba(255,255,255,0.75)" }}>
+                          {wifiSignal} dBm
+                        </span>
+                      </div>
+                      {wifiAuth && (
+                        <div className="flex justify-between text-[11px]">
+                          <span style={{ color: "rgba(255,255,255,0.4)" }}>Security</span>
+                          <span className="font-mono text-right" style={{ color: "rgba(255,255,255,0.75)", maxWidth: "100px" }}>
+                            {wifiAuth}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="px-3 py-2 text-[11px]" style={{ color: "rgba(255,255,255,0.5)" }}>
+                    Not connected
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         <motion.span
           className={`opacity-70 ${isBreach ? "font-mono text-[var(--accent)]" : "font-sans"}`}
           key={time}

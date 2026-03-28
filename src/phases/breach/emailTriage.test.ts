@@ -63,13 +63,13 @@ describe("emailTriage scoring", () => {
   });
 
   describe("email content validation", () => {
-    it("has exactly 10 breach emails", () => {
-      expect(BREACH_EMAILS).toHaveLength(10);
+    it("has exactly 11 breach emails", () => {
+      expect(BREACH_EMAILS).toHaveLength(11);
     });
 
-    it("has exactly 3 phishing emails", () => {
+    it("has exactly 4 phishing emails", () => {
       const phish = BREACH_EMAILS.filter((e) => e.isPhishing);
-      expect(phish.length).toBe(3);
+      expect(phish.length).toBe(4);
     });
 
     it("has exactly 7 legitimate emails", () => {
@@ -91,14 +91,20 @@ describe("emailTriage scoring", () => {
       }
     });
 
-    it("phishing emails have SPF/DKIM/DMARC failures in headers", () => {
+    it("phishing emails are detectable via headers or domain indicators", () => {
+      // Easy/medium phishing: detectable via header failures (softfail/fail).
+      // Hard phishing: attacker registers a lookalike domain with valid SPF/DKIM/DMARC,
+      // so all headers pass — the only tell is the domain mismatch in indicators.
       const phish = BREACH_EMAILS.filter((e) => e.isPhishing);
       for (const email of phish) {
-        const hasFailure =
+        const hasHeaderFailure =
           email.headers.spf.includes("fail") ||
           email.headers.dkim.includes("fail") ||
           email.headers.dmarc.includes("fail");
-        expect(hasFailure).toBe(true);
+        const hasDomainIndicator = email.indicators.some((ind) =>
+          /domain|lookalike|\.co[^m]|typo/i.test(ind)
+        );
+        expect(hasHeaderFailure || hasDomainIndicator).toBe(true);
       }
     });
 
@@ -236,17 +242,17 @@ describe("emailTriage scoring", () => {
   });
 
   describe("phase advancement", () => {
-    it("requires all 10 emails to be processed before advance", () => {
+    it("requires all emails to be processed before advance", () => {
       const verdicts: Record<string, Verdict> = {};
-      // Only judge 9 of 10
-      for (let i = 0; i < 9; i++) {
+      // Only judge all but the last one
+      for (let i = 0; i < BREACH_EMAILS.length - 1; i++) {
         verdicts[BREACH_EMAILS[i].id] = "safe";
       }
       const allJudged = BREACH_EMAILS.every((e) => verdicts[e.id]);
       expect(allJudged).toBe(false);
     });
 
-    it("all 10 emails judged allows phase advancement", () => {
+    it("all emails judged allows phase advancement", () => {
       const verdicts: Record<string, Verdict> = {};
       for (const email of BREACH_EMAILS) {
         verdicts[email.id] = "safe";

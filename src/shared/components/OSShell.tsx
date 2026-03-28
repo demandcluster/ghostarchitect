@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Taskbar } from "./Taskbar";
 import { WindowManager, WindowConfig } from "./WindowManager";
 import { HUD } from "./HUD";
@@ -22,40 +22,63 @@ interface OSShellProps {
   onAppClick?: (appId: string) => void;
   /** Extra always-available app IDs (e.g. scoreboard, wiki) shown in taskbar */
   extraAppIds?: string[];
+  /** Which overlay panels are currently open — used to drive taskbar active state */
+  panelOpen?: Record<string, boolean>;
 }
 
-export function OSShell({ windows, dmSidebar, onAppClick, extraAppIds = ["scoreboard", "wiki"] }: OSShellProps) {
+export function OSShell({ windows, dmSidebar, onAppClick, extraAppIds = ["scoreboard", "wiki"], panelOpen = {} }: OSShellProps) {
   const [activeWindowId, setActiveWindowId] = useState(windows[0]?.id ?? "");
   const [dmCollapsed, setDmCollapsed] = useState(false);
   const visualMode = useGameStore((s) => s.visualMode);
 
+  // Reset active window when the currently active window is removed (e.g. wiki closed)
+  useEffect(() => {
+    if (activeWindowId && !windows.some(w => w.id === activeWindowId)) {
+      setActiveWindowId(windows[0]?.id ?? "");
+    }
+  }, [windows, activeWindowId]);
+
   const handleAppClick = useCallback(
     (appId: string) => {
-      setActiveWindowId(appId);
+      if (appId === "messages") {
+        setDmCollapsed((v) => !v);
+        return;
+      }
+      // Only track focus for pure window apps — panel toggles (wiki, scoreboard)
+      // have their active state driven by panelOpen, so skip them here
+      if (windows.some(w => w.id === appId) && !(appId in panelOpen)) {
+        setActiveWindowId(appId);
+      }
       onAppClick?.(appId);
     },
-    [onAppClick]
+    [onAppClick, windows]
   );
-
-  const bgStyle =
-    visualMode === "breach"
-      ? {
-          background:
-            "radial-gradient(ellipse at 50% 50%, rgba(0,255,65,0.02) 0%, transparent 70%)",
-        }
-      : {
-          background:
-            "radial-gradient(ellipse at 20% 50%, rgba(37,99,235,0.04) 0%, transparent 60%), radial-gradient(ellipse at 80% 20%, rgba(37,99,235,0.03) 0%, transparent 60%)",
-        };
 
   return (
     <div className="h-screen w-screen flex flex-col overflow-hidden bg-bg-primary">
-      {/* Background effect */}
-      <div
-        className="fixed inset-0 pointer-events-none z-0"
-        style={bgStyle}
-        aria-hidden="true"
-      />
+      {/* Desktop background */}
+      <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
+        {visualMode === "breach" ? (
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "radial-gradient(ellipse at 50% 50%, rgba(0,255,65,0.02) 0%, transparent 70%)",
+          }} />
+        ) : (
+          <>
+            {/* Gradient wash */}
+            <div style={{
+              position: "absolute", inset: 0,
+              background: "radial-gradient(ellipse at 25% 60%, rgba(59,110,248,0.07) 0%, transparent 55%), radial-gradient(ellipse at 75% 20%, rgba(99,60,200,0.05) 0%, transparent 50%)",
+            }} />
+            {/* Subtle dot grid */}
+            <div style={{
+              position: "absolute", inset: 0,
+              backgroundImage: "radial-gradient(circle, rgba(255,255,255,0.025) 1px, transparent 1px)",
+              backgroundSize: "28px 28px",
+            }} />
+          </>
+        )}
+      </div>
 
       {visualMode === "breach" && <ScanlineOverlay />}
 
@@ -77,8 +100,16 @@ export function OSShell({ windows, dmSidebar, onAppClick, extraAppIds = ["scoreb
       {/* Taskbar at bottom */}
       <Taskbar
         onAppClick={handleAppClick}
-        activeApp={activeWindowId}
-        availableWindowIds={[...windows.map((w) => w.id), ...extraAppIds]}
+        activeApp={
+          (!dmCollapsed && dmSidebar) ? "messages"
+          : Object.entries(panelOpen).find(([, open]) => open)?.[0]
+          ?? activeWindowId
+        }
+        availableWindowIds={[
+          ...windows.map((w) => w.id),
+          ...extraAppIds,
+          ...(dmSidebar ? ["messages"] : []),
+        ]}
       />
     </div>
   );
