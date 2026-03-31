@@ -221,10 +221,34 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
 
   return (
     <div className="flex h-full min-h-[500px]">
-      <div className="w-[30%] border-r overflow-auto" style={{ borderColor: "var(--border)" }}>
-        <div className="p-2 border-b text-xs font-medium" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
+      <div className="w-[30%] border-r flex flex-col" style={{ borderColor: "var(--border)" }}>
+        <div className="p-2 border-b text-xs font-medium shrink-0" style={{ borderColor: "var(--border)", color: "var(--text-secondary)" }}>
           Inbox ({brandedEmails.length})
         </div>
+
+        <AnimatePresence mode="wait">
+          {allJudged && (
+            <motion.div
+              key="submit-review-btn"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              className="px-3 py-2 border-b shrink-0"
+              style={{ borderColor: "var(--border)" }}
+            >
+              <motion.button
+                onClick={() => setShowReview(true)}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="w-full py-2 bg-[var(--accent)] text-white rounded text-xs font-medium hover:bg-[var(--accent-hover)] transition-colors"
+              >
+                Submit &amp; Review
+              </motion.button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="overflow-auto flex-1">
         <LayoutGroup id="email-inbox-list">
           {brandedEmails.map((email, index) => (
             <motion.button
@@ -287,27 +311,7 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
             </motion.button>
           ))}
         </LayoutGroup>
-
-        <AnimatePresence mode="wait">
-          {allJudged && (
-            <motion.div
-              key="submit-review-btn"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="p-3"
-            >
-              <motion.button
-                onClick={() => setShowReview(true)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full py-2 bg-[var(--accent)] text-white rounded text-xs font-medium hover:bg-[var(--accent-hover)] transition-colors"
-              >
-                Submit & Review
-              </motion.button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </div>
       </div>
 
       <div className="w-[70%] overflow-auto">
@@ -498,7 +502,7 @@ function EmailBody({ body, isPhishing, onLinkClick, fakeDomain }: { body: string
 
 function EmailReview({ emails, verdicts, onDone }: { emails: Email[]; verdicts: Record<string, Verdict>; onDone: () => void; }) {
   return (
-    <div className="p-6 overflow-auto h-full">
+    <div className="p-6 pb-24 overflow-auto h-full">
       <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4">Email Triage Review</h2>
       <div className="space-y-4">
         {emails.map((email, index) => {
