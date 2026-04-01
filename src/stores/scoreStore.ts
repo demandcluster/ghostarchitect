@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 export type ScoreCategory =
   | "phishingIQ"
@@ -33,34 +34,39 @@ const emptyCategoryScores: Record<ScoreCategory, number> = {
   forensicSkill: 0,
 };
 
-export const useScoreStore = create<ScoreState>((set) => ({
-  trustScore: 50,
-  categoryScores: { ...emptyCategoryScores },
-  actions: [],
-
-  addAction: (action) =>
-    set((state) => {
-      const full: ScoreAction = { ...action, timestamp: Date.now() };
-      const newCategoryScores = { ...state.categoryScores };
-      newCategoryScores[action.category] = newCategoryScores[action.category] + action.points;
-      return {
-        actions: [...state.actions, full],
-        categoryScores: newCategoryScores,
-      };
-    }),
-
-  setTrustScore: (score) =>
-    set({ trustScore: Math.max(0, Math.min(100, score)) }),
-
-  adjustTrust: (delta) =>
-    set((state) => ({
-      trustScore: Math.max(0, Math.min(100, state.trustScore + delta)),
-    })),
-
-  reset: () =>
-    set({
+export const useScoreStore = create<ScoreState>()(
+  persist(
+    (set) => ({
       trustScore: 50,
       categoryScores: { ...emptyCategoryScores },
       actions: [],
+
+      addAction: (action) =>
+        set((state) => {
+          const full: ScoreAction = { ...action, timestamp: Date.now() };
+          const newCategoryScores = { ...state.categoryScores };
+          newCategoryScores[action.category] = newCategoryScores[action.category] + action.points;
+          return {
+            actions: [...state.actions, full],
+            categoryScores: newCategoryScores,
+          };
+        }),
+
+      setTrustScore: (score) =>
+        set({ trustScore: Math.max(0, Math.min(100, score)) }),
+
+      adjustTrust: (delta) =>
+        set((state) => ({
+          trustScore: Math.max(0, Math.min(100, state.trustScore + delta)),
+        })),
+
+      reset: () =>
+        set({
+          trustScore: 50,
+          categoryScores: { ...emptyCategoryScores },
+          actions: [],
+        }),
     }),
-}));
+    { name: "ghost-architect:score" }
+  )
+);

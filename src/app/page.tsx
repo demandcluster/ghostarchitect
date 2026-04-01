@@ -102,6 +102,13 @@ export default function Home() {
       const p = new URLSearchParams(window.location.search).get("step");
       if (p) return p as GameStep;
     }
+    if (typeof window !== "undefined") {
+      const savedStep = localStorage.getItem("ghost-architect:step");
+      const savedSessionId = localStorage.getItem("ghost-architect:sessionId");
+      if (savedStep && savedSessionId && savedStep !== "start" && savedStep !== "ending") {
+        return savedStep as GameStep;
+      }
+    }
     return "start";
   });
 
@@ -202,6 +209,29 @@ export default function Home() {
     () => intersperseFiller(NPC_BAD_ADVICE, fillerPool.slice(3)),
     [fillerPool]
   );
+
+  // Persist step so returning players resume where they left off
+  useEffect(() => {
+    if (step === "start" || step === "ending") {
+      localStorage.removeItem("ghost-architect:step");
+      return;
+    }
+    localStorage.setItem("ghost-architect:step", step);
+  }, [step]);
+
+  // Restore visual mode when resuming mid-game (skip breach transition)
+  const setVisualModeRef = setVisualMode;
+  useEffect(() => {
+    const breachSteps: GameStep[] = [
+      "breach-email", "breach-password", "breach-wifi",
+      "investigation-containment", "investigation-logs", "investigation-lolbins",
+      "investigation-ioc", "investigation-rotation", "debrief",
+    ];
+    if (breachSteps.includes(step)) {
+      setVisualModeRef("breach");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // only on mount — subsequent mode changes go through the breach transition
 
   // Generate a session ID on first interaction
   useEffect(() => {
@@ -930,6 +960,7 @@ export default function Home() {
             useNarrativeStore.getState().reset();
             useGameStore.getState().reset();
             resetRemarkCache();
+            localStorage.removeItem("ghost-architect:step");
             setStep("start");
           }}
         />

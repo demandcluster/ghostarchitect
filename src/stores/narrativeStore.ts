@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { PersistStorage, StorageValue } from "zustand/middleware";
 
 export interface TimelineEntry {
   id: string;
@@ -21,36 +23,83 @@ interface NarrativeState {
   reset: () => void;
 }
 
-export const useNarrativeStore = create<NarrativeState>((set, get) => ({
-  decisions: {},
-  flags: new Set<string>(),
-  timeline: [],
+// Custom storage: serialises Set<string> as a plain array so JSON round-trips cleanly.
+const narrativeStorage: PersistStorage<NarrativeState> = {
+  getItem: (name): StorageValue<NarrativeState> | null => {
+    if (typeof window === "undefined") return null;
+    const str = localStorage.getItem(name);
+    if (!str) return null;
+    try {
+      const raw = JSON.parse(str) as {
+        state?: Record<string, unknown>;
+        version?: number;
+      };
+      const state = raw.state ?? {};
+      return {
+        state: {
+          decisions: (state.decisions as Record<string, string>) ?? {},
+          flags: new Set<string>(
+            Array.isArray(state.flags) ? (state.flags as string[]) : []
+          ),
+          timeline: (state.timeline as TimelineEntry[]) ?? [],
+        } as NarrativeState,
+        version: raw.version,
+      };
+    } catch {
+      return null;
+    }
+  },
+  setItem: (name, value: StorageValue<NarrativeState>) => {
+    if (typeof window === "undefined") return;
+    const toStore = {
+      state: {
+        ...value.state,
+        flags: Array.from(value.state.flags),
+      },
+      version: value.version,
+    };
+    localStorage.setItem(name, JSON.stringify(toStore));
+  },
+  removeItem: (name) => {
+    if (typeof window !== "undefined") localStorage.removeItem(name);
+  },
+};
 
-  setDecision: (key, value) =>
-    set((state) => ({
-      decisions: { ...state.decisions, [key]: value },
-    })),
+export const useNarrativeStore = create<NarrativeState>()(
+  persist(
+    (set, get) => ({
+      decisions: {},
+      flags: new Set<string>(),
+      timeline: [],
 
-  addFlag: (flag) =>
-    set((state) => {
-      const next = new Set(state.flags);
-      next.add(flag);
-      return { flags: next };
+      setDecision: (key, value) =>
+        set((state) => ({
+          decisions: { ...state.decisions, [key]: value },
+        })),
+
+      addFlag: (flag) =>
+        set((state) => {
+          const next = new Set(state.flags);
+          next.add(flag);
+          return { flags: next };
+        }),
+
+      removeFlag: (flag) =>
+        set((state) => {
+          const next = new Set(state.flags);
+          next.delete(flag);
+          return { flags: next };
+        }),
+
+      hasFlag: (flag) => get().flags.has(flag),
+
+      addTimelineEntry: (entry) =>
+        set((state) => ({
+          timeline: [...state.timeline, { ...entry, timestamp: Date.now() }],
+        })),
+
+      reset: () => set({ decisions: {}, flags: new Set(), timeline: [] }),
     }),
-
-  removeFlag: (flag) =>
-    set((state) => {
-      const next = new Set(state.flags);
-      next.delete(flag);
-      return { flags: next };
-    }),
-
-  hasFlag: (flag) => get().flags.has(flag),
-
-  addTimelineEntry: (entry) =>
-    set((state) => ({
-      timeline: [...state.timeline, { ...entry, timestamp: Date.now() }],
-    })),
-
-  reset: () => set({ decisions: {}, flags: new Set(), timeline: [] }),
-}));
+    { name: "ghost-architect:narrative", storage: narrativeStorage }
+  )
+);
