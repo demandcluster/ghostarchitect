@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { useAuth } from './AuthProvider';
 
 export default function TrainerLoginPage() {
@@ -215,9 +216,15 @@ export default function TrainerLoginPage() {
               />
               <span className="text-sm text-gray-600 leading-snug">
                 I agree to the{' '}
-                <span className="text-[var(--accent,#2563eb)] underline cursor-pointer">
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:opacity-80 transition-opacity"
+                  style={{ color: "var(--accent, #2563eb)" }}
+                >
                   Terms of Service
-                </span>{' '}
+                </Link>{' '}
                 and confirm I have authority to process participant data on
                 behalf of my organisation.
               </span>
