@@ -41,6 +41,6 @@ describe("SimIntroScreen", () => {
 
   it("renders Security Analyst copy in hired phase", () => {
     render(<SimIntroScreen onComplete={vi.fn()} />);
-    expect(screen.getByText(/Security Analyst/i)).toBeInTheDocument();
+    expect(screen.getByText(/Security Analyst/i, { selector: 'strong' })).toBeInTheDocument();
   });
 });
