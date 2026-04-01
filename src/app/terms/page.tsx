@@ -186,8 +186,9 @@ export default function TermsPage() {
             Session deletion.
           </P>
           <P>
-            <strong className="text-white">Trainer account data:</strong> We store your email address and a hashed
-            password solely to authenticate your account. No payment data, no tracking, no profiling.
+            <strong className="text-white">Trainer account data:</strong> We store your username (which can be a generic
+            handle — no email required) and a hashed password solely to authenticate your account. No payment data,
+            no tracking, no profiling.
           </P>
           <P>
             <strong className="text-white">Team and Session data:</strong> All Session data is associated with your Team.
