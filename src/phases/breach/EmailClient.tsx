@@ -14,12 +14,20 @@ interface EmailClientProps {
   onComplete: (results: Record<string, Verdict>) => void;
 }
 
+function typosquatDomain(domain: string): string {
+  if (domain.endsWith(".com")) return domain.slice(0, -4) + ".co";
+  if (domain.endsWith(".nl"))  return domain.slice(0, -3) + ".ml";
+  return domain.replace(/\.[^.]+$/, ".co");
+}
+
 function applyDomain(text: string, fakeDomain: string, teamName: string, playerHandle: string): string {
   if (!text || typeof text !== 'string') return text || '';
   const fakeBase = fakeDomain.split(".")[0];
-  
+  const fakeTypo = typosquatDomain(fakeDomain);
+
   // Standard branding replacements
   let branded = text
+    .replace(/nexuscorp\.co(?!m)/gi, fakeTypo)
     .replace(/nexuscorp\.com/gi, fakeDomain)
     .replace(/nexuscorp-servicedesk\.com/gi, `${fakeBase}-servicedesk.com`)
     .replace(/nexuscorp-security\.com/gi, `${fakeBase}-security.com`)

@@ -46,6 +46,13 @@ import type { DMChoice, Email, LogEntry } from "@/content/types";
  * current team branding from the game store. This ensures the static fallback
  * content matches the team identity when no AI/pool content is available.
  */
+/** Derives the typosquat version of a domain (.com→.co, .nl→.ml, else →.co) */
+function typosquatDomain(domain: string): string {
+  if (domain.endsWith(".com")) return domain.slice(0, -4) + ".co";
+  if (domain.endsWith(".nl"))  return domain.slice(0, -3) + ".ml";
+  return domain.replace(/\.[^.]+$/, ".co");
+}
+
 function brandEmails<T extends Email>(
   emails: T[],
   teamName: string,
@@ -54,12 +61,14 @@ function brandEmails<T extends Email>(
 ): T[] {
   if (teamName === "NexusCorp" && fakeDomain === "nexuscorp.com") return emails;
   const fakeBase = fakeDomain.split(".")[0];
+  const fakeTypo = typosquatDomain(fakeDomain);
   return emails.map((e) => {
     const json = JSON.stringify(e);
     const branded = json
       .replace(/nexuscorp-servicedesk\.com/gi, `${fakeBase}-servicedesk.com`)
       .replace(/nexuscorp-security\.com/gi, `${fakeBase}-security.com`)
       .replace(/nexuscorp-it\.com/gi, `${fakeBase}-it.com`)
+      .replace(/nexuscorp\.co(?!m)/gi, fakeTypo)
       .replace(/nexuscorp\.com/gi, fakeDomain)
       .replace(/NexusCorp/g, teamName)
       .replace(/you@/g, `${playerHandle}@`);
