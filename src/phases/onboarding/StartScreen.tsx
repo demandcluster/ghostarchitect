@@ -248,32 +248,26 @@ export function StartScreen({ onStart }: StartScreenProps) {
   const setFakeDomain = useGameStore((s) => s.setFakeDomain);
   const setTeamName = useGameStore((s) => s.setTeamName);
   const setLogoUrl = useGameStore((s) => s.setLogoUrl);
+  const teamId = useGameStore((s) => s.teamId);
+  const sessionId = useGameStore((s) => s.sessionId);
+  const playerHandleStore = useGameStore((s) => s.playerHandle);
 
   useEffect(() => {
-    const savedHandle = localStorage.getItem("ghost-architect:playerHandle");
-    const savedSessionId = localStorage.getItem("ghost-architect:sessionId");
-    if (savedHandle && savedSessionId) {
+    if (playerHandleStore && sessionId) {
       setHasRestoredSession(true);
-      setRestoredHandle(savedHandle);
-      setPlayerHandle(savedHandle);
+      setRestoredHandle(playerHandleStore);
+      setPlayerHandle(playerHandleStore);
     }
 
     const ack = localStorage.getItem(PRIVACY_ACK_KEY);
     if (!ack) setShowPrivacyModal(true);
-  }, []);
+  }, [playerHandleStore, sessionId]);
 
   const handleContinue = async () => {
-    const savedHandle = localStorage.getItem("ghost-architect:playerHandle");
-    const savedTeamId = localStorage.getItem("ghost-architect:teamId");
-    const savedSessionId = localStorage.getItem("ghost-architect:sessionId");
-    if (savedHandle) setPlayerHandleStore(savedHandle);
-    if (savedTeamId) setTeamId(savedTeamId);
-    if (savedSessionId) setSessionId(savedSessionId);
-
-    // Hydrate team branding from API (localStorage may have stale defaults)
-    if (savedTeamId) {
+    // Hydrate team branding from API (store may have stale defaults)
+    if (teamId) {
       try {
-        const res = await fetch(`/api/v1/teams/${savedTeamId}/info`);
+        const res = await fetch(`/api/v1/teams/${teamId}/info`);
         if (res.ok) {
           const team = await res.json();
           if (team.name) setTeamName(team.name);
@@ -281,7 +275,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
           if (team.logoUrl) setLogoUrl(team.logoUrl);
         }
       } catch {
-        // Non-blocking — proceed with localStorage values
+        // Non-blocking — proceed with current store values
       }
     }
 
@@ -316,7 +310,8 @@ export function StartScreen({ onStart }: StartScreenProps) {
       if (session.teamId) setTeamId(session.teamId);
       if (session.teamName) setTeamName(session.teamName);
       if (session.fakeDomain) setFakeDomain(session.fakeDomain);
-      if ((session as { logoUrl?: string | null }).logoUrl) setLogoUrl((session as { logoUrl?: string | null }).logoUrl as string);
+      const sessionWithLogo = session as { logoUrl?: string | null };
+      if (sessionWithLogo.logoUrl) setLogoUrl(sessionWithLogo.logoUrl);
       
       const assignedHandle = session.playerHandle ?? playerHandle.trim() ?? null;
       if (assignedHandle) setPlayerHandleStore(assignedHandle);
