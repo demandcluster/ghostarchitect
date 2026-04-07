@@ -34,30 +34,45 @@ interface GameState {
   reset: () => void;
 }
 
-const generateSessionId = () => crypto.randomUUID();
+// localStorage helper — centralises the SSR guard and key prefix
+const ls = {
+  get: (key: string): string | null =>
+    typeof window !== 'undefined' ? localStorage.getItem(`ghost-architect:${key}`) : null,
+  set: (key: string, value: string): void => {
+    if (typeof window !== 'undefined') localStorage.setItem(`ghost-architect:${key}`, value);
+  },
+  remove: (key: string): void => {
+    if (typeof window !== 'undefined') localStorage.removeItem(`ghost-architect:${key}`);
+  },
+};
 
-const savedHandle = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:playerHandle') : null;
-const savedTeamId = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:teamId') : null;
-const savedSessionId = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:sessionId') : null;
-const savedFakeDomain = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:fakeDomain') : null;
-const savedTeamName = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:teamName') : null;
-const savedLogoUrl = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:logoUrl') : null;
-
-const initialState = {
+// Clean defaults used by reset() — no localStorage reads
+const DEFAULTS = {
   phase: "onboarding" as Phase,
   visualMode: "corporate" as VisualMode,
+  sessionId: null as string | null,
+  isTransitioning: false,
+  teamId: null as string | null,
+  playerHandle: null as string | null,
+  fakeDomain: "nexuscorp.com",
+  teamName: "NexusCorp",
+  logoUrl: null as string | null,
+  contentLocale: 'en',
+};
+
+// Hydrated initial state — populated from localStorage on first load
+const initialState = {
+  ...DEFAULTS,
   // sessionId starts null; only set when player explicitly starts a session.
   // The returning-player flow (savedSessionId) is the only exception: we
   // restore the previously accepted session rather than silently generating
   // a new one before the player has acknowledged the privacy notice.
-  sessionId: savedSessionId || null,
-  isTransitioning: false,
-  teamId: (savedTeamId || null) as string | null,
-  playerHandle: (savedHandle || null) as string | null,
-  fakeDomain: savedFakeDomain || "nexuscorp.com",
-  teamName: savedTeamName || "NexusCorp",
-  logoUrl: savedLogoUrl || null,
-  contentLocale: 'en',
+  sessionId: ls.get('sessionId'),
+  teamId: ls.get('teamId'),
+  playerHandle: ls.get('playerHandle'),
+  fakeDomain: ls.get('fakeDomain') || "nexuscorp.com",
+  teamName: ls.get('teamName') || "NexusCorp",
+  logoUrl: ls.get('logoUrl'),
 };
 
 export const useGameStore = create<GameState>((set) => ({
@@ -66,52 +81,42 @@ export const useGameStore = create<GameState>((set) => ({
   setPhase: (phase) => set({ phase }),
   setVisualMode: (mode) => set({ visualMode: mode }),
   setSessionId: (id) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ghost-architect:sessionId', id);
-    }
+    ls.set('sessionId', id);
     set({ sessionId: id });
   },
   initSession: () => {
-    const id = generateSessionId();
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ghost-architect:sessionId', id);
-    }
+    const id = crypto.randomUUID();
+    ls.set('sessionId', id);
     set({ sessionId: id });
   },
   setIsTransitioning: (val) => set({ isTransitioning: val }),
   setTeamId: (id) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ghost-architect:teamId', id ?? '');
-    }
+    if (id) ls.set('teamId', id);
+    else ls.remove('teamId');
     set({ teamId: id });
   },
   setPlayerHandle: (handle) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('ghost-architect:playerHandle', handle ?? '');
-    }
+    if (handle) ls.set('playerHandle', handle);
+    else ls.remove('playerHandle');
     set({ playerHandle: handle });
   },
   setFakeDomain: (domain) => {
-    if (typeof window !== 'undefined') localStorage.setItem('ghost-architect:fakeDomain', domain);
+    ls.set('fakeDomain', domain);
     set({ fakeDomain: domain });
   },
   setTeamName: (name) => {
-    if (typeof window !== 'undefined') localStorage.setItem('ghost-architect:teamName', name);
+    ls.set('teamName', name);
     set({ teamName: name });
   },
   setLogoUrl: (url) => {
-    if (typeof window !== 'undefined') {
-      if (url) localStorage.setItem('ghost-architect:logoUrl', url);
-      else localStorage.removeItem('ghost-architect:logoUrl');
-    }
+    if (url) ls.set('logoUrl', url);
+    else ls.remove('logoUrl');
     set({ logoUrl: url });
   },
   setContentLocale: (locale) => set({ contentLocale: locale }),
   reset: () => {
-    if (typeof window !== 'undefined') {
-      ['playerHandle', 'teamId', 'sessionId', 'fakeDomain', 'teamName', 'logoUrl']
-        .forEach((k) => localStorage.removeItem(`ghost-architect:${k}`));
-    }
-    set({ ...initialState, sessionId: null, teamId: null, playerHandle: null, fakeDomain: 'nexuscorp.com', teamName: 'NexusCorp', logoUrl: null });
+    ['playerHandle', 'teamId', 'sessionId', 'fakeDomain', 'teamName', 'logoUrl']
+      .forEach((k) => ls.remove(k));
+    set(DEFAULTS);
   },
 }));

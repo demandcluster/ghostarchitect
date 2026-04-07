@@ -44,6 +44,8 @@ export interface GeneratedContent {
   isOfflineContent: boolean;
 }
 
+const DEFAULT_MODEL = "gpt-4o-mini";
+
 // ─── Shared prompt fragments ───────────────────────────────────────────
 
 const PLACEHOLDER_RULES = `IMPORTANT: Use these EXACT placeholders in all generated text:
@@ -161,7 +163,7 @@ EMAIL JSON STRUCTURE:
   "from": "Jane Smith <jane.smith@[fakeDomain]>",
   "to": "[playerHandle]@[fakeDomain]",
   "subject": "...",
-  "date": "2026-03-22 09:15",
+  "date": "2026-03-22T09:15:00Z",
   "body": "multi-line email body text",
   "isPhishing": false,
   "indicators": ["SPF/DKIM/DMARC all pass", "internal sender"],
@@ -183,7 +185,7 @@ export class OpenAIClient {
   constructor(config: OpenAIConfig) {
     this.config = {
       baseURL: config.baseURL || "https://api.openai.com/v1/",
-      model: config.model || "gpt-4o-mini",
+      model: config.model || DEFAULT_MODEL,
       ...config
     };
   }
@@ -252,10 +254,13 @@ Use locale: ${config.locale}. Make it challenging, believable, and completely IM
         throw new Error("No content generated from OpenAI API");
       }
 
-      const parsedContent = JSON.parse(generatedContent) as Record<
-        string,
-        unknown
-      >;
+      const rawContent = JSON.parse(generatedContent) as Record<string, unknown>;
+      // Strip prototype-polluting keys at the top level before any processing
+      const parsedContent = Object.fromEntries(
+        Object.entries(rawContent).filter(
+          ([k]) => k !== "__proto__" && k !== "constructor" && k !== "prototype"
+        )
+      );
       let finalContent = parsedContent;
 
       // Check if fields are nested
@@ -430,7 +435,7 @@ export function createOpenAIClient(): OpenAIClient | null {
     return null;
   }
 
-  const model = process.env.OPENAI_MODEL || "gpt-5.4";
+  const model = process.env.OPENAI_MODEL || DEFAULT_MODEL;
 
   return new OpenAIClient({ apiKey, model });
 }
