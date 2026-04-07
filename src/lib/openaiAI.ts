@@ -268,10 +268,13 @@ Use locale: ${config.locale}. Make it challenging, believable, and completely IM
             typeof nestedValue === "object" &&
             nestedValue !== null
           ) {
-            finalContent = {
-              ...finalContent,
-              ...(nestedValue as Record<string, unknown>)
-            };
+            // Strip prototype-polluting keys before merging
+            const safeNested = Object.fromEntries(
+              Object.entries(nestedValue as Record<string, unknown>).filter(
+                ([k]) => k !== "__proto__" && k !== "constructor" && k !== "prototype"
+              )
+            );
+            finalContent = { ...finalContent, ...safeNested };
           }
         }
       }

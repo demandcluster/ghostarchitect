@@ -207,7 +207,7 @@ export class ContentPoolManager {
         if (Array.isArray(val)) return val.map(replaceLinks);
         if (typeof val === 'object' && val !== null) {
           const newObj = { ...val } as Record<string, unknown>;
-          for (const key in newObj) {
+          for (const key of Object.keys(newObj)) {
             newObj[key] = replaceLinks(newObj[key]);
           }
           return newObj;
