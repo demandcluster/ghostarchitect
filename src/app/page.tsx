@@ -235,7 +235,7 @@ export default function Home() {
   useEffect(() => {
     if (step === "start") return;
     if (gameStore.sessionId) return;
-    gameStore.setSessionId(crypto.randomUUID());
+    gameStore.initSession();
   }, [step, gameStore]);
 
   // Dev shortcut: set breach visual mode when ?step= targets a post-breach phase

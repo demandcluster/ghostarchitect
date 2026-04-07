@@ -19,6 +19,17 @@ const SlackLogo = ({ size = 16 }: { size?: number }) => (
   </svg>
 );
 
+const AVATAR_COLORS = ["#E01E5A", "#36C5F0", "#2EB67D", "#ECB22E", "#7B68EE", "#FF6B6B", "#1264A3"];
+
+function shuffleChoices(choices: DMChoice[]): DMChoice[] {
+  const arr = [...choices];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
 function formatTime(ts: number): string {
   if (!ts) return "";
   const d = new Date(ts);
@@ -153,7 +164,7 @@ function DMBubbleSlack({
     let active = true;
     Promise.resolve().then(() => {
       if (!active) return;
-      setShuffledChoices(message.choices ? [...message.choices].sort(() => Math.random() - 0.5) : []);
+      setShuffledChoices(message.choices ? shuffleChoices(message.choices) : []);
       setChosen(null);
       setImgError(false);
     });
@@ -172,7 +183,6 @@ function DMBubbleSlack({
     !imgError;
 
   // Consistent avatar color per sender
-  const AVATAR_COLORS = ["#E01E5A", "#36C5F0", "#2EB67D", "#ECB22E", "#7B68EE", "#FF6B6B", "#1264A3"];
   const avatarBg = AVATAR_COLORS[message.sender.charCodeAt(0) % AVATAR_COLORS.length];
   const displayInitial = message.avatar && message.avatar.length <= 3
     ? message.avatar
@@ -347,7 +357,7 @@ function DMBubbleTerminal({
     let active = true;
     Promise.resolve().then(() => {
       if (!active) return;
-      setShuffledChoices(message.choices ? [...message.choices].sort(() => Math.random() - 0.5) : []);
+      setShuffledChoices(message.choices ? shuffleChoices(message.choices) : []);
       setChosen(null);
       setImgError(false);
     });
