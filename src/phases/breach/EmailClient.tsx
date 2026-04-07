@@ -7,7 +7,7 @@ import { useScoreStore } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
 import type { Email } from "@/content/types";
 
-type Verdict = "safe" | "suspicious" | "phishing";
+type Verdict = "safe" | "phishing";
 
 interface EmailClientProps {
   emails: Email[];
@@ -306,9 +306,7 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
                       className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
                         verdicts[email.id] === "phishing"
                           ? "bg-[var(--danger-subtle)] text-[var(--danger)] ring-1 ring-[var(--danger)]/30"
-                          : verdicts[email.id] === "suspicious"
-                            ? "bg-[var(--warning-subtle)] text-[var(--warning)] ring-1 ring-[var(--warning)]/30"
-                            : "bg-[var(--success-subtle)] text-[var(--success)] ring-1 ring-[var(--success)]/30"
+                          : "bg-[var(--success-subtle)] text-[var(--success)] ring-1 ring-[var(--success)]/30"
                       }`}
                     >
                       {verdicts[email.id]}
@@ -452,17 +450,15 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
               </AnimatePresence>
 
               <div className="flex gap-2 mt-6 pt-5 border-t border-[var(--border)]">
-                {(["safe", "suspicious", "phishing"] as Verdict[]).map((v) => {
+                {(["safe", "phishing"] as Verdict[]).map((v) => {
                   const isSelected = verdicts[selectedEmail.id] === v;
                   let cls = "";
                   if (isSelected) {
-                    if (v === "safe") cls = "bg-[var(--success)] text-white";
-                    else if (v === "suspicious") cls = "bg-[var(--warning)] text-white";
-                    else cls = "bg-[var(--danger)] text-white";
+                    cls = v === "safe" ? "bg-[var(--success)] text-white" : "bg-[var(--danger)] text-white";
                   } else {
-                    if (v === "safe") cls = "bg-[var(--bg-window-sunken)] text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--success)] hover:text-[var(--success)]";
-                    else if (v === "suspicious") cls = "bg-[var(--bg-window-sunken)] text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--warning)] hover:text-[var(--warning)]";
-                    else cls = "bg-[var(--bg-window-sunken)] text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--danger)] hover:text-[var(--danger)]";
+                    cls = v === "safe"
+                      ? "bg-[var(--bg-window-sunken)] text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--success)] hover:text-[var(--success)]"
+                      : "bg-[var(--bg-window-sunken)] text-[var(--text-muted)] border border-[var(--border)] hover:border-[var(--danger)] hover:text-[var(--danger)]";
                   }
                   return (
                     <motion.button

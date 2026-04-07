@@ -5,7 +5,7 @@ import { useNarrativeStore } from "@/stores/narrativeStore";
 import { deriveFlags } from "@/engine/rules";
 import type { Email } from "@/content/types";
 
-type Verdict = "safe" | "suspicious" | "phishing";
+type Verdict = "safe" | "phishing";
 
 /**
  * Scoring logic extracted from EmailClient review:
@@ -132,11 +132,6 @@ describe("emailTriage scoring", () => {
     it("phishing email marked as safe is incorrect", () => {
       const phish = BREACH_EMAILS.find((e) => e.isPhishing)!;
       expect(isCorrectVerdict(phish, "safe")).toBe(false);
-    });
-
-    it("phishing email marked as suspicious is incorrect", () => {
-      const phish = BREACH_EMAILS.find((e) => e.isPhishing)!;
-      expect(isCorrectVerdict(phish, "suspicious")).toBe(false);
     });
 
     it("legitimate email marked as safe is correct", () => {
