@@ -5,6 +5,8 @@ import type {
   WiFiNetwork
 } from "@/content/types";
 
+const DEFAULT_MODEL = "gpt-5.4";
+
 export interface OpenAIConfig {
   apiKey: string;
   model?: string;
@@ -161,7 +163,7 @@ EMAIL JSON STRUCTURE:
   "from": "Jane Smith <jane.smith@[fakeDomain]>",
   "to": "[playerHandle]@[fakeDomain]",
   "subject": "...",
-  "date": "2026-03-22 09:15",
+  "date": "2026-03-22T09:15:00Z",
   "body": "multi-line email body text",
   "isPhishing": false,
   "indicators": ["SPF/DKIM/DMARC all pass", "internal sender"],
@@ -183,7 +185,7 @@ export class OpenAIClient {
   constructor(config: OpenAIConfig) {
     this.config = {
       baseURL: config.baseURL || "https://api.openai.com/v1/",
-      model: config.model || "gpt-4o-mini",
+      model: config.model || DEFAULT_MODEL,
       ...config
     };
   }
@@ -256,13 +258,18 @@ Use locale: ${config.locale}. Make it challenging, believable, and completely IM
         string,
         unknown
       >;
-      let finalContent = parsedContent;
+      const safeParsedContent = Object.fromEntries(
+        Object.entries(parsedContent).filter(
+          ([k]) => k !== "__proto__" && k !== "constructor" && k !== "prototype"
+        )
+      ) as Record<string, unknown>;
+      let finalContent = safeParsedContent;
 
       // Check if fields are nested
-      const hasDirectFields = requiredFields.some((f) => parsedContent[f]);
+      const hasDirectFields = requiredFields.some((f) => safeParsedContent[f]);
       if (!hasDirectFields) {
-        for (const key of Object.keys(parsedContent)) {
-          const nestedValue = parsedContent[key];
+        for (const key of Object.keys(safeParsedContent)) {
+          const nestedValue = safeParsedContent[key];
           if (
             nestedValue &&
             typeof nestedValue === "object" &&

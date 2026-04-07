@@ -36,12 +36,15 @@ interface GameState {
 
 const generateSessionId = () => crypto.randomUUID();
 
-const savedHandle = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:playerHandle') : null;
-const savedTeamId = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:teamId') : null;
-const savedSessionId = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:sessionId') : null;
-const savedFakeDomain = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:fakeDomain') : null;
-const savedTeamName = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:teamName') : null;
-const savedLogoUrl = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:logoUrl') : null;
+const getLocalStorageItem = (key: string): string | null =>
+  typeof window !== 'undefined' ? localStorage.getItem(key) : null;
+
+const savedHandle = getLocalStorageItem('ghost-architect:playerHandle');
+const savedTeamId = getLocalStorageItem('ghost-architect:teamId');
+const savedSessionId = getLocalStorageItem('ghost-architect:sessionId');
+const savedFakeDomain = getLocalStorageItem('ghost-architect:fakeDomain');
+const savedTeamName = getLocalStorageItem('ghost-architect:teamName');
+const savedLogoUrl = getLocalStorageItem('ghost-architect:logoUrl');
 
 const initialState = {
   phase: "onboarding" as Phase,
@@ -81,13 +84,15 @@ export const useGameStore = create<GameState>((set) => ({
   setIsTransitioning: (val) => set({ isTransitioning: val }),
   setTeamId: (id) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('ghost-architect:teamId', id ?? '');
+      if (id !== null) localStorage.setItem('ghost-architect:teamId', id);
+      else localStorage.removeItem('ghost-architect:teamId');
     }
     set({ teamId: id });
   },
   setPlayerHandle: (handle) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('ghost-architect:playerHandle', handle ?? '');
+      if (handle !== null) localStorage.setItem('ghost-architect:playerHandle', handle);
+      else localStorage.removeItem('ghost-architect:playerHandle');
     }
     set({ playerHandle: handle });
   },
@@ -112,6 +117,6 @@ export const useGameStore = create<GameState>((set) => ({
       ['playerHandle', 'teamId', 'sessionId', 'fakeDomain', 'teamName', 'logoUrl']
         .forEach((k) => localStorage.removeItem(`ghost-architect:${k}`));
     }
-    set({ ...initialState, sessionId: null, teamId: null, playerHandle: null, fakeDomain: 'nexuscorp.com', teamName: 'NexusCorp', logoUrl: null });
+    set({ ...initialState, sessionId: null, teamId: null, playerHandle: null });
   },
 }));
