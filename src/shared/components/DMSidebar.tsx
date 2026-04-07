@@ -89,6 +89,9 @@ export function DMSidebar({
           }}>
             Direct Messages
           </span>
+          <div style={{ marginLeft: "auto", opacity: 0.35 }}>
+            <SlackLogo size={14} />
+          </div>
         </div>
 
         {firstSender && (
