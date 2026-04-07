@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { OSShell } from "@/shared/components/OSShell";
 import { DMSidebar } from "@/shared/components/DMSidebar";
@@ -173,8 +173,8 @@ export default function Home() {
   >("social-engineering");
 
   const [revealedDmIds, setRevealedDmIds] = useState<string[]>([]);
-  const [dmInteractionsDone, setDmInteractionsDone] = useState(0);
   const [dmDone, setDmDone] = useState(false);
+  const dmInteractionsDoneRef = useRef(0);
   const [flaggedLogs, setFlaggedLogs] = useState<LogEntry[]>([]);
   const [logAnalysisResult, setLogAnalysisResult] = useState<{
     correctFlags: number;
@@ -182,10 +182,8 @@ export default function Home() {
     missed: number;
     points: number;
   } | null>(null);
-  const [npcDmReveal, setNpcDmReveal] = useState(0);
   const [npcDmIndex, setNpcDmIndex] = useState(0);
-  const [npcDmDone, setNpcDmDone] = useState(false);
-  const { isTransitioning, changeStep } = useStepTransition(setStep);
+  const { changeStep } = useStepTransition(setStep);
 
   // Filler DMs: merge office chatter into DM streams
   const [aiChatterDMs, setAiChatterDMs] = useState<typeof OFFICE_CHATTER_DMS>(
@@ -351,15 +349,11 @@ export default function Home() {
         console.log("[DM Choice] No nextMessageId on choice:", choice);
       }
 
-      // Track completion
-      setDmInteractionsDone((prev) => {
-        const nextCount = prev + 1;
-        // Phase ends after 4 scenarios
-        if (nextCount >= 4) {
-          setDmDone(true);
-        }
-        return nextCount;
-      });
+      // Track completion — ref avoids unnecessary re-renders
+      dmInteractionsDoneRef.current += 1;
+      if (dmInteractionsDoneRef.current >= 4) {
+        setDmDone(true);
+      }
     },
     [
       adjustTrust,
@@ -407,10 +401,6 @@ export default function Home() {
         const npcDms = NPC_BAD_ADVICE;
         if (npcDmIndex < npcDms.length - 1) {
           setNpcDmIndex((i) => i + 1);
-          setNpcDmReveal((r) => r + 1);
-        } else {
-          // All NPC messages completed
-          setNpcDmDone(true);
         }
       }, 1000);
     },
@@ -691,7 +681,6 @@ export default function Home() {
         <ContainmentDecision
           onComplete={async () => {
             await changeStep("investigation-logs");
-            setNpcDmReveal(1);
           }}
         />
       )

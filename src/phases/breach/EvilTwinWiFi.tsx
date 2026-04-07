@@ -23,27 +23,6 @@ interface WiFiAP {
   indicators?: string[];
 }
 
-function buildDefaultAccessPoints(teamName: string): WiFiAP[] {
-  return [
-    {
-      id: "wifi-legit-default",
-      ssid: `${teamName}-Secure`,
-      bssid: "AA:BB:CC:11:22:33",
-      signal: -72,
-      authType: "WPA2-Enterprise (802.1X)",
-      isEvil: false,
-    },
-    {
-      id: "wifi-evil-default",
-      ssid: `${teamName}-Secure`,
-      bssid: "DE:AD:BE:EF:CA:FE",
-      signal: -38,
-      authType: "WPA2-PSK",
-      isEvil: true,
-    },
-  ];
-}
-
 export function EvilTwinWiFi({ onComplete, networks }: EvilTwinWiFiProps) {
   const [selectedAP, setSelectedAP] = useState<WiFiAP | null>(null);
   const [connected, setConnected] = useState(false);

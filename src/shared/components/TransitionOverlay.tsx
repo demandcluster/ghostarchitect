@@ -70,12 +70,6 @@ export function TransitionOverlay() {
   );
 }
 
-function removeAllChildren(el: HTMLElement) {
-  while (el.firstChild) {
-    el.removeChild(el.firstChild);
-  }
-}
-
 export function useBreachTransition() {
   const setIsTransitioning = useGameStore((s) => s.setIsTransitioning);
   const setVisualMode = useGameStore((s) => s.setVisualMode);

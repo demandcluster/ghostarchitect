@@ -268,11 +268,7 @@ Use locale: ${config.locale}. Make it challenging, believable, and completely IM
       if (!hasDirectFields) {
         for (const key of Object.keys(parsedContent)) {
           const nestedValue = parsedContent[key];
-          if (
-            nestedValue &&
-            typeof nestedValue === "object" &&
-            nestedValue !== null
-          ) {
+          if (nestedValue && typeof nestedValue === "object") {
             // Strip prototype-polluting keys before merging
             const safeNested = Object.fromEntries(
               Object.entries(nestedValue as Record<string, unknown>).filter(

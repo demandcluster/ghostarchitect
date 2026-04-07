@@ -205,7 +205,7 @@ export class ContentPoolManager {
           return val.replace(/{{phishing-link}}|\[phishing-link\]/gi, branded.isPhishing ? phishingUrl : safeUrl);
         }
         if (Array.isArray(val)) return val.map(replaceLinks);
-        if (typeof val === 'object' && val !== null) {
+        if (typeof val === 'object') {
           const newObj = { ...val } as Record<string, unknown>;
           for (const key of Object.keys(newObj)) {
             newObj[key] = replaceLinks(newObj[key]);
@@ -246,8 +246,10 @@ export class ContentPoolManager {
         }
 
         const extractEmail = (fromStr: string): string => {
-          const match = fromStr.match(/<([^>]+)>/);
-          if (match) return match[1];
+          // Use indexOf/slice instead of regex to avoid ReDoS on uncontrolled input
+          const lt = fromStr.indexOf('<');
+          const gt = fromStr.indexOf('>');
+          if (lt !== -1 && gt > lt) return fromStr.slice(lt + 1, gt).trim();
           if (fromStr.includes('@')) return fromStr.trim();
           return fromStr.toLowerCase().replace(/\s+/g, '.') + '@' + options.fakeDomain;
         };

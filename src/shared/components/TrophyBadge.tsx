@@ -13,7 +13,6 @@ interface TrophyBadgeProps {
 export function TrophyBadge({ isOpen, onClose }: TrophyBadgeProps) {
   const prefersReducedMotion = useReducedMotion();
   const categoryScores = useScoreStore((s) => s.categoryScores);
-  const actions = useScoreStore((s) => s.actions);
 
   // Compute total from category scores only (time bonus system not currently implemented)
   const totalScore = computeTotal(categoryScores);

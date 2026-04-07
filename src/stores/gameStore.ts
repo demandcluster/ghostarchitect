@@ -57,7 +57,7 @@ const DEFAULTS = {
   fakeDomain: "nexuscorp.com",
   teamName: "NexusCorp",
   logoUrl: null as string | null,
-  contentLocale: 'en',
+  contentLocale: "en",
 };
 
 // Hydrated initial state — populated from localStorage on first load
