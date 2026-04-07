@@ -6,10 +6,17 @@ const CODE_LENGTH = 6;
 const MAX_RETRIES = 3;
 
 export function generateInviteCode(): string {
-  const bytes = randomBytes(CODE_LENGTH);
+  // Rejection sampling to avoid modulo bias.
+  // Only accept bytes in [0, floor(256/CHARSET.length) * CHARSET.length).
+  const max = Math.floor(256 / CHARSET.length) * CHARSET.length;
   let code = '';
-  for (let i = 0; i < CODE_LENGTH; i++) {
-    code += CHARSET[bytes[i] % CHARSET.length];
+  while (code.length < CODE_LENGTH) {
+    const bytes = randomBytes(CODE_LENGTH);
+    for (const byte of bytes) {
+      if (code.length < CODE_LENGTH && byte < max) {
+        code += CHARSET[byte % CHARSET.length];
+      }
+    }
   }
   return code;
 }

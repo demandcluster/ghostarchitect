@@ -246,7 +246,7 @@ export class ContentPoolManager {
         }
 
         const extractEmail = (fromStr: string): string => {
-          const match = fromStr.match(/<(.+?)>/);
+          const match = fromStr.match(/<([^>]+)>/);
           if (match) return match[1];
           if (fromStr.includes('@')) return fromStr.trim();
           return fromStr.toLowerCase().replace(/\s+/g, '.') + '@' + options.fakeDomain;

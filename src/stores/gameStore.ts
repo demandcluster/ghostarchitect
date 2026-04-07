@@ -34,8 +34,7 @@ interface GameState {
   reset: () => void;
 }
 
-const generateSessionId = () =>
-  crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
+const generateSessionId = () => crypto.randomUUID();
 
 const savedHandle = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:playerHandle') : null;
 const savedTeamId = typeof window !== 'undefined' ? localStorage.getItem('ghost-architect:teamId') : null;

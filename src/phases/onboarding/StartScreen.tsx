@@ -304,7 +304,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
 
     try {
       const service = await getGameService();
-      const anonymousId = crypto.randomUUID?.() ?? Math.random().toString(36).slice(2);
+      const anonymousId = crypto.randomUUID();
 
       const session = await service.joinTeam(
         inviteCode.trim().toUpperCase(),
