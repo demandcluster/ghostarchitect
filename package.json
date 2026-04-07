@@ -12,7 +12,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.5.0",
+    "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.5.0",
     "@types/pg": "^8.18.0",
     "@types/three": "^0.183.1",
