@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { OSShell } from "@/shared/components/OSShell";
 import { DMSidebar } from "@/shared/components/DMSidebar";
@@ -95,27 +95,44 @@ type GameStep =
   | "ending";
 
 export default function Home() {
-  const [step, setStep] = useState<GameStep>(() => {
-    if (
-      process.env.NODE_ENV === "development" &&
-      typeof window !== "undefined"
-    ) {
-      const p = new URLSearchParams(window.location.search).get("step");
-      if (p) return p as GameStep;
-    }
-    if (typeof window !== "undefined") {
-      const savedStep = localStorage.getItem("ghost-architect:step");
-      const savedSessionId = localStorage.getItem("ghost-architect:sessionId");
-      if (savedStep && savedSessionId && savedStep !== "start" && savedStep !== "ending") {
-        return savedStep as GameStep;
-      }
-    }
-    return "start";
-  });
+  // Always start with "start" so server and client render the same initial HTML
+  // (React 19 throws on server/client mismatch). useLayoutEffect below restores
+  // the saved step before the first paint — no visible flash.
+  const [step, setStep] = useState<GameStep>("start");
 
   const [showScoreboard, setShowScoreboard] = useState(false);
   const setPhase = useGameStore((s) => s.setPhase);
   const setVisualMode = useGameStore((s) => s.setVisualMode);
+
+  // Restore saved step + visual mode before the first paint (client-only).
+  // useLayoutEffect is synchronous, so the user never sees the "start" flash.
+  useLayoutEffect(() => {
+    const breachSteps: GameStep[] = [
+      "breach-email", "breach-password", "breach-wifi",
+      "investigation-containment", "investigation-logs", "investigation-lolbins",
+      "investigation-ioc", "investigation-rotation", "debrief",
+    ];
+
+    // Dev: ?step= URL param overrides localStorage
+    if (process.env.NODE_ENV === "development") {
+      const p = new URLSearchParams(window.location.search).get("step");
+      if (p) {
+        const devStep = p as GameStep;
+        setStep(devStep);
+        if (breachSteps.includes(devStep)) setVisualMode("breach");
+        return;
+      }
+    }
+
+    const savedStep = localStorage.getItem("ghost-architect:step");
+    const savedSessionId = localStorage.getItem("ghost-architect:sessionId");
+    if (savedStep && savedSessionId && savedStep !== "start" && savedStep !== "ending") {
+      const restored = savedStep as GameStep;
+      setStep(restored);
+      if (breachSteps.includes(restored)) setVisualMode("breach");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // setStep and setVisualMode are stable — intentionally runs once on mount
   const teamName = useGameStore((s) => s.teamName);
   const fakeDomain = useGameStore((s) => s.fakeDomain);
   const gameStore = useGameStore();
@@ -244,19 +261,6 @@ export default function Home() {
     localStorage.setItem("ghost-architect:step", step);
   }, [step]);
 
-  // Restore visual mode when resuming mid-game (skip breach transition)
-  const setVisualModeRef = setVisualMode;
-  useEffect(() => {
-    const breachSteps: GameStep[] = [
-      "breach-email", "breach-password", "breach-wifi",
-      "investigation-containment", "investigation-logs", "investigation-lolbins",
-      "investigation-ioc", "investigation-rotation", "debrief",
-    ];
-    if (breachSteps.includes(step)) {
-      setVisualModeRef("breach");
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // only on mount — subsequent mode changes go through the breach transition
 
   // Generate a session ID on first interaction
   useEffect(() => {
@@ -265,19 +269,6 @@ export default function Home() {
     gameStore.setSessionId(crypto.randomUUID());
   }, [step, gameStore]);
 
-  // Dev shortcut: set breach visual mode when ?step= targets a post-breach phase
-  useEffect(() => {
-    if (process.env.NODE_ENV !== "development") return;
-    const p = new URLSearchParams(window.location.search).get("step");
-    if (
-      p &&
-      (p.startsWith("breach-") ||
-        p.startsWith("investigation-") ||
-        p === "debrief")
-    ) {
-      setVisualMode("breach");
-    }
-  }, [setVisualMode]);
 
   // Auto-reveal informational DMs in a chain
   useEffect(() => {
