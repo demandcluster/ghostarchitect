@@ -9,6 +9,7 @@ import { useStepTransition } from "@/shared/hooks/useStepTransition";
 import { useGameStore } from "@/stores/gameStore";
 import { useScoreStore } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
+import { getGameService } from "@/services/config/serviceConfig";
 import { StartScreen } from "@/phases/onboarding/StartScreen";
 import { LoginScreen } from "@/phases/onboarding/LoginScreen";
 import { Scoreboard } from "@/shared/components/Scoreboard";
@@ -165,8 +166,34 @@ export default function Home() {
 
   const adjustTrust = useScoreStore((s) => s.adjustTrust);
   const addAction = useScoreStore((s) => s.addAction);
+  const categoryScores = useScoreStore((s) => s.categoryScores);
   const addFlag = useNarrativeStore((s) => s.addFlag);
   const addTimelineEntry = useNarrativeStore((s) => s.addTimelineEntry);
+
+  // Sync scores to backend whenever category scores change (debounced 1s).
+  // Triggers the SSE leaderboard broadcast so the trainer dashboard updates live.
+  const scoreSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionId = useGameStore((s) => s.sessionId);
+  useEffect(() => {
+    if (!sessionId || !teamId) return;
+    if (scoreSyncTimerRef.current) clearTimeout(scoreSyncTimerRef.current);
+    scoreSyncTimerRef.current = setTimeout(async () => {
+      try {
+        const service = await getGameService();
+        const totalScore = Object.values(categoryScores).reduce((a, b) => a + b, 0);
+        await service.updateSession(sessionId, {
+          // phaseScores stores the per-category scores so the trainer dashboard
+          // can display them by category (phishingIQ, passwordHygiene, etc.)
+          phaseScores: categoryScores as Record<string, number>,
+          totalScore,
+        });
+      } catch { /* silently ignore — score sync is best-effort */ }
+    }, 1000);
+    return () => {
+      if (scoreSyncTimerRef.current) clearTimeout(scoreSyncTimerRef.current);
+    };
+  }, [sessionId, teamId, categoryScores]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const [showWiki, setShowWiki] = useState(false);
   const [wikiTab, setWikiTab] = useState<
     "social-engineering" | "network-security" | "incident-response"

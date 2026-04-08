@@ -30,10 +30,14 @@ export const apiAdapter: GameService = {
   },
 
   async updateSession(sessionId, updates): Promise<SessionData> {
+    const anonymousId =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('ghost-architect:anonymousId')
+        : null;
     const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
+      body: JSON.stringify({ ...updates, anonymousId }),
     });
     if (!res.ok) throw new Error(`updateSession failed: ${res.status}`);
     return res.json();

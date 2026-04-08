@@ -244,6 +244,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
   const setTeamId = useGameStore((s) => s.setTeamId);
   const setPlayerHandleStore = useGameStore((s) => s.setPlayerHandle);
   const setSessionId = useGameStore((s) => s.setSessionId);
+  const setAnonymousId = useGameStore((s) => s.setAnonymousId);
   const initSession = useGameStore((s) => s.initSession);
   const setFakeDomain = useGameStore((s) => s.setFakeDomain);
   const setTeamName = useGameStore((s) => s.setTeamName);
@@ -301,6 +302,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
     try {
       const service = await getGameService();
       const anonymousId = crypto.randomUUID();
+      setAnonymousId(anonymousId);
 
       const session = await service.joinTeam(
         inviteCode.trim().toUpperCase(),

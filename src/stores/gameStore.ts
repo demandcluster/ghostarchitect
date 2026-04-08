@@ -12,6 +12,7 @@ interface GameState {
   phase: Phase;
   visualMode: VisualMode;
   sessionId: string | null;
+  anonymousId: string | null;
   isTransitioning: boolean;
   teamId: string | null;
   playerHandle: string | null;
@@ -23,6 +24,7 @@ interface GameState {
   setPhase: (phase: Phase) => void;
   setVisualMode: (mode: VisualMode) => void;
   setSessionId: (id: string) => void;
+  setAnonymousId: (id: string | null) => void;
   initSession: () => void;
   setIsTransitioning: (val: boolean) => void;
   setTeamId: (id: string | null) => void;
@@ -51,6 +53,7 @@ const DEFAULTS = {
   phase: "onboarding" as Phase,
   visualMode: "corporate" as VisualMode,
   sessionId: null as string | null,
+  anonymousId: null as string | null,
   isTransitioning: false,
   teamId: null as string | null,
   playerHandle: null as string | null,
@@ -68,6 +71,7 @@ const initialState = {
   // restore the previously accepted session rather than silently generating
   // a new one before the player has acknowledged the privacy notice.
   sessionId: ls.get('sessionId'),
+  anonymousId: ls.get('anonymousId'),
   teamId: ls.get('teamId'),
   playerHandle: ls.get('playerHandle'),
   fakeDomain: ls.get('fakeDomain') || "nexuscorp.com",
@@ -83,6 +87,11 @@ export const useGameStore = create<GameState>((set) => ({
   setSessionId: (id) => {
     ls.set('sessionId', id);
     set({ sessionId: id });
+  },
+  setAnonymousId: (id) => {
+    if (id) ls.set('anonymousId', id);
+    else ls.remove('anonymousId');
+    set({ anonymousId: id });
   },
   initSession: () => {
     const id = crypto.randomUUID();
@@ -115,7 +124,7 @@ export const useGameStore = create<GameState>((set) => ({
   },
   setContentLocale: (locale) => set({ contentLocale: locale }),
   reset: () => {
-    ['playerHandle', 'teamId', 'sessionId', 'fakeDomain', 'teamName', 'logoUrl']
+    ['playerHandle', 'teamId', 'sessionId', 'anonymousId', 'fakeDomain', 'teamName', 'logoUrl']
       .forEach((k) => ls.remove(k));
     set(DEFAULTS);
   },

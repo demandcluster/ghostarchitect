@@ -4,12 +4,9 @@
  * v2: apiAdapter (backend, team/leaderboard support)
  */
 
-export interface PhaseScores {
-  onboarding?: number;
-  breach?: number;
-  investigation?: number;
-  debrief?: number;
-}
+// Stored as JSON in the DB — keys are category names used by the trainer dashboard
+// (phishingIQ, passwordHygiene, networkSecurity, forensicSkill) plus any future keys.
+export type PhaseScores = Record<string, number>;
 
 export interface SessionData {
   id: string;
