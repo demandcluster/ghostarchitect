@@ -62,7 +62,10 @@ export function WindowManager({
   }, []);
 
   useEffect(() => {
-    resetIdle();
+    // Start the timer directly — don't call resetIdle() here because
+    // lastActivity.current was just set to Date.now() during render, so
+    // the 400ms throttle guard would fire and skip setting the timer.
+    idleTimer.current = setTimeout(() => setIsHinting(true), 5000);
     window.addEventListener("pointermove", resetIdle);
     window.addEventListener("pointerdown", resetIdle);
     window.addEventListener("keydown", resetIdle);
@@ -199,7 +202,7 @@ export function WindowManager({
             animate={{ opacity: 1, width: dmCollapsed ? 40 : 280 }}
             exit={{ opacity: 0, width: 0 }}
             transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
-            className="shrink-0 border-l overflow-hidden"
+            className={`shrink-0 border-l overflow-hidden${isHinting && !dmCollapsed ? ` ${isBreach ? "hint-glow-breach" : "hint-glow-corporate"}` : ""}`}
             style={{
               borderColor: isBreach ? "var(--border)" : "rgba(255,255,255,0.08)",
               background: isBreach ? "var(--bg-secondary)" : "#1A1D21",

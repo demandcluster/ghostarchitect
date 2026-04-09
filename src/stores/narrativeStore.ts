@@ -14,12 +14,16 @@ interface NarrativeState {
   decisions: Record<string, string>;
   flags: Set<string>;
   timeline: TimelineEntry[];
+  revealedDmIds: string[];
+  npcDmIndex: number;
 
   setDecision: (key: string, value: string) => void;
   addFlag: (flag: string) => void;
   removeFlag: (flag: string) => void;
   hasFlag: (flag: string) => boolean;
   addTimelineEntry: (entry: Omit<TimelineEntry, "timestamp">) => void;
+  setRevealedDmIds: (ids: string[]) => void;
+  setNpcDmIndex: (index: number) => void;
   reset: () => void;
 }
 
@@ -42,6 +46,8 @@ const narrativeStorage: PersistStorage<NarrativeState> = {
             Array.isArray(state.flags) ? (state.flags as string[]) : []
           ),
           timeline: (state.timeline as TimelineEntry[]) ?? [],
+          revealedDmIds: (state.revealedDmIds as string[]) ?? [],
+          npcDmIndex: (state.npcDmIndex as number) ?? 0,
         } as NarrativeState,
         version: raw.version,
       };
@@ -71,6 +77,8 @@ export const useNarrativeStore = create<NarrativeState>()(
       decisions: {},
       flags: new Set<string>(),
       timeline: [],
+      revealedDmIds: [],
+      npcDmIndex: 0,
 
       setDecision: (key, value) =>
         set((state) => ({
@@ -98,7 +106,10 @@ export const useNarrativeStore = create<NarrativeState>()(
           timeline: [...state.timeline, { ...entry, timestamp: Date.now() }],
         })),
 
-      reset: () => set({ decisions: {}, flags: new Set(), timeline: [] }),
+      setRevealedDmIds: (ids) => set({ revealedDmIds: ids }),
+      setNpcDmIndex: (index) => set({ npcDmIndex: index }),
+
+      reset: () => set({ decisions: {}, flags: new Set(), timeline: [], revealedDmIds: [], npcDmIndex: 0 }),
     }),
     { name: "ghost-architect:narrative", storage: narrativeStorage }
   )

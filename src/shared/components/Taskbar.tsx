@@ -307,10 +307,10 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds, onExit }: T
           onMouseLeave={() => setShowScoreTooltip(false)}
         >
           {/* Trust number */}
-          <div className="flex flex-col items-center leading-none gap-[1px]">
-            <span className="text-[8px] uppercase tracking-wide opacity-50">Trust</span>
+          <div className="flex flex-col items-center leading-none gap-[2px]">
+            <span className="text-[8px] uppercase tracking-wide opacity-60">Trust</span>
             <motion.span
-              className="text-[11px] font-bold font-mono"
+              className="text-[13px] font-bold font-mono"
               style={{ color: trustScore >= 50 ? "var(--success)" : "var(--danger)" }}
               key={trustScore}
               initial={{ scale: 0.8 }}
@@ -321,13 +321,13 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds, onExit }: T
             </motion.span>
           </div>
           {/* 4 mini category bars */}
-          <div className="flex flex-col gap-[3px] w-[52px]">
-            <div className="text-[8px] font-mono opacity-50 leading-none">{totalScore}/100</div>
+          <div className="flex flex-col gap-[3px] w-[56px]">
+            <div className="text-[9px] font-mono opacity-70 leading-none">{totalScore}/100</div>
             {(Object.keys(CATEGORY_BAR_COLORS) as Array<keyof typeof categoryScores>).map((cat) => {
               const score = categoryScores[cat];
               const width = `${Math.min(100, (score / CATEGORY_NOMINAL_MAX[cat]) * 100)}%`;
               return (
-                <div key={cat} className="h-[2px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                <div key={cat} className="h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.15)" }}>
                   <motion.div
                     className={`h-full rounded-full ${CATEGORY_BAR_COLORS[cat]}`}
                     initial={{ width: "0%" }}

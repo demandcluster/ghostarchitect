@@ -132,17 +132,17 @@ function PrivacyModal({ onAccept, onNoStore }: PrivacyModalProps) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      style={{ background: "rgba(0,1,12,0.92)", backdropFilter: "blur(8px)" }}
+      style={{ background: "rgba(15,23,42,0.92)", backdropFilter: "blur(8px)" }}
     >
       <motion.div
         key="privacy-panel"
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 10 }}
-        className="relative w-full max-w-md rounded-2xl border border-[rgba(0,229,51,0.3)] bg-[#050709] p-8 shadow-[0_0_80px_rgba(0,229,51,0.15)]"
+        className="relative w-full max-w-md rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-secondary)] p-8 shadow-[0_0_80px_rgba(59,130,246,0.12)]"
       >
         <div className="mb-8 text-center">
-          <div className="inline-block px-3 py-1 rounded-full bg-[rgba(0,229,51,0.1)] border border-[rgba(0,229,51,0.2)] text-[10px] text-[var(--accent)] tracking-[0.3em] font-bold mb-3 uppercase">
+          <div className="inline-block px-3 py-1 rounded-full bg-[var(--bg-glass)] border border-[var(--border)] text-[10px] text-[var(--accent)] tracking-[0.3em] font-bold mb-3 uppercase">
             System Protocol
           </div>
           <h2 className="text-xl font-bold tracking-tight text-white uppercase">
@@ -174,7 +174,7 @@ function PrivacyModal({ onAccept, onNoStore }: PrivacyModalProps) {
           </div>
         </div>
 
-        <label className="mt-8 flex items-start gap-3 cursor-pointer group p-4 rounded-xl border border-dashed border-[rgba(0,229,51,0.2)] bg-[rgba(0,229,51,0.02)] hover:bg-[rgba(0,229,51,0.05)] transition-colors">
+        <label className="mt-8 flex items-start gap-3 cursor-pointer group p-4 rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg-glass)] hover:bg-white/[0.05] transition-colors">
           <div className="relative mt-0.5 flex-shrink-0">
             <input
               type="checkbox"
@@ -185,7 +185,7 @@ function PrivacyModal({ onAccept, onNoStore }: PrivacyModalProps) {
             <div
               className="w-5 h-5 border-2 rounded transition-all flex items-center justify-center"
               style={{
-                borderColor: simulationChecked ? "var(--accent)" : "rgba(0,229,51,0.4)",
+                borderColor: simulationChecked ? "var(--accent)" : "var(--border-strong)",
                 background: simulationChecked ? "var(--accent)" : "transparent"
               }}
             >
@@ -209,7 +209,7 @@ function PrivacyModal({ onAccept, onNoStore }: PrivacyModalProps) {
               onAccept();
             }}
             disabled={!simulationChecked}
-            className="w-full bg-[var(--accent)] text-black font-bold py-3.5 rounded-xl text-xs tracking-[0.2em] hover:brightness-110 transition-all hover:shadow-[0_0_30px_rgba(0,229,51,0.4)] disabled:opacity-30 disabled:cursor-not-allowed uppercase"
+            className="w-full bg-[var(--accent)] text-black font-bold py-3.5 rounded-xl text-xs tracking-[0.2em] hover:brightness-110 transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.4)] disabled:opacity-30 disabled:cursor-not-allowed uppercase"
           >
             Acknowledge &amp; Enter
           </button>
@@ -393,12 +393,12 @@ export function StartScreen({ onStart }: StartScreenProps) {
                   animate={{ opacity: 1, scale: 1 }}
                   className="w-fit"
                 >
-                  <div className="flex items-center gap-4 border border-[rgba(0,229,51,0.3)] bg-[rgba(0,229,51,0.08)] backdrop-blur-md px-5 py-2 rounded-full font-mono text-[10px] md:text-xs">
+                  <div className="flex items-center gap-4 border border-[var(--border-strong)] bg-[var(--bg-glass)] backdrop-blur-md px-5 py-2 rounded-full font-mono text-[10px] md:text-xs">
                     <div className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
                     <span className="text-white tracking-widest">
                       ACTIVE SESSION: <span className="text-[var(--accent)] uppercase">{restoredHandle}</span>
                     </span>
-                    <div className="h-3 w-[1px] bg-[rgba(0,229,51,0.2)] mx-1" />
+                    <div className="h-3 w-[1px] bg-[var(--border)] mx-1" />
                     <div className="flex gap-3">
                       <button onClick={handleContinue} className="text-[var(--accent)] hover:text-white transition-colors">[CONTINUE]</button>
                       <button onClick={handleNewSession} className="text-white/40 hover:text-white transition-colors">[PURGE]</button>
@@ -419,7 +419,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
             transition={{ delay: 0.4, duration: 0.6 }}
             className="w-full"
           >
-            <form onSubmit={handleSubmit} className="w-full space-y-8 bg-[rgba(0,1,12,0.6)] backdrop-blur-xl p-8 rounded-3xl border border-[rgba(0,229,51,0.15)] shadow-[0_0_50px_rgba(0,0,0,0.5)]">
+            <form onSubmit={handleSubmit} className="w-full space-y-8 bg-[var(--bg-glass)] backdrop-blur-xl p-8 rounded-3xl border border-[var(--border)] shadow-[0_0_50px_rgba(0,0,0,0.5)]">
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[var(--accent)] text-[10px] font-bold tracking-[0.2em] uppercase block px-1">
@@ -429,7 +429,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
                     type="text"
                     value={playerHandle}
                     onChange={(e) => setPlayerHandle(e.target.value)}
-                    className="w-full bg-[rgba(0,229,51,0.03)] border border-[rgba(0,229,51,0.2)] rounded-xl px-4 py-3 text-white outline-none focus:border-[var(--accent)] focus:bg-[rgba(0,229,51,0.06)] transition-all font-mono placeholder:text-white/30"
+                    className="w-full bg-transparent border border-[var(--border)] rounded-xl px-4 py-3 text-white outline-none focus:border-[var(--accent)] focus:bg-white/[0.05] transition-all font-mono placeholder:text-white/30"
                     placeholder="anonymous_operator"
                     maxLength={24}
                   />
@@ -443,7 +443,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
                     type="text"
                     value={inviteCode}
                     onChange={(e) => { setInviteCode(e.target.value.toUpperCase()); setError(""); }}
-                    className="w-full bg-[rgba(0,229,51,0.03)] border border-[rgba(0,229,51,0.2)] rounded-xl px-4 py-3 text-white outline-none focus:border-[var(--accent)] focus:bg-[rgba(0,229,51,0.06)] transition-all font-mono tracking-[0.4em] uppercase placeholder:text-white/30"
+                    className="w-full bg-transparent border border-[var(--border)] rounded-xl px-4 py-3 text-white outline-none focus:border-[var(--accent)] focus:bg-white/[0.05] transition-all font-mono tracking-[0.4em] uppercase placeholder:text-white/30"
                     placeholder="XXXXXX"
                     maxLength={6}
                   />
@@ -461,7 +461,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
                   <button
                     type="submit"
                     disabled={loading || inviteCode.trim().length < 6}
-                    className="w-full bg-[var(--accent)] text-black font-bold py-4 rounded-xl text-xs tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all hover:shadow-[0_0_25px_rgba(0,229,51,0.4)] disabled:opacity-20 disabled:cursor-not-allowed uppercase"
+                    className="w-full bg-[var(--accent)] text-black font-bold py-4 rounded-xl text-xs tracking-[0.2em] hover:scale-[1.02] active:scale-[0.98] transition-all hover:shadow-[0_0_25px_rgba(59,130,246,0.4)] disabled:opacity-20 disabled:cursor-not-allowed uppercase"
                   >
                     {loading ? "INITIALIZING..." : "COMMENCE SIMULATION"}
                   </button>
@@ -469,7 +469,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
                   <button
                     type="button"
                     onClick={handleSkip}
-                    className="w-full border border-[var(--accent)] text-[var(--accent)] font-bold py-4 rounded-xl text-xs tracking-[0.2em] hover:bg-[var(--accent)] hover:text-black transition-all hover:shadow-[0_0_20px_rgba(0,229,51,0.2)] uppercase"
+                    className="w-full border border-[var(--accent)] text-[var(--accent)] font-bold py-4 rounded-xl text-xs tracking-[0.2em] hover:bg-[var(--accent)] hover:text-black transition-all hover:shadow-[0_0_20px_rgba(59,130,246,0.3)] uppercase"
                   >
                     PROCEED SOLO
                   </button>

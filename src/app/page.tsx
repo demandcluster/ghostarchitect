@@ -6,11 +6,15 @@ import { OSShell } from "@/shared/components/OSShell";
 import { DMSidebar } from "@/shared/components/DMSidebar";
 import { useBreachTransition } from "@/shared/components/TransitionOverlay";
 import { useStepTransition } from "@/shared/hooks/useStepTransition";
-import { useGameStore } from "@/stores/gameStore";
+import { useGameStore, hydrateGameStore } from "@/stores/gameStore";
 import { useScoreStore } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
 import { getGameService } from "@/services/config/serviceConfig";
-import { StartScreen } from "@/phases/onboarding/StartScreen";
+import dynamic from "next/dynamic";
+const StartScreen = dynamic(
+  () => import("@/phases/onboarding/StartScreen").then((m) => ({ default: m.StartScreen })),
+  { ssr: false }
+);
 import { LoginScreen } from "@/phases/onboarding/LoginScreen";
 import { Scoreboard } from "@/shared/components/Scoreboard";
 import { WikiPanel } from "@/shared/components/WikiPanel";
@@ -133,6 +137,11 @@ export default function Home() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // setStep and setVisualMode are stable — intentionally runs once on mount
+
+  // Restore persisted player/team identity from localStorage after first render.
+  // Must run after SSR hydration to avoid server/client HTML mismatch.
+  useEffect(() => { hydrateGameStore(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const teamName = useGameStore((s) => s.teamName);
   const fakeDomain = useGameStore((s) => s.fakeDomain);
   const gameStore = useGameStore();
@@ -186,6 +195,10 @@ export default function Home() {
   const categoryScores = useScoreStore((s) => s.categoryScores);
   const addFlag = useNarrativeStore((s) => s.addFlag);
   const addTimelineEntry = useNarrativeStore((s) => s.addTimelineEntry);
+  const revealedDmIds = useNarrativeStore((s) => s.revealedDmIds);
+  const setRevealedDmIds = useNarrativeStore((s) => s.setRevealedDmIds);
+  const npcDmIndex = useNarrativeStore((s) => s.npcDmIndex);
+  const setNpcDmIndex = useNarrativeStore((s) => s.setNpcDmIndex);
 
   // Sync scores to backend whenever category scores change (debounced 1s).
   // Triggers the SSE leaderboard broadcast so the trainer dashboard updates live.
@@ -216,7 +229,6 @@ export default function Home() {
     "social-engineering" | "network-security" | "incident-response"
   >("social-engineering");
 
-  const [revealedDmIds, setRevealedDmIds] = useState<string[]>([]);
   const [dmDone, setDmDone] = useState(false);
   const dmInteractionsDoneRef = useRef(0);
   const [flaggedLogs, setFlaggedLogs] = useState<LogEntry[]>([]);
@@ -226,7 +238,6 @@ export default function Home() {
     missed: number;
     points: number;
   } | null>(null);
-  const [npcDmIndex, setNpcDmIndex] = useState(0);
   const { changeStep } = useStepTransition(setStep);
 
   // Filler DMs: merge office chatter into DM streams
@@ -304,7 +315,7 @@ export default function Home() {
       );
       if (nextId && !revealedDmIds.includes(nextId)) {
         const timer = setTimeout(() => {
-          setRevealedDmIds((prev) => [...prev, nextId]);
+          setRevealedDmIds([...revealedDmIds, nextId]);
         }, 2500); // Delay for reading
         return () => clearTimeout(timer);
       }
@@ -358,10 +369,10 @@ export default function Home() {
           "nextMessageId:",
           responseMsg?.nextMessageId
         );
-        setRevealedDmIds((prev) =>
-          prev.includes(choice.nextMessageId!)
-            ? prev
-            : [...prev, choice.nextMessageId!]
+        setRevealedDmIds(
+          revealedDmIds.includes(choice.nextMessageId!)
+            ? revealedDmIds
+            : [...revealedDmIds, choice.nextMessageId!]
         );
       } else {
         console.log("[DM Choice] No nextMessageId on choice:", choice);
@@ -418,7 +429,7 @@ export default function Home() {
       setTimeout(() => {
         const npcDms = NPC_BAD_ADVICE;
         if (npcDmIndex < npcDms.length - 1) {
-          setNpcDmIndex((i) => i + 1);
+          setNpcDmIndex(npcDmIndex + 1);
         }
       }, 1000);
     },

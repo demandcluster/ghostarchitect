@@ -63,24 +63,11 @@ const DEFAULTS = {
   contentLocale: "en",
 };
 
-// Hydrated initial state — populated from localStorage on first load
-const initialState = {
-  ...DEFAULTS,
-  // sessionId starts null; only set when player explicitly starts a session.
-  // The returning-player flow (savedSessionId) is the only exception: we
-  // restore the previously accepted session rather than silently generating
-  // a new one before the player has acknowledged the privacy notice.
-  sessionId: ls.get('sessionId'),
-  anonymousId: ls.get('anonymousId'),
-  teamId: ls.get('teamId'),
-  playerHandle: ls.get('playerHandle'),
-  fakeDomain: ls.get('fakeDomain') || "nexuscorp.com",
-  teamName: ls.get('teamName') || "NexusCorp",
-  logoUrl: ls.get('logoUrl'),
-};
-
 export const useGameStore = create<GameState>((set) => ({
-  ...initialState,
+  // Always start from clean DEFAULTS so server and client initial renders match.
+  // Call hydrateGameStore() inside a useEffect to restore localStorage values
+  // after the first render — avoids React hydration mismatches.
+  ...DEFAULTS,
 
   setPhase: (phase) => set({ phase }),
   setVisualMode: (mode) => set({ visualMode: mode }),
@@ -129,3 +116,16 @@ export const useGameStore = create<GameState>((set) => ({
     set(DEFAULTS);
   },
 }));
+
+/** Call once inside a useEffect at the app root to restore persisted state. */
+export function hydrateGameStore() {
+  useGameStore.setState({
+    sessionId:    ls.get('sessionId'),
+    anonymousId:  ls.get('anonymousId'),
+    teamId:       ls.get('teamId'),
+    playerHandle: ls.get('playerHandle'),
+    fakeDomain:   ls.get('fakeDomain') || "nexuscorp.com",
+    teamName:     ls.get('teamName')   || "NexusCorp",
+    logoUrl:      ls.get('logoUrl'),
+  });
+}
