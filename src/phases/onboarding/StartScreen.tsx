@@ -472,7 +472,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
         </div>
 
         {/* Immersive Footer */}
-        <div className="relative mt-auto pt-12 pb-8 w-full px-6 z-20 flex flex-col items-center gap-6">
+        <div className="relative mt-auto pt-12 pb-8 w-full px-6 flex flex-col items-center gap-6">
           <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar max-w-full justify-center">
             {[
               "SECURED PROTOCOL",
