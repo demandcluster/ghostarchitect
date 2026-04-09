@@ -3,7 +3,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { Taskbar } from "./Taskbar";
 import { WindowManager, WindowConfig } from "./WindowManager";
-import { HUD } from "./HUD";
 import { TransitionOverlay } from "./TransitionOverlay";
 import { useGameStore } from "@/stores/gameStore";
 
@@ -24,9 +23,10 @@ interface OSShellProps {
   extraAppIds?: string[];
   /** Which overlay panels are currently open — used to drive taskbar active state */
   panelOpen?: Record<string, boolean>;
+  onExit?: () => void;
 }
 
-export function OSShell({ windows, dmSidebar, onAppClick, extraAppIds = ["scoreboard", "wiki"], panelOpen = {} }: OSShellProps) {
+export function OSShell({ windows, dmSidebar, onAppClick, extraAppIds = ["scoreboard", "wiki"], panelOpen = {}, onExit }: OSShellProps) {
   const [activeWindowId, setActiveWindowId] = useState(windows[0]?.id ?? "");
   const [dmCollapsed, setDmCollapsed] = useState(false);
   const visualMode = useGameStore((s) => s.visualMode);
@@ -82,7 +82,6 @@ export function OSShell({ windows, dmSidebar, onAppClick, extraAppIds = ["scoreb
 
       {visualMode === "breach" && <ScanlineOverlay />}
 
-      <HUD />
       <TransitionOverlay />
 
       {/* Main area above taskbar */}
@@ -100,6 +99,7 @@ export function OSShell({ windows, dmSidebar, onAppClick, extraAppIds = ["scoreb
       {/* Taskbar at bottom */}
       <Taskbar
         onAppClick={handleAppClick}
+        onExit={onExit}
         activeApp={
           (!dmCollapsed && dmSidebar) ? "messages"
           : Object.entries(panelOpen).find(([, open]) => open)?.[0]

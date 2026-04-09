@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGameStore } from "@/stores/gameStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
+import { useScoreStore } from "@/stores/scoreStore";
+import { CATEGORY_NOMINAL_MAX } from "@/engine/scoring";
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -75,6 +77,32 @@ const IconSlack = () => (
   </svg>
 );
 
+const IconPower = () => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+    <path d="M7 1v5" />
+    <path d="M3.5 3.5A5.5 5.5 0 1 0 10.5 3.5" />
+  </svg>
+);
+
+const CATEGORY_BAR_COLORS: Record<string, string> = {
+  phishingIQ:       "bg-[var(--info)]",
+  passwordHygiene:  "bg-[var(--success)]",
+  networkSecurity:  "bg-[var(--warning)]",
+  forensicSkill:    "bg-[var(--accent)]",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  phishingIQ:      "Phishing IQ",
+  passwordHygiene: "Password Hygiene",
+  networkSecurity: "Network Security",
+  forensicSkill:   "Forensic Skill",
+};
+
+interface FloatingLabel {
+  id: number;
+  delta: number;
+}
+
 interface TaskbarApp {
   id: string;
   label: string;
@@ -101,16 +129,23 @@ interface TaskbarProps {
   onAppClick: (appId: string) => void;
   activeApp?: string;
   availableWindowIds?: string[];
+  onExit?: () => void;
 }
 
-export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarProps) {
+export function Taskbar({ onAppClick, activeApp, availableWindowIds, onExit }: TaskbarProps) {
   const visualMode = useGameStore((s) => s.visualMode);
   const phase = useGameStore((s) => s.phase);
   const teamName = useGameStore((s) => s.teamName);
   const logoUrl = useGameStore((s) => s.logoUrl);
   const decisions = useNarrativeStore((s) => s.decisions);
+  const trustScore = useScoreStore((s) => s.trustScore);
+  const categoryScores = useScoreStore((s) => s.categoryScores);
   const [time, setTime] = useState("");
   const [showWifiTooltip, setShowWifiTooltip] = useState(false);
+  const [showScoreTooltip, setShowScoreTooltip] = useState(false);
+  const [floats, setFloats] = useState<FloatingLabel[]>([]);
+  const prevTrust = useRef(trustScore);
+  const nextFloatId = useRef(0);
 
   const wifiChoice = decisions.wifi_choice as "evil_twin" | "legitimate" | undefined;
   const wifiSsid   = decisions.wifi_ssid;
@@ -132,6 +167,18 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
     const interval = setInterval(update, 10_000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    const delta = trustScore - prevTrust.current;
+    prevTrust.current = trustScore;
+    if (delta === 0) return;
+    const id = nextFloatId.current++;
+    setFloats((f) => [...f, { id, delta }]);
+    const t = setTimeout(() => setFloats((f) => f.filter((fl) => fl.id !== id)), 1200);
+    return () => clearTimeout(t);
+  }, [trustScore]);
+
+  const totalScore = Object.values(categoryScores).reduce((a, b) => a + b, 0);
 
   const baseApps = isBreach ? BREACH_APPS : CORPORATE_APPS;
   const apps = availableWindowIds
@@ -252,6 +299,95 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
 
       {/* Right tray */}
       <div className="flex items-center gap-3 text-xs text-[var(--taskbar-text)]">
+
+        {/* Score widget */}
+        <div
+          className="relative flex items-center gap-2 border-l border-r border-[rgba(255,255,255,0.08)] px-3"
+          onMouseEnter={() => setShowScoreTooltip(true)}
+          onMouseLeave={() => setShowScoreTooltip(false)}
+        >
+          {/* Trust number */}
+          <div className="flex flex-col items-center leading-none gap-[1px]">
+            <span className="text-[8px] uppercase tracking-wide opacity-50">Trust</span>
+            <motion.span
+              className="text-[11px] font-bold font-mono"
+              style={{ color: trustScore >= 50 ? "var(--success)" : "var(--danger)" }}
+              key={trustScore}
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              transition={{ duration: 0.2, type: "spring", stiffness: 500 }}
+            >
+              {trustScore}
+            </motion.span>
+          </div>
+          {/* 4 mini category bars */}
+          <div className="flex flex-col gap-[3px] w-[52px]">
+            <div className="text-[8px] font-mono opacity-50 leading-none">{totalScore}/100</div>
+            {(Object.keys(CATEGORY_BAR_COLORS) as Array<keyof typeof categoryScores>).map((cat) => {
+              const score = categoryScores[cat];
+              const width = `${Math.min(100, (score / CATEGORY_NOMINAL_MAX[cat]) * 100)}%`;
+              return (
+                <div key={cat} className="h-[2px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.08)" }}>
+                  <motion.div
+                    className={`h-full rounded-full ${CATEGORY_BAR_COLORS[cat]}`}
+                    initial={{ width: "0%" }}
+                    animate={{ width }}
+                    transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          {/* Floating delta labels */}
+          <AnimatePresence mode="popLayout">
+            {floats.map((f) => (
+              <motion.span
+                key={f.id}
+                initial={{ opacity: 1, y: 0, scale: 0.8 }}
+                animate={{ opacity: 0, y: -28, scale: 1.1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 1.2, ease: [0.25, 0.1, 0.25, 1] }}
+                className={`absolute -top-1 left-1/2 -translate-x-1/2 text-xs font-bold pointer-events-none ${
+                  isBreach
+                    ? f.delta > 0 ? "text-[var(--accent)]" : "text-[var(--accent-red)]"
+                    : f.delta > 0 ? "text-[var(--success)]" : "text-[var(--danger)]"
+                }`}
+                style={{ textShadow: isBreach ? "0 0 8px currentColor" : undefined }}
+              >
+                {f.delta > 0 ? "+" : ""}{f.delta}
+              </motion.span>
+            ))}
+          </AnimatePresence>
+          {/* Score breakdown tooltip */}
+          <AnimatePresence>
+            {showScoreTooltip && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.15 }}
+                className="absolute bottom-9 right-0 rounded-lg p-2.5 text-[10px] whitespace-nowrap z-50 shadow-xl pointer-events-none"
+                style={{
+                  background: isBreach ? "#0a0e14" : "#1e293b",
+                  border: "1px solid var(--border)",
+                  color: "#f1f5f9",
+                }}
+              >
+                {(Object.keys(categoryScores) as Array<keyof typeof categoryScores>).map((cat) => (
+                  <div key={cat} className="flex justify-between gap-4 py-[1px]">
+                    <span style={{ color: "rgba(255,255,255,0.5)" }}>{CATEGORY_LABELS[cat]}</span>
+                    <span className="font-mono">{categoryScores[cat]}</span>
+                  </div>
+                ))}
+                <div className="border-t mt-1.5 pt-1.5 flex justify-between gap-4" style={{ borderColor: "rgba(255,255,255,0.1)" }}>
+                  <span style={{ color: "rgba(255,255,255,0.5)" }}>Trust</span>
+                  <span className="font-mono">{trustScore}</span>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
         {/* WiFi indicator with tooltip */}
         <div className="relative">
           <motion.span
@@ -332,6 +468,20 @@ export function Taskbar({ onAppClick, activeApp, availableWindowIds }: TaskbarPr
         >
           {time}
         </motion.span>
+
+        {/* Exit to lobby */}
+        {onExit && (
+          <motion.button
+            onClick={onExit}
+            className="opacity-40 hover:opacity-90 transition-opacity p-1 rounded hover:bg-[rgba(255,255,255,0.08)]"
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            title="Exit to lobby"
+            style={{ color: "var(--taskbar-text)" }}
+          >
+            <IconPower />
+          </motion.button>
+        )}
       </div>
     </motion.div>
   );

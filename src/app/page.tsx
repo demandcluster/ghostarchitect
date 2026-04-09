@@ -977,6 +977,7 @@ export default function Home() {
           windows={windows}
           dmSidebar={dmSidebar}
           panelOpen={{ scoreboard: showScoreboard, wiki: showWiki }}
+          onExit={() => setStep("start")}
           onAppClick={(appId) => {
             if (appId === "scoreboard") {
               setShowScoreboard((v) => !v);
