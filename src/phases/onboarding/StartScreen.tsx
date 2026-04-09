@@ -350,7 +350,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
         )}
       </AnimatePresence>
 
-      <div className="relative flex flex-col items-center min-h-screen bg-[var(--bg-primary)] overflow-hidden px-6 pt-12 md:pt-24 pb-32">
+      <div className="relative flex flex-col items-center min-h-[100dvh] bg-[var(--bg-primary)] px-6 pt-12 md:pt-24">
         {/* Animated network background */}
         <NetworkBackground />
 
@@ -472,7 +472,7 @@ export function StartScreen({ onStart }: StartScreenProps) {
         </div>
 
         {/* Immersive Footer */}
-        <div className="absolute bottom-8 w-full px-6 z-20 flex flex-col items-center gap-6">
+        <div className="relative mt-auto pt-12 pb-8 w-full px-6 z-20 flex flex-col items-center gap-6">
           <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar max-w-full justify-center">
             {[
               "SECURED PROTOCOL",
