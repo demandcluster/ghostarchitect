@@ -125,7 +125,7 @@ export function useBreachTransition() {
       const postLayer = document.createElement("div");
       postLayer.style.cssText =
         "position:absolute;inset:0;z-index:4;background:rgba(10,14,20,0);padding:20px;" +
-        'font-family:"JetBrains Mono",monospace;font-size:13px;overflow-y:auto;opacity:0;';
+        'font-family:"JetBrains Mono",monospace;font-size:15px;line-height:1.8;overflow-y:auto;opacity:0;';
       overlay.appendChild(postLayer);
 
       const tl = gsap.timeline({
@@ -138,8 +138,12 @@ export function useBreachTransition() {
 
       // Phase 1: Glitch bands (800ms) over video — alternating bg colors, mix-blend-mode difference
       // with RGB shift and screen shake
-      const bandCount = 8;
+      const bandCount = 12;
       const bandBgs = [
+        "var(--window-header-from)",
+        "var(--bg-window)",
+        "var(--window-header-from)",
+        "var(--bg-window)",
         "var(--window-header-from)",
         "var(--bg-window)",
         "var(--window-header-from)",
@@ -203,7 +207,7 @@ export function useBreachTransition() {
 
       // Phase 2: Dark tint + cursor blink (video visible through tint) — stop screen shake
       tl.to(darkTint, {
-        background: "rgba(0,0,0,0.72)",
+        background: "rgba(0,0,0,0.35)",
         duration: 0.1,
         onStart: () => {
           clearInterval(shakeInterval);
@@ -227,6 +231,9 @@ export function useBreachTransition() {
         yoyo: true,
         duration: 0.1,
       });
+
+      // Hold so the 5s bumper video has time to play
+      tl.to({}, { duration: 3.5 });
 
       // Phase 3: Fade in POST layer (dark tint fades back, POST bg provides contrast over video)
       tl.call(() => {
