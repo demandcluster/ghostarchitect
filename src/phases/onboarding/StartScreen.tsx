@@ -349,9 +349,9 @@ export function StartScreen({ onStart }: StartScreenProps) {
         )}
       </AnimatePresence>
 
-      <div className="relative flex flex-col items-center min-h-[100dvh] bg-[var(--bg-primary)] px-6 pt-12 md:pt-24">
+      <div className="relative h-[100dvh] overflow-y-auto bg-[var(--bg-primary)] px-6">
         {/* Spotlight background */}
-        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="fixed inset-0 pointer-events-none" aria-hidden="true">
           {/* Radial spotlight behind logo area */}
           <div
             className="absolute inset-0"
@@ -381,35 +381,38 @@ export function StartScreen({ onStart }: StartScreenProps) {
           <div className="absolute bottom-4 right-4 w-[2px] h-5 bg-blue-500/50" />
         </div>
 
-        {/* Top Navigation / Status Area */}
-        <div className="relative w-full max-w-5xl flex flex-col items-center gap-6 z-20">
-          <AnimatePresence>
-            {hasRestoredSession && restoredHandle && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="w-fit"
-              >
-                <div className="flex items-center gap-4 border border-[rgba(0,229,51,0.3)] bg-[rgba(0,229,51,0.08)] backdrop-blur-md px-5 py-2 rounded-full font-mono text-[10px] md:text-xs">
-                  <div className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
-                  <span className="text-white tracking-widest">
-                    ACTIVE SESSION: <span className="text-[var(--accent)] uppercase">{restoredHandle}</span>
-                  </span>
-                  <div className="h-3 w-[1px] bg-[rgba(0,229,51,0.2)] mx-1" />
-                  <div className="flex gap-3">
-                    <button onClick={handleContinue} className="text-[var(--accent)] hover:text-white transition-colors">[CONTINUE]</button>
-                    <button onClick={handleNewSession} className="text-white/40 hover:text-white transition-colors">[PURGE]</button>
+        {/* Content: three sections distributed across full height */}
+        <div className="relative z-20 flex flex-col items-center justify-between min-h-[100dvh] py-8">
+
+          {/* Top: session banner + logo */}
+          <div className="flex flex-col items-center gap-4 w-full max-w-5xl">
+            <AnimatePresence>
+              {hasRestoredSession && restoredHandle && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="w-fit"
+                >
+                  <div className="flex items-center gap-4 border border-[rgba(0,229,51,0.3)] bg-[rgba(0,229,51,0.08)] backdrop-blur-md px-5 py-2 rounded-full font-mono text-[10px] md:text-xs">
+                    <div className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
+                    <span className="text-white tracking-widest">
+                      ACTIVE SESSION: <span className="text-[var(--accent)] uppercase">{restoredHandle}</span>
+                    </span>
+                    <div className="h-3 w-[1px] bg-[rgba(0,229,51,0.2)] mx-1" />
+                    <div className="flex gap-3">
+                      <button onClick={handleContinue} className="text-[var(--accent)] hover:text-white transition-colors">[CONTINUE]</button>
+                      <button onClick={handleNewSession} className="text-white/40 hover:text-white transition-colors">[PURGE]</button>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-          <BreachLogo />
-        </div>
+            <BreachLogo />
+          </div>
 
-        {/* Main Interaction Area */}
-        <div className="relative flex flex-col items-center mt-12 md:mt-16 w-full max-w-sm z-20">
+          {/* Middle: form */}
+          <div className="relative flex flex-col items-center w-full max-w-sm z-20">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -476,8 +479,8 @@ export function StartScreen({ onStart }: StartScreenProps) {
           </motion.div>
         </div>
 
-        {/* Immersive Footer */}
-        <div className="relative mt-auto pt-12 pb-8 w-full px-6 flex flex-col items-center gap-6">
+          {/* Bottom: footer */}
+          <div className="w-full flex flex-col items-center gap-4">
           <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar max-w-full justify-center">
             {[
               "SECURED PROTOCOL",
@@ -503,8 +506,9 @@ export function StartScreen({ onStart }: StartScreenProps) {
               ABOUT
             </a>
           </div>
-        </div>
-      </div>
+        </div>{/* end footer */}
+        </div>{/* end justify-between wrapper */}
+      </div>{/* end root */}
     </>
   );
 }
