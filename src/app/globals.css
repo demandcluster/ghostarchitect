@@ -85,6 +85,18 @@
   --glow-amber:       0 0 20px rgba(255,200,0,0.60), 0 0 2px rgba(255,200,0,1);
 }
 
+/* Focus hint — pulsing glow on the primary window after idle */
+@keyframes hint-glow-corporate {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(59,130,246,0.0), 0 8px 32px rgba(0,0,0,0.45); }
+  50%       { box-shadow: 0 0 0 2px rgba(59,130,246,0.85), 0 0 28px rgba(59,130,246,0.35), 0 8px 32px rgba(0,0,0,0.45); }
+}
+@keyframes hint-glow-breach {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(0,229,51,0.0); }
+  50%       { box-shadow: 0 0 0 2px rgba(0,229,51,0.85), 0 0 28px rgba(0,229,51,0.35); }
+}
+.hint-glow-corporate { animation: hint-glow-corporate 1.2s ease-in-out infinite; }
+.hint-glow-breach    { animation: hint-glow-breach    1.2s ease-in-out infinite; }
+
 @theme inline {
   --color-bg-primary: var(--bg-primary);
   --color-bg-secondary: var(--bg-secondary);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/stores/gameStore";
 
@@ -47,6 +47,33 @@ export function WindowManager({
   const teamName = useGameStore((s) => s.teamName);
   const isBreach = visualMode === "breach";
 
+  // Idle hint: after 5s with no pointer/key activity, pulse the primary window
+  const [isHinting, setIsHinting] = useState(false);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActivity = useRef(Date.now());
+
+  const resetIdle = useCallback(() => {
+    const now = Date.now();
+    if (now - lastActivity.current < 400) return; // throttle mousemove noise
+    lastActivity.current = now;
+    setIsHinting(false);
+    if (idleTimer.current) clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => setIsHinting(true), 5000);
+  }, []);
+
+  useEffect(() => {
+    resetIdle();
+    window.addEventListener("pointermove", resetIdle);
+    window.addEventListener("pointerdown", resetIdle);
+    window.addEventListener("keydown", resetIdle);
+    return () => {
+      if (idleTimer.current) clearTimeout(idleTimer.current);
+      window.removeEventListener("pointermove", resetIdle);
+      window.removeEventListener("pointerdown", resetIdle);
+      window.removeEventListener("keydown", resetIdle);
+    };
+  }, [resetIdle]);
+
   const handleFocus = useCallback((id: string) => {
     onWindowFocus?.(id);
   }, [onWindowFocus]);
@@ -56,12 +83,16 @@ export function WindowManager({
       {/* Main window area — tiling layout */}
       <div className="flex-1 flex gap-0 overflow-hidden min-h-0">
         <AnimatePresence mode="popLayout">
-          {windows.map((win) => {
+          {windows.map((win, winIndex) => {
             const isActive = activeWindowId === win.id;
+            const isPrimary = winIndex === 0;
+            const hintClass = isHinting && isPrimary
+              ? (isBreach ? "hint-glow-breach" : "hint-glow-corporate")
+              : "";
 
             const outerClasses = isBreach
-              ? `flex flex-col min-w-0 border-r border-[var(--border)] ${isActive ? "border-t-2 border-t-[var(--accent)]" : ""}`
-              : `flex flex-col min-w-0 border-r border-[var(--border)] ${isActive ? "ring-1 ring-[var(--accent-ring)]" : ""}`;
+              ? `flex flex-col min-w-0 border-r border-[var(--border)] ${isActive ? "border-t-2 border-t-[var(--accent)]" : ""} ${hintClass}`
+              : `flex flex-col min-w-0 border-r border-[var(--border)] ${isActive ? "ring-1 ring-[var(--accent-ring)]" : ""} ${hintClass}`;
 
             const titleBarClasses = isBreach
               ? `h-10 flex items-center px-3 shrink-0 bg-[var(--window-header-from)] border-b border-[var(--window-header-border,var(--border)]]`
