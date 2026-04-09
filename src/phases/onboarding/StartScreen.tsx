@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameStore } from "@/stores/gameStore";
 import { getGameService } from "@/services/config/serviceConfig";
-import { NetworkBackground } from "@/shared/components/NetworkBackground";
 
 const PRIVACY_ACK_KEY = "ghost-architect:privacyAck";
 
@@ -81,9 +80,9 @@ function BreachLogo() {
             y: 0,
             x: isGlitching ? [0, -2, 2, -1, 0] : 0,
             skewX: isGlitching ? [0, 10, -10, 5, 0] : 0,
-            filter: isGlitching 
-              ? "drop-shadow(0 0 30px rgba(0,229,51,0.5)) contrast(2) brightness(1.5)" 
-              : "drop-shadow(0 0 30px rgba(0,229,51,0.25)) grayscale(0.2) contrast(1.1)",
+            filter: isGlitching
+              ? "drop-shadow(0 0 30px rgba(0,229,51,0.5)) contrast(2) brightness(1.5)"
+              : "drop-shadow(0 0 30px rgba(59,130,246,0.5)) grayscale(0.2) contrast(1.1)",
           }}
           transition={{ 
             opacity: { duration: 1 },
@@ -351,29 +350,35 @@ export function StartScreen({ onStart }: StartScreenProps) {
       </AnimatePresence>
 
       <div className="relative flex flex-col items-center min-h-[100dvh] bg-[var(--bg-primary)] px-6 pt-12 md:pt-24">
-        {/* Animated network background */}
-        <NetworkBackground />
-
-        {/* Technical Background */}
-        <div 
-          className="absolute inset-0 pointer-events-none overflow-hidden"
-          style={{ opacity: 0.4 }}
-        >
-          {/* Animated Grid */}
-          <div 
+        {/* Spotlight background */}
+        <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+          {/* Radial spotlight behind logo area */}
+          <div
             className="absolute inset-0"
             style={{
-              backgroundImage: 'linear-gradient(rgba(0,229,51,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,229,51,0.05) 1px, transparent 1px)',
-              backgroundSize: '40px 40px',
-              maskImage: 'radial-gradient(ellipse 60% 60% at 50% 50%, black 20%, transparent 100%)'
+              background:
+                "radial-gradient(ellipse 50% 40% at 50% 28%, rgba(59,130,246,0.18) 0%, transparent 70%)",
             }}
           />
-          {/* Scanning Line */}
-          <motion.div 
-            className="absolute left-0 w-full h-32 bg-gradient-to-b from-transparent via-[rgba(0,229,51,0.03)] to-transparent"
-            animate={{ top: ['-20%', '120%'] }}
-            transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+          {/* Slow scan line */}
+          <motion.div
+            className="absolute left-0 w-full h-32 bg-gradient-to-b from-transparent via-[rgba(59,130,246,0.08)] to-transparent"
+            animate={{ top: ["-20%", "120%"] }}
+            transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
           />
+          {/* Corner brackets */}
+          {/* Top-left */}
+          <div className="absolute top-4 left-4 w-5 h-[2px] bg-blue-500/50" />
+          <div className="absolute top-4 left-4 w-[2px] h-5 bg-blue-500/50" />
+          {/* Top-right */}
+          <div className="absolute top-4 right-4 w-5 h-[2px] bg-blue-500/50" />
+          <div className="absolute top-4 right-4 w-[2px] h-5 bg-blue-500/50" />
+          {/* Bottom-left */}
+          <div className="absolute bottom-4 left-4 w-5 h-[2px] bg-blue-500/50" />
+          <div className="absolute bottom-4 left-4 w-[2px] h-5 bg-blue-500/50" />
+          {/* Bottom-right */}
+          <div className="absolute bottom-4 right-4 w-5 h-[2px] bg-blue-500/50" />
+          <div className="absolute bottom-4 right-4 w-[2px] h-5 bg-blue-500/50" />
         </div>
 
         {/* Top Navigation / Status Area */}
