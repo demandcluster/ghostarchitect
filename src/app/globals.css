@@ -3,29 +3,29 @@
 /* Corporate theme (default) */
 :root,
 [data-theme="corporate"] {
-  --bg-primary:       #00010c;
+  --bg-primary:       #0f172a;
   --bg-secondary:     #1e293b;
   --bg-tertiary:      #334155;
-  --bg-glass:         rgba(255,255,255,0.06);
+  --bg-glass:         rgba(255,255,255,0.12);
   --bg-window:        #ffffff;
   --bg-window-raised: #f8fafc;
   --bg-window-sunken: #f1f5f9;
   --text-primary:     #0f172a;
   --text-secondary:   #334155;
-  --text-muted:       #64748b;
-  --text-placeholder: #94a3b8;
+  --text-muted:       #475569;
+  --text-placeholder: #64748b;
   --accent:           #3b6ef8;
   --accent-hover:     #2555e8;
   --accent-subtle:    rgba(59,110,248,0.10);
   --accent-ring:      rgba(59,110,248,0.35);
-  --border:           rgba(15,23,42,0.12);
-  --border-strong:    rgba(15,23,42,0.20);
+  --border:           rgba(15,23,42,0.20);
+  --border-strong:    rgba(15,23,42,0.32);
   --window-header-from: #1e40af;
   --window-header-to:   #2563eb;
   --window-header-text: #ffffff;
   --taskbar-bg:       rgba(15,23,42,0.95);
   --taskbar-border:   rgba(59,110,248,0.15);
-  --taskbar-text:     #94a3b8;
+  --taskbar-text:     #64748b;
   --taskbar-text-active: #0f172a;
   --danger:           #dc2626;
   --danger-subtle:    rgba(220,38,38,0.10);
