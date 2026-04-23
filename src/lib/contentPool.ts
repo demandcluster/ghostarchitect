@@ -245,13 +245,48 @@ export class ContentPoolManager {
           branded.date = dateVal;
         }
 
+        const isValidEmail = (value: string): boolean => {
+          const v = value.trim();
+          if (!v || v.includes(' ')) return false;
+
+          const at = v.indexOf('@');
+          if (at <= 0 || at !== v.lastIndexOf('@') || at === v.length - 1) return false;
+
+          const local = v.slice(0, at);
+          const domain = v.slice(at + 1);
+          if (!local || !domain) return false;
+          if (domain.startsWith('.') || domain.endsWith('.')) return false;
+
+          const labels = domain.split('.');
+          if (labels.length < 2) return false;
+          for (const label of labels) {
+            if (!label || label.startsWith('-') || label.endsWith('-')) return false;
+          }
+
+          return true;
+        };
+
         const extractEmail = (fromStr: string): string => {
           // Use indexOf/slice instead of regex to avoid ReDoS on uncontrolled input
           const lt = fromStr.indexOf('<');
           const gt = fromStr.indexOf('>');
-          if (lt !== -1 && gt > lt) return fromStr.slice(lt + 1, gt).trim();
-          if (fromStr.includes('@')) return fromStr.trim();
-          return fromStr.toLowerCase().replace(/\s+/g, '.') + '@' + options.fakeDomain;
+          if (lt !== -1 && gt > lt) {
+            const bracketed = fromStr.slice(lt + 1, gt).trim();
+            if (isValidEmail(bracketed)) return bracketed;
+          }
+
+          const trimmed = fromStr.trim();
+          if (trimmed.includes('@') && isValidEmail(trimmed)) return trimmed;
+
+          const safeLocal = fromStr
+            .toLowerCase()
+            .trim()
+            .replace(/\s+/g, '.')
+            .replace(/[^a-z0-9._+-]/g, '')
+            .replace(/\.{2,}/g, '.')
+            .replace(/^\.+|\.+$/g, '') || 'system';
+
+          return `${safeLocal}@${options.fakeDomain}`;
         };
 
         if (!branded.headers) {
@@ -359,6 +394,17 @@ export class ContentPoolManager {
         const arr = Array.isArray(i.data) ? (i.data as Record<string, unknown>[]) : (i.data ? [i.data as Record<string, unknown>] : []);
         return arr;
       }).map((r, idx) => {
+        const makeLolbinId = (): string => {
+          try {
+            if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+              return `lolbin-${crypto.randomUUID().slice(0, 8)}`;
+            }
+          } catch {
+            // Fall through to compatibility fallback
+          }
+          return `lolbin-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        };
+
         // Direct normalization — skip brand() to avoid field mangling
         const processName = String(r.processName || r.process || r.name || r.executable || r.binary || 'unknown.exe');
         const pid = typeof r.pid === 'number' ? r.pid : (typeof r.PID === 'number' ? r.PID : Math.floor(Math.random() * 60000) + 1000);
@@ -366,7 +412,7 @@ export class ContentPoolManager {
         const description = String(r.description || r.desc || r.details || r.info || r.text || r.message || '');
         const mal = r.isMalicious ?? r.malicious ?? r.suspicious ?? false;
         return {
-          id: String(r.id || `lolbin-${crypto.randomUUID().slice(0, 8)}`),
+          id: String(r.id || makeLolbinId()),
           processName,
           pid: typeof pid === 'number' ? pid : parseInt(String(pid), 10) || (Math.floor(Math.random() * 60000) + 1000),
           commandLine,

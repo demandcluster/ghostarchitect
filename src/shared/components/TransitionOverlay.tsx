@@ -159,8 +159,8 @@ export function useBreachTransition() {
       // Start screen shake at glitch phase start
       tl.call(() => {
         shakeInterval = setInterval(() => {
-          const overlayEl = document.querySelector(".transition-overlay") as HTMLElement;
-          if (overlayEl) {
+          const overlayEl = document.querySelector(".transition-overlay");
+          if (overlayEl instanceof HTMLElement) {
             overlayEl.style.transform = `translate(${Math.random() * 6 - 3}px, ${Math.random() * 6 - 3}px)`;
           }
         }, 50);

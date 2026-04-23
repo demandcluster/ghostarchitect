@@ -277,7 +277,7 @@ export default function Home() {
   useEffect(() => {
     if (step === "start") return;
     if (gameStore.sessionId) return;
-    gameStore.setSessionId(crypto.randomUUID());
+    gameStore.initSession();
   }, [step, gameStore]);
 
 
