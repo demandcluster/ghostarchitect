@@ -7,6 +7,8 @@ export interface DerivedFlags {
   avoidedEvilTwin: boolean;
   containedQuickly: boolean;
   extractedAllIOCs: boolean;
+  deferredToCSIRT: boolean;
+  failedIOCExtraction: boolean;
   rotatedCredentials: boolean;
   escalatedInTime: boolean;
   overQuarantined: boolean;
@@ -23,6 +25,8 @@ export function deriveFlags(
   const avoidedEvilTwin = flags.has("avoided_evil_twin");
   const containedQuickly = flags.has("contained_quickly");
   const extractedAllIOCs = flags.has("extracted_all_iocs");
+  const deferredToCSIRT = flags.has("deferred_to_csirt");
+  const failedIOCExtraction = flags.has("failed_ioc_extraction");
   const rotatedCredentials = flags.has("rotated_credentials");
   const escalatedInTime = flags.has("escalated_in_time");
   const overQuarantined = flags.has("over_quarantined");
@@ -32,7 +36,7 @@ export function deriveFlags(
     choseStrongPassword,
     avoidedEvilTwin,
     containedQuickly,
-    extractedAllIOCs,
+    extractedAllIOCs || deferredToCSIRT,
     rotatedCredentials,
     escalatedInTime,
   ].filter(Boolean).length;
@@ -40,6 +44,7 @@ export function deriveFlags(
   const negatives = [
     fellForSocialEngineering,
     overQuarantined,
+    failedIOCExtraction,
   ].filter(Boolean).length;
 
   let ending: Ending;
@@ -60,6 +65,8 @@ export function deriveFlags(
     avoidedEvilTwin,
     containedQuickly,
     extractedAllIOCs,
+    deferredToCSIRT,
+    failedIOCExtraction,
     rotatedCredentials,
     escalatedInTime,
     overQuarantined,

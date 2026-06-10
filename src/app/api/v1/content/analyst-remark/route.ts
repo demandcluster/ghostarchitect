@@ -4,11 +4,13 @@ const FLAG_DESCRIPTIONS: Record<string, string> = {
   clicked_phishing_link: "clicked a phishing link during email triage",
   fell_for_social_engineering: "fell for a social engineering attempt and gave away credentials",
   over_quarantined: "quarantined a legitimate PowerShell process during investigation",
+  failed_ioc_extraction: "attempted IOC extraction solo and missed most of the indicators, forcing CSIRT to redo the work",
   gave_creds_to_vendor: "shared their password with a vendor impersonator",
   chose_strong_password: "chose an exceptionally strong password",
   caught_all_phishing: "correctly identified every phishing email",
   avoided_evil_twin: "spotted the evil twin WiFi access point",
   extracted_all_iocs: "extracted all indicators of compromise from the logs",
+  deferred_to_csirt: "correctly escalated IOC extraction to CSIRT instead of freelancing the forensics",
 };
 
 export async function GET(req: NextRequest) {
@@ -23,8 +25,9 @@ export async function GET(req: NextRequest) {
 
     const priorityOrder = [
       "clicked_phishing_link", "fell_for_social_engineering", "over_quarantined",
-      "gave_creds_to_vendor", "chose_strong_password", "caught_all_phishing",
-      "avoided_evil_twin", "extracted_all_iocs",
+      "failed_ioc_extraction", "gave_creds_to_vendor", "chose_strong_password",
+      "caught_all_phishing", "avoided_evil_twin", "extracted_all_iocs",
+      "deferred_to_csirt",
     ];
     const bestFlag = priorityOrder.find((f) => flags.includes(f));
     const flagDesc = bestFlag ? FLAG_DESCRIPTIONS[bestFlag] : `received a ${verdict} verdict`;

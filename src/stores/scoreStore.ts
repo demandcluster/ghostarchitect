@@ -43,6 +43,10 @@ export const useScoreStore = create<ScoreState>()(
 
       addAction: (action) =>
         set((state) => {
+          // Actions are one-shot decisions; the store persists across refreshes
+          // while component submit-state does not, so replaying a step must not
+          // double-count. First submission with a given id wins.
+          if (state.actions.some((a) => a.id === action.id)) return state;
           const full: ScoreAction = { ...action, timestamp: Date.now() };
           const newCategoryScores = { ...state.categoryScores };
           newCategoryScores[action.category] = newCategoryScores[action.category] + action.points;

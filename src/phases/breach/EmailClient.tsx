@@ -221,7 +221,15 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
         verdicts={verdicts}
         onDone={() => {
           setShowReview(false);
-          onComplete(verdicts);
+          // brandEmail suffixes ids with the index for internal uniqueness;
+          // map verdicts back to the caller's original ids (same array order).
+          const results: Record<string, Verdict> = {};
+          brandedEmails.forEach((branded, i) => {
+            const v = verdicts[branded.id];
+            const originalId = emails[i]?.id;
+            if (v && originalId) results[originalId] = v;
+          });
+          onComplete(results);
         }}
       />
     );
@@ -412,7 +420,7 @@ export function EmailClient({ emails, onComplete }: EmailClientProps) {
               <div className="text-[15px] text-[var(--text-primary)] leading-relaxed border-t border-[var(--border)] pt-5 max-w-[65ch]">
                 <EmailBody
                   body={selectedEmail.body}
-                  isPhishing={emails.find((e) => e.id === selectedEmail.id)?.isPhishing ?? false}
+                  isPhishing={selectedEmail.isPhishing ?? false}
                   onLinkClick={(url, isPhish) => {
                     if (isPhish) {
                       adjustTrust(-8);

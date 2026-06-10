@@ -281,6 +281,34 @@ export default function Home() {
   }, [step, gameStore]);
 
 
+  // Reveal the first social-engineering DM once the portal is reached.
+  // Lives here (not in MFA's onComplete) so a refresh at onboarding-portal
+  // before the reveal fired cannot strand the player with an empty sidebar.
+  useEffect(() => {
+    if (step !== "onboarding-portal") return;
+    if (revealedDmIds.length > 0) return;
+    const timer = setTimeout(() => {
+      if (useNarrativeStore.getState().revealedDmIds.length === 0) {
+        setRevealedDmIds([SOCIAL_ENGINEERING_DM[0].id]);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, [step, revealedDmIds.length, setRevealedDmIds]);
+
+  // Restore DM completion progress after a refresh — dmDone/dmInteractionsDoneRef
+  // are component state, but answered choices live in the persisted timeline.
+  useEffect(() => {
+    const answered = new Set(
+      useNarrativeStore
+        .getState()
+        .timeline.filter((t) => t.phase === "onboarding" && t.decisionKey)
+        .map((t) => t.decisionKey)
+    ).size;
+    dmInteractionsDoneRef.current = answered;
+    if (answered >= 4) setDmDone(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // runs once on mount, after persist rehydration
+
   // Auto-reveal informational DMs in a chain
   useEffect(() => {
     if (
@@ -355,27 +383,15 @@ export default function Home() {
 
       // Threading fix: Add the reply ID to revealed IDs immediately.
       // This preserves chronological discovery order.
+      // Read the current list from the store — this callback is memoized with
+      // stable deps only, so the `revealedDmIds` prop value would be stale here.
       if (choice.nextMessageId) {
-        console.log(
-          "[DM Choice] Revealing response:",
-          choice.nextMessageId,
-          "from choice isCorrect:",
-          choice.isCorrect
-        );
-        const responseMsg = dms.find((m) => m.id === choice.nextMessageId);
-        console.log(
-          "[DM Choice] Response msg found:",
-          !!responseMsg,
-          "nextMessageId:",
-          responseMsg?.nextMessageId
-        );
+        const current = useNarrativeStore.getState().revealedDmIds;
         setRevealedDmIds(
-          revealedDmIds.includes(choice.nextMessageId!)
-            ? revealedDmIds
-            : [...revealedDmIds, choice.nextMessageId!]
+          current.includes(choice.nextMessageId)
+            ? current
+            : [...current, choice.nextMessageId]
         );
-      } else {
-        console.log("[DM Choice] No nextMessageId on choice:", choice);
       }
 
       // Track completion — ref avoids unnecessary re-renders
@@ -494,6 +510,23 @@ export default function Home() {
     [revealedDmIds, mergedSocialDMs]
   );
 
+  // Full reset for replay/exit: Home never unmounts (OSShell is keyed by step,
+  // not the page), so component state must be cleared alongside the stores.
+  const resetGame = useCallback(() => {
+    useScoreStore.getState().reset();
+    useNarrativeStore.getState().reset();
+    useGameStore.getState().reset();
+    resetRemarkCache();
+    localStorage.removeItem("ghost-architect:step");
+    setDmDone(false);
+    dmInteractionsDoneRef.current = 0;
+    setFlaggedLogs([]);
+    setLogAnalysisResult(null);
+    setShowWiki(false);
+    setShowScoreboard(false);
+    setStep("start");
+  }, []);
+
   // Start screen (full screen, no OS shell)
   if (step === "start") {
     return <StartScreen onStart={() => changeStep("sim-intro")} />;
@@ -512,15 +545,8 @@ export default function Home() {
     return (
       <MFAPuzzle
         onComplete={() => {
+          // First DM reveal is handled by the onboarding-portal effect above.
           changeStep("onboarding-portal");
-
-          // Initial DM reveal sequence: Show the first message (intro) after a delay
-          setTimeout(() => {
-            const dms = SOCIAL_ENGINEERING_DM;
-            if (dms.length > 0) {
-              setRevealedDmIds([dms[0].id]);
-            }
-          }, 2000);
         }}
       />
     );
@@ -972,23 +998,14 @@ export default function Home() {
   return (
     <>
       {step === "ending" ? (
-        <EndingPage
-          onPlayAgain={() => {
-            useScoreStore.getState().reset();
-            useNarrativeStore.getState().reset();
-            useGameStore.getState().reset();
-            resetRemarkCache();
-            localStorage.removeItem("ghost-architect:step");
-            setStep("start");
-          }}
-        />
+        <EndingPage onPlayAgain={resetGame} />
       ) : (
         <OSShell
           key={step}
           windows={windows}
           dmSidebar={dmSidebar}
           panelOpen={{ scoreboard: showScoreboard, wiki: showWiki }}
-          onExit={() => setStep("start")}
+          onExit={resetGame}
           onAppClick={(appId) => {
             if (appId === "scoreboard") {
               setShowScoreboard((v) => !v);

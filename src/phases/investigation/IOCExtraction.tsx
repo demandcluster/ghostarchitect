@@ -27,16 +27,32 @@ const LEVEL_COLORS: Record<string, string> = {
   CRITICAL: "text-[var(--danger)]",
 };
 
+type Mode = "choose" | "attempt" | "opted-out";
+
 export function IOCExtraction({ onComplete }: IOCExtractionProps) {
+  const [mode, setMode] = useState<Mode>("choose");
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [shownHints, setShownHints] = useState<Set<string>>(new Set());
   const [logsOpen, setLogsOpen] = useState(false);
+  const [correctCount, setCorrectCount] = useState(0);
   const addAction = useScoreStore((s) => s.addAction);
   const addFlag = useNarrativeStore((s) => s.addFlag);
 
   const iocsToUse = DEFAULT_IOCS;
   const logsToUse = LOG_ENTRIES;
+
+  const handleDeferToCSIRT = () => {
+    addAction({
+      id: "ioc-deferred-to-csirt",
+      category: "forensicSkill",
+      points: 18,
+      maxPoints: 25,
+      label: "Deferred IOC extraction to CSIRT (correct procedure)",
+    });
+    addFlag("deferred_to_csirt");
+    setMode("opted-out");
+  };
 
   const showHint = (iocType: string) => {
     setShownHints((prev) => new Set(prev).add(iocType));
@@ -50,41 +66,151 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
   };
 
   const handleSubmit = () => {
-    let correctCount = 0;
+    let correct = 0;
 
     iocsToUse.forEach((ioc) => {
       const input = (inputs[ioc.type] || "").trim().toLowerCase();
       const expected = ioc.value.toLowerCase();
       if (input === expected || input.includes(expected)) {
-        correctCount++;
+        correct++;
       }
     });
 
-    const points = Math.round((correctCount / iocsToUse.length) * 25);
+    const points = Math.round((correct / iocsToUse.length) * 25);
     addAction({
       id: "ioc-extraction",
       category: "forensicSkill",
       points,
       maxPoints: 25,
-      label: `IOC extraction: ${correctCount}/${iocsToUse.length} identified`,
+      label: `IOC extraction: ${correct}/${iocsToUse.length} identified`,
     });
 
-    if (correctCount === iocsToUse.length) {
+    if (correct === iocsToUse.length) {
       addFlag("extracted_all_iocs");
+    } else if (correct < Math.ceil(iocsToUse.length / 2)) {
+      addFlag("failed_ioc_extraction");
     }
 
+    setCorrectCount(correct);
     setSubmitted(true);
   };
+
+  if (mode === "choose") {
+    return (
+      <div className="p-6 max-w-lg mx-auto overflow-y-auto h-full">
+        <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
+          IOC Documentation
+        </h2>
+        <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed max-w-[60ch]">
+          You've identified suspicious activity. Before documenting Indicators of Compromise,
+          you need to decide how to proceed.
+        </p>
+
+        <div className="space-y-4">
+          <button
+            onClick={handleDeferToCSIRT}
+            className="w-full text-left p-4 border-2 border-[var(--success)] rounded-xl bg-[var(--bg-window-sunken)] hover:bg-[var(--bg-window)] transition-all group focus:outline-none focus:ring-2 focus:ring-[var(--success)]/40"
+          >
+            <div className="flex items-start gap-3">
+              <span className="text-[var(--success)] text-lg mt-0.5">✓</span>
+              <div>
+                <p className="font-semibold text-[var(--text-primary)] mb-1">
+                  Report to CSIRT
+                </p>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                  Hand your findings to the Computer Security Incident Response Team.
+                  They have forensic tools, legal authority, and chain-of-custody procedures.
+                  This is the correct real-world response — freelancing IOC extraction
+                  risks contaminating evidence.
+                </p>
+                <p className="text-xs text-[var(--success)] mt-2 font-medium">
+                  +18 points — Recognised correct escalation procedure
+                </p>
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setMode("attempt")}
+            className="w-full text-left p-4 border border-[var(--warning)] rounded-xl bg-[var(--bg-window-sunken)] hover:bg-[var(--bg-window)] transition-all group focus:outline-none focus:ring-2 focus:ring-[var(--warning)]/40"
+          >
+            <div className="flex items-start gap-3">
+              <span className="text-[var(--warning)] text-lg mt-0.5">⚠</span>
+              <div>
+                <p className="font-semibold text-[var(--text-primary)] mb-1">
+                  Attempt IOC extraction yourself
+                </p>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                  Document the attacker's IP, C2 server, compromised accounts and
+                  staging paths directly from the logs. Higher reward if you get it right —
+                  but if you miss critical indicators, it will count against you.
+                </p>
+                <p className="text-xs text-[var(--warning)] mt-2 font-medium">
+                  Up to +25 points — but penalty for poor accuracy
+                </p>
+              </div>
+            </div>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "opted-out") {
+    return (
+      <div className="p-6 max-w-lg mx-auto overflow-y-auto h-full">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-[var(--success)] text-2xl">✓</span>
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">
+              CSIRT Notified
+            </h2>
+          </div>
+
+          <div className="p-4 border border-[var(--success)] rounded-xl bg-[var(--bg-window-sunken)] mb-6">
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-3">
+              You escalated correctly. A CSIRT ticket has been opened and a forensic
+              analyst has been assigned. They will extract IOCs using forensically
+              sound methods that preserve chain of custody.
+            </p>
+            <p className="text-xs text-[var(--text-muted)] italic">
+              Note: In a real incident, freelancing attribution work before CSIRT is
+              engaged can compromise legal proceedings and alter evidence integrity.
+            </p>
+          </div>
+
+          <div className="p-3 bg-[var(--bg-window-sunken)] border border-[var(--border)] rounded-lg mb-6">
+            <p className="text-xs font-mono text-[var(--success)]">
+              + 18 pts — Escalation to CSIRT
+            </p>
+          </div>
+
+          <button
+            onClick={onComplete}
+            className="w-full py-3 bg-[var(--accent)] text-white rounded-xl text-sm font-medium hover:bg-[var(--accent-hover)] transition-all duration-200 active:scale-[0.98]"
+          >
+            Continue
+          </button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-lg mx-auto overflow-y-auto h-full">
       <h2 className="text-xl font-bold text-[var(--text-primary)] mb-2">
         IOC Extraction
       </h2>
-      <p className="text-sm text-[var(--text-secondary)] mb-7 leading-relaxed max-w-[60ch]">
+      <p className="text-sm text-[var(--text-secondary)] mb-1 leading-relaxed max-w-[60ch]">
         Document Indicators of Compromise you identified from logs.
-        These will be shared with SOC team and submitted to threat
-        intelligence feeds.
+        These will be shared with SOC team and submitted to threat intelligence feeds.
+      </p>
+      <p className="text-xs text-[var(--warning)] mb-6">
+        All 6 correct = +25 pts. Missing more than half will count against you.
       </p>
 
       {/* Reference Logs Panel */}
@@ -190,6 +316,17 @@ export function IOCExtraction({ onComplete }: IOCExtractionProps) {
           </div>
         ))}
       </div>
+
+      {submitted && correctCount < Math.ceil(iocsToUse.length / 2) && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="mt-4 p-3 border border-[var(--danger)] rounded-lg bg-[var(--bg-window-sunken)] text-xs text-[var(--danger)]"
+        >
+          You identified {correctCount}/{iocsToUse.length} indicators. Incomplete attribution
+          has been flagged — CSIRT will need to re-do this work.
+        </motion.div>
+      )}
 
       <button
         onClick={submitted ? onComplete : handleSubmit}

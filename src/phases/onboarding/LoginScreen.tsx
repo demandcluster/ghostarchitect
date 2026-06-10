@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useGameStore } from "@/stores/gameStore";
 import { useScoreStore } from "@/stores/scoreStore";
 import { useNarrativeStore } from "@/stores/narrativeStore";
+import { createPasswordArtifact } from "@/lib/passwordArtifact";
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -56,7 +57,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const strength = getStrength(password);
   const meta = STRENGTH_META[strength];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
       setError("Please enter your credentials");
@@ -83,7 +84,11 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
       adjustTrust(-3);
     }
 
-    setDecision("login_password", password);
+    // Never persist the raw string — players ignore the warning and type real
+    // passwords. Store a derived artifact (mask + entropy + salted hash); the
+    // breach reveal and verify steps work from that.
+    const artifact = await createPasswordArtifact(password);
+    setDecision("login_password_artifact", JSON.stringify(artifact));
     onLogin();
   };
 

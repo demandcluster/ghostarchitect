@@ -31,18 +31,35 @@ function simulateIOCSubmit(inputs: Record<string, string>) {
     }
   });
 
-  const points = Math.round((correctCount / EXPECTED_IOCS.length) * 5);
+  const points = Math.round((correctCount / EXPECTED_IOCS.length) * 25);
   store.addAction({
     id: "ioc-extraction",
     category: "forensicSkill",
     points,
-    maxPoints: 5,
+    maxPoints: 25,
     label: `IOC extraction: ${correctCount}/${EXPECTED_IOCS.length} identified`,
   });
 
   if (correctCount === EXPECTED_IOCS.length) {
     narrative.addFlag("extracted_all_iocs");
+  } else if (correctCount < Math.ceil(EXPECTED_IOCS.length / 2)) {
+    narrative.addFlag("failed_ioc_extraction");
   }
+}
+
+/** Simulates handleDeferToCSIRT from IOCExtraction component */
+function simulateCSIRTDeferral() {
+  const store = useScoreStore.getState();
+  const narrative = useNarrativeStore.getState();
+
+  store.addAction({
+    id: "ioc-deferred-to-csirt",
+    category: "forensicSkill",
+    points: 18,
+    maxPoints: 25,
+    label: "Deferred IOC extraction to CSIRT (correct procedure)",
+  });
+  narrative.addFlag("deferred_to_csirt");
 }
 
 describe("iocExtraction", () => {
@@ -67,13 +84,32 @@ describe("iocExtraction", () => {
     });
   });
 
+  describe("CSIRT deferral (opt-out path)", () => {
+    it("scores 18 forensicSkill points", () => {
+      simulateCSIRTDeferral();
+      expect(useScoreStore.getState().categoryScores.forensicSkill).toBe(18);
+    });
+
+    it("sets deferred_to_csirt flag", () => {
+      simulateCSIRTDeferral();
+      expect(useNarrativeStore.getState().hasFlag("deferred_to_csirt")).toBe(true);
+    });
+
+    it("does not set extracted_all_iocs or failed_ioc_extraction", () => {
+      simulateCSIRTDeferral();
+      const flags = useNarrativeStore.getState();
+      expect(flags.hasFlag("extracted_all_iocs")).toBe(false);
+      expect(flags.hasFlag("failed_ioc_extraction")).toBe(false);
+    });
+  });
+
   describe("all IOCs correct", () => {
-    it("scores full forensicSkill points (5)", () => {
+    it("scores full forensicSkill points (25)", () => {
       const inputs: Record<string, string> = {};
       EXPECTED_IOCS.forEach((ioc) => { inputs[ioc.type] = ioc.value; });
 
       simulateIOCSubmit(inputs);
-      expect(useScoreStore.getState().categoryScores.forensicSkill).toBe(5);
+      expect(useScoreStore.getState().categoryScores.forensicSkill).toBe(25);
     });
 
     it("sets extracted_all_iocs flag", () => {
@@ -83,10 +119,18 @@ describe("iocExtraction", () => {
       simulateIOCSubmit(inputs);
       expect(useNarrativeStore.getState().hasFlag("extracted_all_iocs")).toBe(true);
     });
+
+    it("does not set failed_ioc_extraction", () => {
+      const inputs: Record<string, string> = {};
+      EXPECTED_IOCS.forEach((ioc) => { inputs[ioc.type] = ioc.value; });
+
+      simulateIOCSubmit(inputs);
+      expect(useNarrativeStore.getState().hasFlag("failed_ioc_extraction")).toBe(false);
+    });
   });
 
-  describe("partial IOCs", () => {
-    it("3 of 6 correct scores ~2-3 points", () => {
+  describe("partial IOCs — above threshold (3 of 6)", () => {
+    it("scores proportional points", () => {
       const inputs: Record<string, string> = {
         "Attacker IP": "185.234.72.14",
         "C2 Server": "45.33.91.200",
@@ -95,19 +139,39 @@ describe("iocExtraction", () => {
 
       simulateIOCSubmit(inputs);
       const score = useScoreStore.getState().categoryScores.forensicSkill;
-      expect(score).toBe(Math.round((3 / 6) * 5)); // 3
+      expect(score).toBe(Math.round((3 / 6) * 25)); // 13
     });
 
-    it("does not set extracted_all_iocs flag", () => {
-      simulateIOCSubmit({ "Attacker IP": "185.234.72.14" });
-      expect(useNarrativeStore.getState().hasFlag("extracted_all_iocs")).toBe(false);
+    it("does not set extracted_all_iocs or failed_ioc_extraction", () => {
+      const inputs: Record<string, string> = {
+        "Attacker IP": "185.234.72.14",
+        "C2 Server": "45.33.91.200",
+        "C2 Port": "8443",
+      };
+      simulateIOCSubmit(inputs);
+      const flags = useNarrativeStore.getState();
+      expect(flags.hasFlag("extracted_all_iocs")).toBe(false);
+      expect(flags.hasFlag("failed_ioc_extraction")).toBe(false);
     });
   });
 
-  describe("no IOCs", () => {
-    it("scores 0 points", () => {
+  describe("poor attempt — below threshold (<3 of 6)", () => {
+    it("sets failed_ioc_extraction flag", () => {
+      simulateIOCSubmit({ "Attacker IP": "185.234.72.14" });
+      expect(useNarrativeStore.getState().hasFlag("failed_ioc_extraction")).toBe(true);
+    });
+
+    it("scores 0 for empty attempt", () => {
       simulateIOCSubmit({});
       expect(useScoreStore.getState().categoryScores.forensicSkill).toBe(0);
+    });
+
+    it("sets failed flag for 2 of 6 correct", () => {
+      simulateIOCSubmit({
+        "Attacker IP": "185.234.72.14",
+        "C2 Server": "45.33.91.200",
+      });
+      expect(useNarrativeStore.getState().hasFlag("failed_ioc_extraction")).toBe(true);
     });
   });
 
@@ -117,7 +181,7 @@ describe("iocExtraction", () => {
       EXPECTED_IOCS.forEach((ioc) => { inputs[ioc.type] = ioc.value.toUpperCase(); });
 
       simulateIOCSubmit(inputs);
-      expect(useScoreStore.getState().categoryScores.forensicSkill).toBe(5);
+      expect(useScoreStore.getState().categoryScores.forensicSkill).toBe(25);
       expect(useNarrativeStore.getState().hasFlag("extracted_all_iocs")).toBe(true);
     });
   });
@@ -132,7 +196,7 @@ describe("iocExtraction", () => {
         "Staging Path": "/tmp/.cache/data.enc",
         "Exfiltration Token": "gh0st-4rch1t3ct",
       });
-      expect(useScoreStore.getState().categoryScores.forensicSkill).toBe(5);
+      expect(useScoreStore.getState().categoryScores.forensicSkill).toBe(25);
     });
   });
 });

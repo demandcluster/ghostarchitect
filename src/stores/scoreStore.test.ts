@@ -57,6 +57,28 @@ describe("scoreStore", () => {
       expect(useScoreStore.getState().categoryScores.phishingIQ).toBe(200);
     });
 
+    it("ignores duplicate action ids (refresh-replay protection)", () => {
+      const { addAction } = useScoreStore.getState();
+      addAction({
+        id: "dup-1",
+        category: "forensicSkill",
+        points: 25,
+        maxPoints: 25,
+        label: "First submission",
+      });
+      addAction({
+        id: "dup-1",
+        category: "forensicSkill",
+        points: 25,
+        maxPoints: 25,
+        label: "Replayed submission",
+      });
+      const state = useScoreStore.getState();
+      expect(state.actions).toHaveLength(1);
+      expect(state.actions[0].label).toBe("First submission");
+      expect(state.categoryScores.forensicSkill).toBe(25);
+    });
+
     it("accumulates cumulative score beyond 125", () => {
       const { addAction } = useScoreStore.getState();
       addAction({
